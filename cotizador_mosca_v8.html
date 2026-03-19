@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Cotizador Mosca</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#fff;--bg2:#f7f6f2;--bg3:#efede8;--bg4:#e8e5df;--text:#1a1918;--text2:#6b6762;--text3:#9e9a95;--border:rgba(0,0,0,.10);--border2:rgba(0,0,0,.20);--accent:#2d2a26;--accent2:#7a5c3a;--gbg:#e8f5e9;--gtxt:#2e7d32;--r:10px;--rl:14px}
+@media(prefers-color-scheme:dark){:root{--bg:#1c1b19;--bg2:#252420;--bg3:#2e2c28;--bg4:#383530;--text:#f0ede8;--text2:#9e9a95;--text3:#6b6762;--border:rgba(255,255,255,.09);--border2:rgba(255,255,255,.18);--accent:#e8e4de;--accent2:#c4a882;--gbg:#1b3320;--gtxt:#81c784}}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg2);color:var(--text);min-height:100vh;display:flex;justify-content:center;padding:2rem 1rem 4rem}
+#app{width:100%;max-width:660px}
+.header{margin-bottom:1.5rem}
+.header h1{font-size:21px;font-weight:600;letter-spacing:-.3px}
+.header p{font-size:13px;color:var(--text2);margin-top:3px}
+.tabs{display:flex;gap:4px;background:var(--bg3);border-radius:var(--r);padding:4px;margin-bottom:1.25rem}
+.tb{flex:1;padding:9px;font-size:13px;font-weight:500;font-family:inherit;background:transparent;color:var(--text2);border:none;border-radius:7px;cursor:pointer;transition:all .15s}
+.tb.on{background:var(--bg);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.10)}
+.card{background:var(--bg);border:.5px solid var(--border);border-radius:var(--rl);padding:1.25rem;margin-bottom:1rem}
+label{display:block;font-size:11px;color:var(--text2);margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+input,select,textarea{font-family:inherit;font-size:14px;color:var(--text);background:var(--bg2);border:.5px solid var(--border2);border-radius:var(--r);padding:9px 12px;width:100%;outline:none;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--text2);box-shadow:0 0 0 3px rgba(0,0,0,.05)}
+textarea{resize:vertical;min-height:72px;line-height:1.5}
+select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.r3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.f{margin-bottom:11px}.f:last-child{margin-bottom:0}
+.sep{margin-top:14px;padding-top:14px;border-top:.5px solid var(--border)}
+.slabel{font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.dnote{font-size:12px;color:var(--text3);margin-bottom:10px}
+.hint{font-size:12px;color:var(--text3);margin-top:5px;line-height:1.4}
+.hint em{color:var(--accent2);font-style:normal}
+.btn{width:100%;padding:12px;font-size:14px;font-weight:600;font-family:inherit;background:var(--accent);color:var(--bg);border:none;border-radius:var(--r);cursor:pointer;transition:opacity .15s,transform .1s;margin-bottom:1rem}
+.btn:hover{opacity:.85}.btn:active{transform:scale(.98)}.btn:disabled{opacity:.4;cursor:not-allowed}
+.ld{text-align:center;padding:1.5rem;color:var(--text2);font-size:13px;display:none}
+.dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--text3);animation:bk 1.2s infinite;margin:0 2px;vertical-align:middle}
+.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
+@keyframes bk{0%,100%{opacity:.15}50%{opacity:1}}
+.sug{background:var(--bg3);border-radius:var(--r);padding:12px 14px;margin-bottom:12px;font-size:13px;color:var(--text2);line-height:1.6;border:.5px solid var(--border2);display:none}
+.sug strong{color:var(--text)}
+.apb{display:inline-block;margin-top:8px;font-size:12px;padding:5px 12px;border-radius:6px;background:var(--accent);color:var(--bg);border:none;cursor:pointer;font-family:inherit;font-weight:500}
+.ph{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px}
+.pi{width:84px;height:84px;object-fit:cover;border-radius:8px;flex-shrink:0}
+.pp{width:84px;height:84px;border-radius:8px;background:var(--bg3);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:26px}
+.pn{font-size:16px;font-weight:600;line-height:1.2}
+.pt{font-size:12px;color:var(--text2);margin-top:2px}
+.pd{font-size:12px;color:var(--text3);margin-top:4px}
+.tag{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;background:var(--bg3);color:var(--text2);margin-top:5px;border:.5px solid var(--border)}
+.ctag{background:var(--bg4);color:var(--accent2);font-weight:600;text-transform:uppercase}
+.divr{height:.5px;background:var(--border);margin:12px 0}
+.pr{display:flex;align-items:baseline;gap:7px;margin-bottom:5px}
+.pi2{font-size:15px;width:20px}
+.pl{font-size:13px;color:var(--text2);flex:1}
+.pv{font-size:15px;font-weight:600}
+.pb{font-size:10px;padding:2px 6px;border-radius:20px;background:var(--gbg);color:var(--gtxt);font-weight:600}
+.ps{font-size:11px;color:var(--text3);margin-left:27px;margin-top:-2px;margin-bottom:7px}
+.sb{background:var(--bg3);border-radius:8px;padding:10px 13px;margin-top:10px;font-size:13px;color:var(--text2);line-height:1.5}
+.sa{font-weight:600;color:var(--text)}
+.dt{font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:12px}
+.cb{width:100%;padding:9px;font-size:13px;font-family:inherit;background:transparent;color:var(--text2);border:.5px solid var(--border2);border-radius:var(--r);cursor:pointer;transition:background .15s;margin-top:12px}
+.cb:hover{background:var(--bg2)}
+.ml{font-size:13px;color:var(--text2);line-height:2.2}
+.ml span{display:block}
+.mn{font-size:12px;color:var(--text3);margin-top:6px}
+.status{text-align:center;padding:3rem 1rem;color:var(--text2);font-size:13px}
+.err{color:#c62828;font-size:13px;padding:4px 0}
+.idrop{border:1.5px dashed var(--border2);border-radius:var(--r);padding:24px;text-align:center;cursor:pointer;background:var(--bg2);transition:border-color .15s,background .15s}
+.idrop:hover{border-color:var(--text2);background:var(--bg3)}
+.idrop.hi{padding:0;border-style:solid;overflow:hidden}
+.idrop.hi img{width:100%;max-height:220px;object-fit:cover;border-radius:calc(var(--r) - 1px);display:block}
+.irm{font-size:12px;color:var(--text3);text-align:center;margin-top:6px;cursor:pointer;text-decoration:underline}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <h1>Cotizador Mosca 🪵</h1>
+    <p>Madera maciza, hecha a mano.</p>
+  </div>
+
+  <div id="loading" class="status">
+    <span class="dot"></span><span class="dot"></span><span class="dot"></span>&nbsp;Cargando catálogo...
+  </div>
+
+  <div id="main" style="display:none">
+    <div class="tabs">
+      <button class="tb on" onclick="switchTab('cat')">📦 Catálogo</button>
+      <button class="tb" onclick="switchTab('cus')">✏️ Mueble custom</button>
+    </div>
+
+    <div id="tab-cat">
+      <div class="card">
+        <div class="r2" style="margin-bottom:11px">
+          <div class="f" style="margin-bottom:0">
+            <label>Producto o descripción</label>
+            <input type="text" id="q" placeholder='Ej: "Roma", "mesa para 12 personas"'/>
+            <p class="hint">Podés escribir <em>"mesa para 12 personas"</em> y sugiero medidas.</p>
+          </div>
+          <div class="f" style="margin-bottom:0">
+            <label>Madera</label>
+            <select id="mad">
+              <option value="alamo">Álamo (base)</option>
+              <option value="guatambu">Guatambú +20%</option>
+              <option value="paraiso">Paraíso +20%</option>
+              <option value="guayubira">Guayubira +50%</option>
+            </select>
+          </div>
+        </div>
+        <div class="sep">
+          <p class="slabel">Medidas personalizadas</p>
+          <p class="dnote">Solo completá las que cambian. Las vacías usan el estándar del producto.</p>
+          <div class="r3">
+            <div><label>Ancho (cm)</label><input type="number" id="aw" placeholder="estándar" min="1"/></div>
+            <div><label>Alto (cm)</label><input type="number" id="ah" placeholder="estándar" min="1"/></div>
+            <div><label>Prof. (cm)</label><input type="number" id="ap" placeholder="estándar" min="1"/></div>
+          </div>
+        </div>
+      </div>
+      <div id="sug" class="sug"></div>
+      <div id="ld-cat" class="ld"><span class="dot"></span><span class="dot"></span><span class="dot"></span>&nbsp;Consultando IA...</div>
+      <button class="btn" id="btn-cat" onclick="cotizar()">Generar cotización →</button>
+      <div class="card" id="rc-cat" style="display:none"><div id="ct-cat"></div></div>
+    </div>
+
+    <div id="tab-cus" style="display:none">
+      <div class="card">
+        <div class="f">
+          <label>Imagen del mueble (opcional)</label>
+          <div class="idrop" id="idrop" onclick="document.getElementById('ifile').click()">
+            <div style="font-size:24px">📷</div>
+            <p style="font-size:13px;color:var(--text3);margin-top:6px">Tocá para subir una foto</p>
+          </div>
+          <input type="file" id="ifile" accept="image/*" style="display:none" onchange="setImg(this)"/>
+          <p class="irm" id="irm" style="display:none" onclick="rmImg()">Quitar imagen</p>
+        </div>
+        <div class="f"><label>Nombre del mueble</label><input type="text" id="cn" placeholder='Ej: "Rack Berlín"'/></div>
+        <div class="f"><label>Contexto adicional</label><textarea id="cx" placeholder='Ej: "Rack con cajones, estilo industrial." O "Mesa para 8 personas."'></textarea></div>
+        <div class="sep">
+          <p class="slabel">Medidas</p>
+          <p class="dnote">Dejá vacío lo que no sabés — la IA sugiere medidas razonables.</p>
+          <div class="r3">
+            <div class="f"><label>Ancho (cm)</label><input type="number" id="ca" placeholder="—" min="1"/></div>
+            <div class="f"><label>Alto (cm)</label><input type="number" id="ch" placeholder="—" min="1"/></div>
+            <div class="f"><label>Prof. (cm)</label><input type="number" id="cp" placeholder="—" min="1"/></div>
+          </div>
+        </div>
+        <div class="sep">
+          <div class="r2">
+            <div class="f" style="margin-bottom:0"><label>Precio de lista ($)</label><input type="number" id="cpr" placeholder="Ej: 1500000" min="1"/></div>
+            <div class="f" style="margin-bottom:0">
+              <label>Madera</label>
+              <select id="cma">
+                <option value="alamo">Álamo (base)</option>
+                <option value="guatambu">Guatambú +20%</option>
+                <option value="paraiso">Paraíso +20%</option>
+                <option value="guayubira">Guayubira +50%</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="ld-cus" class="ld"><span class="dot"></span><span class="dot"></span><span class="dot"></span>&nbsp;Analizando con IA...</div>
+      <button class="btn" id="btn-cus" onclick="cotizarCustom()">Generar cotización con IA →</button>
+      <div class="card" id="rc-cus" style="display:none"><div id="ct-cus"></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── UN SOLO ENDPOINT ──────────────────────────────────────────
+const WEBHOOK_CAT = 'https://n8n.groumachine.com.ar/webhook/catalogo-mosca';
+const WEBHOOK_IA  = 'https://n8n.groumachine.com.ar/webhook/cotizar-ia';
+// ─────────────────────────────────────────────────────────────
+
+const SUR={alamo:1,guatambu:1.2,paraiso:1.2,guayubira:1.5};
+const WN={alamo:'Álamo Seleccionado',guatambu:'Guatambú',paraiso:'Paraíso',guayubira:'Guayubira'};
+let CATALOGO=[],imgB64=null,imgMime=null,pendSug=null;
+
+function fmt(n){return '$'+Math.round(n).toLocaleString('es-AR')}
+function switchTab(t){
+  ['cat','cus'].forEach((x,i)=>{
+    document.getElementById('tab-'+x).style.display=x===t?'':'none';
+    document.querySelectorAll('.tb')[i].classList.toggle('on',x===t);
+  });
+}
+
+async function cargarCatalogo(){
+  try{
+    const res=await fetch(WEBHOOK_CAT);
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    CATALOGO=data.catalogo||[];
+    document.getElementById('loading').style.display='none';
+    document.getElementById('main').style.display='';
+  }catch(e){
+    document.getElementById('loading').innerHTML=
+      '⚠️ No se pudo cargar el catálogo. Verificá que el workflow esté activo en n8n.<br><small style="color:var(--text3)">'+e.message+'</small>';
+  }
+}
+
+async function llamarIA(payload){
+  const res=await fetch(WEBHOOK_IA,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({body:payload})
+  });
+  if(!res.ok)throw new Error('HTTP '+res.status);
+  return await res.json();
+}
+
+function setImg(inp){
+  const f=inp.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    const d=e.target.result;
+    imgB64=d.split(',')[1];imgMime=f.type;
+    const dr=document.getElementById('idrop');
+    dr.classList.add('hi');dr.innerHTML=`<img src="${d}" alt="preview">`;
+    document.getElementById('irm').style.display='';
+  };r.readAsDataURL(f);
+}
+function rmImg(){
+  imgB64=imgMime=null;
+  const dr=document.getElementById('idrop');
+  dr.classList.remove('hi');
+  dr.innerHTML='<div style="font-size:24px">📷</div><p style="font-size:13px;color:var(--text3);margin-top:6px">Tocá para subir una foto</p>';
+  document.getElementById('irm').style.display='none';
+  document.getElementById('ifile').value='';
+}
+
+function buscar(q){
+  const ql=q.toLowerCase().trim();
+  return CATALOGO.filter(p=>p.nombre.toLowerCase().includes(ql)||p.forma.toLowerCase().includes(ql));
+}
+function tieneHierro(p){return/hierro/i.test(p.desc)}
+function tieneCajones(p){return/cajón|cajones/i.test(p.desc)}
+function calcDim(prod,aw,ah,ap){
+  const L=prod.largo||prod.ancho,A=prod.alto,P=prod.prof;
+  if(!L||!A||!P)return prod.precio;
+  const faw=aw||L,fah=ah||A,fap=ap||P;
+  if(faw===L&&fah===A&&fap===P)return prod.precio;
+  const prop=prod.precio*(faw*fah*fap)/(L*A*P);
+  return Math.round(prod.precio+(prop-prod.precio)/3);
+}
+
+async function cotizar(){
+  const q=document.getElementById('q').value.trim();
+  if(!q){document.getElementById('q').focus();return}
+  const sug=document.getElementById('sug'),ld=document.getElementById('ld-cat');
+  const card=document.getElementById('rc-cat'),cont=document.getElementById('ct-cat');
+  const btn=document.getElementById('btn-cat');
+  sug.style.display='none';card.style.display='none';pendSug=null;
+  const dir=buscar(q);
+  if(dir.length===0){
+    btn.disabled=true;ld.style.display='';
+    try{
+      const catRes=CATALOGO.map(p=>`${p.forma} (${[p.largo||p.ancho,p.alto,p.prof].filter(Boolean).join('×')}cm)`).join(', ');
+      const resp=await llamarIA({tipo:'medidas',query:q,catalogo:catRes});
+      if(resp.producto&&!resp.error){
+        pendSug=resp;
+        sug.innerHTML=`<strong>Sugerencia:</strong> ${resp.razon}<br>Medidas: <strong>${resp.ancho} × ${resp.alto} × ${resp.prof} cm</strong><br><button class="apb" onclick="aplicarSug()">Aplicar y cotizar →</button>`;
+        sug.style.display='';
+      }else{
+        card.style.display='';
+        cont.innerHTML='<p class="err">No pude interpretar esa búsqueda. Probá con el nombre del producto.</p>';
+      }
+    }catch(e){
+      card.style.display='';
+      cont.innerHTML='<p class="err">Error al consultar la IA. Verificá que el workflow esté activo en n8n.</p>';
+    }finally{btn.disabled=false;ld.style.display='none';}
+    return;
+  }
+  card.style.display='';
+  if(dir.length>1){
+    const items=dir.map(p=>{
+      const d1=p.largo||p.ancho;
+      const dims=[d1,p.alto,p.prof].filter(Boolean).join(' × ');
+      return `<span>📦 <strong>${p.forma}</strong>${dims?' — '+dims+' cm':''}</span>`;
+    }).join('');
+    cont.innerHTML=`<p style="font-size:13px;color:var(--text2);margin-bottom:10px">Hay ${dir.length} variantes. Especificá más el nombre.</p><div class="ml">${items}</div><p class="mn">Ej: "Bronx 80", "Lisboa 160"</p>`;
+    return;
+  }
+  const ma=document.getElementById('mad').value;
+  const aw=parseInt(document.getElementById('aw').value)||0;
+  const ah=parseInt(document.getElementById('ah').value)||0;
+  const ap=parseInt(document.getElementById('ap').value)||0;
+  renderResult(cont,card,dir[0],ma,aw,ah,ap);
+}
+
+function aplicarSug(){
+  if(!pendSug)return;
+  const ql=pendSug.producto.toLowerCase();
+  const prod=CATALOGO.find(p=>p.forma.toLowerCase()===ql)
+            ||CATALOGO.find(p=>p.forma.toLowerCase().includes(ql))
+            ||CATALOGO.find(p=>ql.includes(p.nombre.toLowerCase()));
+  if(!prod)return;
+  document.getElementById('q').value=prod.forma;
+  document.getElementById('aw').value=pendSug.ancho||'';
+  document.getElementById('ah').value=pendSug.alto||'';
+  document.getElementById('ap').value=pendSug.prof||'';
+  document.getElementById('sug').style.display='none';
+  const ma=document.getElementById('mad').value;
+  const card=document.getElementById('rc-cat'),cont=document.getElementById('ct-cat');
+  card.style.display='';
+  renderResult(cont,card,prod,ma,pendSug.ancho,pendSug.alto,pendSug.prof);
+}
+
+function renderResult(cont,card,prod,madera,aw,ah,ap){
+  const sur=SUR[madera],wn=WN[madera];
+  const L=prod.largo||prod.ancho,A=prod.alto,P=prod.prof;
+  const faw=aw||L,fah=ah||A,fap=ap||P;
+  let pl=calcDim(prod,aw,ah,ap);
+  pl=Math.round(pl*sur);
+  const tr=Math.round(pl*.80),cu=Math.round(pl/3),se=Math.round(tr*.5);
+  const dims=`${faw} × ${fah} × ${fap} cm`;
+  let desc=prod.desc||'';
+  if(madera!=='alamo')desc=desc.replace(/de álamo/gi,`de ${wn.toLowerCase()}`);
+  const dc=desc.split('\n')[0].trim();
+  let ext='';
+  if(tieneHierro(prod))ext+=' La estructura de hierro va pintada en horno para mayor durabilidad.';
+  if(tieneCajones(prod))ext+=' Los cajones incluyen correderas telescópicas reforzadas.';
+  const imgH=prod.img?`<img class="pi" src="${prod.img}" alt="${prod.nombre}" onerror="this.style.display='none'">`:`<div class="pp">🪵</div>`;
+  cont.innerHTML=`
+    <div class="ph">${imgH}<div><div class="pn">${prod.nombre}</div><div class="pt">${prod.tipo}</div><div class="pd">${dims}</div>${prod.linea?`<span class="tag">Línea ${prod.linea}</span>`:''}</div></div>
+    ${dc?`<p class="dt">${dc}${ext}</p>`:''}
+    <div class="divr"></div>
+    <div class="pr"><span class="pi2">💸</span><span class="pl">Efectivo / transferencia</span><span class="pv">${fmt(tr)}</span><span class="pb">20% OFF</span></div>
+    <div class="pr"><span class="pi2">💰</span><span class="pl">3 cuotas sin interés</span><span class="pv">${fmt(cu)}/mes</span></div>
+    <div class="ps">Total en cuotas: ${fmt(pl)}</div>
+    <div class="sb">🔹 Para reservar tu lugar en producción, la seña es <span class="sa">${fmt(se)}</span>. El saldo lo abonás contra entrega.</div>
+    <button class="cb" onclick="copiar(this)">Copiar mensaje para WhatsApp</button>`;
+  card.dataset.txt=buildMsg(prod.nombre,prod.tipo,dims,wn,madera,dc,ext,tr,cu,pl,se);
+  card.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+async function cotizarCustom(){
+  const nom=document.getElementById('cn').value.trim();
+  const ctx=document.getElementById('cx').value.trim();
+  const ca=parseInt(document.getElementById('ca').value)||0;
+  const ch=parseInt(document.getElementById('ch').value)||0;
+  const cp=parseInt(document.getElementById('cp').value)||0;
+  const pr=parseInt(document.getElementById('cpr').value)||0;
+  const ma=document.getElementById('cma').value;
+  if(!pr){document.getElementById('cpr').focus();return}
+  const btn=document.getElementById('btn-cus'),ld=document.getElementById('ld-cus');
+  const card=document.getElementById('rc-cus'),cont=document.getElementById('ct-cus');
+  btn.disabled=true;ld.style.display='';card.style.display='none';
+  try{
+    const wn=WN[ma];
+    const meds=[ca&&`ancho ${ca}cm`,ch&&`alto ${ch}cm`,cp&&`prof ${cp}cm`].filter(Boolean).join(', ')||'no especificadas';
+    const resp=await llamarIA({tipo:'custom',nombre:nom||'sin nombre',contexto:ctx||'',medidas:meds,madera:wn,imagen:imgB64?`data:${imgMime};base64,${imgB64}`:null});
+    const faw=ca||resp.ancho||100,fah=ch||resp.alto||75,fap=cp||resp.prof||45;
+    const dims=`${faw} × ${fah} × ${fap} cm`;
+    const sur=SUR[ma],pl=Math.round(pr*sur);
+    const tr=Math.round(pl*.80),cu=Math.round(pl/3),se=Math.round(tr*.5);
+    const desc=resp.descripcion||ctx||'';
+    const nomF=nom||'Mueble custom';
+    const imgSrc=imgB64?`data:${imgMime};base64,${imgB64}`:null;
+    const imgH=imgSrc?`<img class="pi" src="${imgSrc}" alt="${nomF}">`:`<div class="pp">🪵</div>`;
+    card.style.display='';
+    cont.innerHTML=`
+      <div class="ph">${imgH}<div><div class="pn">${nomF}</div><div class="pd">${dims}${resp.medidas_sugeridas?' (sugeridas)':''}</div><span class="tag ctag">Custom</span></div></div>
+      ${desc?`<p class="dt">${desc}</p>`:''}
+      <div class="divr"></div>
+      <div class="pr"><span class="pi2">💸</span><span class="pl">Efectivo / transferencia</span><span class="pv">${fmt(tr)}</span><span class="pb">20% OFF</span></div>
+      <div class="pr"><span class="pi2">💰</span><span class="pl">3 cuotas sin interés</span><span class="pv">${fmt(cu)}/mes</span></div>
+      <div class="ps">Total en cuotas: ${fmt(pl)}</div>
+      <div class="sb">🔹 Para reservar tu lugar en producción, la seña es <span class="sa">${fmt(se)}</span>. El saldo lo abonás contra entrega.</div>
+      <button class="cb" onclick="copiar(this)">Copiar mensaje para WhatsApp</button>`;
+    card.dataset.txt=buildMsg(nomF,'',dims,WN[ma],ma,desc,'',tr,cu,pl,se);
+    card.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }catch(e){
+    card.style.display='';
+    cont.innerHTML='<p class="err">Error al consultar la IA. Verificá que el workflow esté activo en n8n.</p>';
+  }finally{btn.disabled=false;ld.style.display='none';}
+}
+
+function buildMsg(nombre,tipo,dims,wn,ma,desc,ext,tr,cu,li,se){
+  const tit=`${nombre}${tipo?' '+tipo:''}${dims?' – '+dims:''}`;
+  let dl=(desc||'')+(ext||'');if(dl&&!dl.endsWith('.'))dl+='.';
+  const ml=ma!=='alamo'?`Madera: ${wn}.\n`:'';
+  return `${tit}\n\n${dl?dl+'\n\n':''}${ml}💸 Efectivo o transferencia: ${fmt(tr)} (20% OFF)\n💰 O en 3 cuotas sin interés de ${fmt(cu)} (total ${fmt(li)})\n\n🔹 Con una seña de ${fmt(se)} reservás tu lugar en producción. El saldo lo abonás contra entrega.\n\nMadera maciza de álamo seleccionado, hecha a mano en Argentina. Cada pieza es única. ¿Querés que te muestre las terminaciones disponibles? 🪵`;
+}
+
+function copiar(btn){
+  const txt=btn.closest('.card').dataset.txt||'';
+  if(!txt)return;
+  navigator.clipboard.writeText(txt).then(()=>{
+    btn.textContent='✓ Copiado';
+    setTimeout(()=>btn.textContent='Copiar mensaje para WhatsApp',2000);
+  });
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&document.activeElement.id==='q')cotizar();
+});
+
+cargarCatalogo();
+</script>
+</body>
+</html>
