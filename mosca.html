@@ -410,19 +410,31 @@ async function confirmar() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ movimientos: payload })
     });
-    const data = await resp.json();
-    const ok = data.guardados ?? payload.length;
-    const err = data.errores ?? 0;
+    const rawText = await resp.text();
+    showDebug(rawText);
+
+    let ok = payload.length;
+    let err = 0;
+    if (rawText) {
+      try {
+        const data = JSON.parse(rawText);
+        ok = data.guardados ?? payload.length;
+        err = data.errores ?? 0;
+      } catch(e) {
+        // respuesta no es JSON pero el request llegó — asumimos ok si status 200
+        if (!resp.ok) err = payload.length;
+      }
+    }
 
     document.getElementById('step-review').style.display = 'none';
     document.getElementById('step-done').style.display = '';
     document.getElementById('done-msg').innerHTML = `
       <div class="status-bar ${err===0?'status-ok':'status-error'}">
-        ${ok} guardado(s) correctamente${err>0 ? ` · ${err} con error` : ''}
+        ${err===0 ? `${ok} guardado(s) correctamente` : `Error al guardar — revisá el debug abajo`}
       </div>
     `;
   } catch(e) {
-    setStatus('error', 'Error al guardar. Revisá la conexión con n8n.');
+    setStatus('error', `Error de red al guardar: ${e.message}`);
     console.error(e);
   }
 }
