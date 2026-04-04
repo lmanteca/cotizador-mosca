@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Movimientos IA — Mosca Taller</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: 'SF Mono', 'Fira Code', monospace;
+    --color-background-primary: #ffffff;
+    --color-background-secondary: #f5f5f3;
+    --color-background-tertiary: #ebebea;
+    --color-background-info: #e6f1fb;
+    --color-background-danger: #fcebeb;
+    --color-background-success: #eaf3de;
+    --color-background-warning: #faeeda;
+    --color-text-primary: #1a1a18;
+    --color-text-secondary: #5f5e5a;
+    --color-text-tertiary: #888780;
+    --color-text-info: #185fa5;
+    --color-text-danger: #a32d2d;
+    --color-text-success: #3b6d11;
+    --color-text-warning: #854f0b;
+    --color-border-tertiary: rgba(0,0,0,0.12);
+    --color-border-secondary: rgba(0,0,0,0.22);
+    --color-border-primary: rgba(0,0,0,0.32);
+    --color-border-warning: rgba(133,79,11,0.35);
+    --border-radius-md: 8px;
+    --border-radius-lg: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-background-primary: #1e1e1c;
+      --color-background-secondary: #2a2a27;
+      --color-background-tertiary: #333330;
+      --color-background-info: #0c2a45;
+      --color-background-danger: #3a1212;
+      --color-background-success: #1a2e08;
+      --color-background-warning: #3a2208;
+      --color-text-primary: #f0efe8;
+      --color-text-secondary: #b4b2a9;
+      --color-text-tertiary: #888780;
+      --color-text-info: #85b7eb;
+      --color-text-danger: #f09595;
+      --color-text-success: #97c459;
+      --color-text-warning: #fac775;
+      --color-border-tertiary: rgba(255,255,255,0.12);
+      --color-border-secondary: rgba(255,255,255,0.22);
+      --color-border-primary: rgba(255,255,255,0.32);
+      --color-border-warning: rgba(250,199,117,0.35);
+    }
+  }
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-background-tertiary);
+    color: var(--color-text-primary);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+  .container { max-width: 860px; margin: 0 auto; }
+  .header { margin-bottom: 2rem; }
+  .header h1 { font-size: 20px; font-weight: 500; color: var(--color-text-primary); }
+  .header p { font-size: 13px; color: var(--color-text-secondary); margin-top: 4px; }
+  .card { background: var(--color-background-primary); border-radius: var(--border-radius-lg); border: 0.5px solid var(--color-border-tertiary); padding: 1.5rem; margin-bottom: 1rem; }
+  .section-title { font-size: 13px; font-weight: 500; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
+  .upload-zone { border: 0.5px dashed var(--color-border-secondary); border-radius: var(--border-radius-lg); padding: 2rem; text-align: center; cursor: pointer; transition: background 0.15s; background: var(--color-background-secondary); }
+  .upload-zone:hover { background: var(--color-background-tertiary); }
+  .upload-zone p { color: var(--color-text-secondary); font-size: 14px; margin-bottom: 8px; }
+  .upload-zone small { color: var(--color-text-tertiary); font-size: 12px; }
+  textarea { width: 100%; min-height: 120px; resize: vertical; font-size: 13px; padding: 10px 12px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-tertiary); background: var(--color-background-secondary); color: var(--color-text-primary); font-family: var(--font-mono); margin-top: 8px; }
+  textarea:focus { outline: none; border-color: var(--color-border-primary); }
+  .context-input { width: 100%; font-size: 14px; padding: 8px 12px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-tertiary); background: var(--color-background-secondary); color: var(--color-text-primary); margin-top: 8px; }
+  .context-input:focus { outline: none; border-color: var(--color-border-primary); }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: transparent; color: var(--color-text-primary); font-size: 14px; cursor: pointer; transition: background 0.12s; font-family: var(--font-sans); }
+  .btn:hover { background: var(--color-background-secondary); }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary { background: var(--color-text-primary); color: var(--color-background-primary); border-color: var(--color-text-primary); }
+  .btn-primary:hover { opacity: 0.85; background: var(--color-text-primary); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .gap { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .movimientos-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .mov-row { border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 10px 14px; background: var(--color-background-primary); transition: border-color 0.12s; }
+  .mov-row.excluded { opacity: 0.45; border-style: dashed; }
+  .mov-row-header { display: flex; align-items: flex-start; gap: 10px; }
+  .mov-check { margin-top: 2px; flex-shrink: 0; cursor: pointer; width: 16px; height: 16px; }
+  .mov-main { flex: 1; min-width: 0; }
+  .mov-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .mov-concepto { font-size: 14px; font-weight: 500; color: var(--color-text-primary); }
+  .mov-monto { font-size: 14px; font-weight: 500; }
+  .monto-gasto { color: var(--color-text-danger); }
+  .monto-ingreso { color: var(--color-text-success); }
+  .mov-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; align-items: center; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 100px; font-size: 11px; font-weight: 500; }
+  .pill-gasto { background: var(--color-background-danger); color: var(--color-text-danger); }
+  .pill-ingreso { background: var(--color-background-success); color: var(--color-text-success); }
+  .pill-cat { background: var(--color-background-secondary); color: var(--color-text-secondary); }
+  .pill-warn { background: var(--color-background-warning); color: var(--color-text-warning); }
+  .mov-proveedor { font-size: 12px; color: var(--color-text-secondary); }
+  .mov-fecha { font-size: 12px; color: var(--color-text-tertiary); }
+  .mov-edit { margin-top: 8px; padding-top: 8px; border-top: 0.5px solid var(--color-border-tertiary); display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .mov-edit label { font-size: 11px; color: var(--color-text-secondary); display: block; margin-bottom: 3px; }
+  .mov-edit select, .mov-edit input { width: 100%; font-size: 13px; padding: 5px 8px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-tertiary); background: var(--color-background-secondary); color: var(--color-text-primary); font-family: var(--font-sans); }
+  .mov-edit-full { grid-column: 1 / -1; }
+  .edit-toggle { font-size: 11px; color: var(--color-text-secondary); cursor: pointer; text-decoration: underline; margin-left: auto; flex-shrink: 0; background: none; border: none; font-family: var(--font-sans); }
+  .status-bar { padding: 12px 14px; border-radius: var(--border-radius-md); font-size: 13px; margin-bottom: 12px; }
+  .status-loading { background: var(--color-background-info); color: var(--color-text-info); }
+  .status-error { background: var(--color-background-danger); color: var(--color-text-danger); }
+  .status-ok { background: var(--color-background-success); color: var(--color-text-success); }
+  .summary-bar { display: flex; gap: 16px; padding: 10px 14px; background: var(--color-background-secondary); border-radius: var(--border-radius-md); font-size: 13px; color: var(--color-text-secondary); flex-wrap: wrap; }
+  .summary-bar strong { color: var(--color-text-primary); }
+  .dup-alert { border: 0.5px solid var(--color-border-warning); border-radius: var(--border-radius-md); padding: 10px 14px; background: var(--color-background-warning); font-size: 13px; color: var(--color-text-warning); margin-bottom: 6px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Movimientos IA</h1>
+    <p>Mosca Taller — carga de gastos e ingresos con parseo automático</p>
+  </div>
+
+  <div class="card" id="step-input">
+    <p class="section-title">Nuevo cargue de movimientos</p>
+    <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+      <p>Subir extracto o comprobante</p>
+      <small>PDF, imagen o texto — o pegá directo abajo</small>
+      <input type="file" id="file-input" accept=".pdf,.png,.jpg,.jpeg,.txt,.csv" style="display:none" onchange="handleFile(this)">
+    </div>
+    <textarea id="raw-text" placeholder="O pegá el texto del extracto / comprobante acá..."></textarea>
+    <div style="margin-top: 10px;">
+      <label style="font-size: 12px; color: var(--color-text-secondary);">Contexto adicional (opcional)</label>
+      <input class="context-input" id="ctx-input" placeholder="Ej: son gastos de marzo, el proveedor es Mariano, etc.">
+    </div>
+    <div class="gap" style="margin-top: 14px;">
+      <button class="btn btn-primary" onclick="parsear()">Parsear movimientos</button>
+      <span id="file-name" style="font-size: 12px; color: var(--color-text-secondary);"></span>
+    </div>
+  </div>
+
+  <div class="card" id="step-review" style="display:none;">
+    <div id="status-msg"></div>
+    <div id="dup-alerts"></div>
+    <div class="gap" style="margin-bottom: 12px;">
+      <p class="section-title" style="margin:0;">Movimientos parseados</p>
+      <button class="btn btn-sm" onclick="toggleAll(true)">Seleccionar todos</button>
+      <button class="btn btn-sm" onclick="toggleAll(false)">Deseleccionar todos</button>
+      <button class="btn btn-sm" onclick="resetear()">Volver a cargar</button>
+    </div>
+    <div id="summary-bar" class="summary-bar"></div>
+    <div id="movimientos-list" class="movimientos-list" style="margin-top: 12px;"></div>
+    <div class="gap" style="margin-top: 16px;">
+      <button class="btn btn-primary" onclick="confirmar()">Confirmar y guardar en Airtable</button>
+      <span style="font-size: 12px; color: var(--color-text-secondary);" id="sel-count"></span>
+    </div>
+  </div>
+
+  <div class="card" id="step-done" style="display:none;">
+    <div id="done-msg"></div>
+    <button class="btn" style="margin-top: 16px;" onclick="resetear()">Cargar más movimientos</button>
+  </div>
+</div>
+
+<script>
+const PROVEEDORES = [{"id":"rec5rktQe7QTvDWJ6","nombre":"Empleado Mariano Mujica"},{"id":"recSOErxv33VW5LgM","nombre":"Javier Mosquera - Socio"},{"id":"rect4xz5nHgsLqbbF","nombre":"Edgar"},{"id":"recBMj4t5ZRg79u0x","nombre":"Meta Facebook Instagram"},{"id":"recBx0QqGqJxlh4b1","nombre":"Milena - CM"},{"id":"recPD4Qz9MFr0eqGQ","nombre":"HIERROS TORRENT S.A."},{"id":"recga7wBvZZeL3PwG","nombre":"Maderera - Rivas Ana Noemi"},{"id":"recDrHfd2YkSuHgA6","nombre":"SOLDA FER S.R.L."},{"id":"recDCR9mtiWSZYPTZ","nombre":"SUI COLOR"},{"id":"recJkk9bKHpfWEN5f","nombre":"INDUSTRIAS TAURO S.A."},{"id":"rec8AB2QjGqh5q68n","nombre":"SYG Herrajes"},{"id":"recHZRRtU582KKoWR","nombre":"Mercadolibre - múltiples"},{"id":"recOEVFDUB1rT9mmp","nombre":"TIENDA NUBE"},{"id":"recQZg84F2qZo551o","nombre":"Servicios Públicos Generales"},{"id":"recUfprysVbY4qTUh","nombre":"Herrajes Tigre"},{"id":"reckbUI0ms55ZddwK","nombre":"PROPIMAT SRL"},{"id":"rec48grwMZsEhKz4M","nombre":"Medio de cobro (getnet, uala, mepa)"},{"id":"rec3SFU3sGtMAqkaO","nombre":"Alquiler Sereno Lucia Mabe"},{"id":"recnAOuapuiJ3eL7S","nombre":"adac distribuidora maderas"},{"id":"rechL4IQLuBz3MhyD","nombre":"Sanchez Aljuan Pablo - Maderera"},{"id":"recVvnGJrno3URQT2","nombre":"Volquete Leandro Rosas"},{"id":"recryWAarOyNtxNi7","nombre":"Flete"},{"id":"recL8qFVRLCZnBQIE","nombre":"Ciro Manteca"},{"id":"recAPJhRkcNWM6r57","nombre":"José María Martín González - Empanadas"},{"id":"recmCe61T3Our9JSs","nombre":"Pintura Horno"},{"id":"recs3MG3JFn06pmTw","nombre":"ypf"},{"id":"recfECIM7NQj23Jd2","nombre":"El Rey del Reguetón - Favelis"},{"id":"recrHYEzVSKt5Kegl","nombre":"Varios"},{"id":"rec6At0M188S461Wd","nombre":"Tarjeta Naranja X"},{"id":"recT4PhJCRD4r9ec4","nombre":"Patricia Evelina Arras - Maderera"},{"id":"rec4rSjU6rYOEWo7i","nombre":"Chatty"},{"id":"recisgCmMlKDjlYMp","nombre":"Edenor"},{"id":"reckPtI5iWUciotQn","nombre":"Paola Lorena Britos - Fumigacion"},{"id":"recVVfkJxXbHDjBca","nombre":"Chapas Hermética"},{"id":"recBw5UGZ7YbuTc8P","nombre":"Lusich E Hijos SRL"},{"id":"rec9WCfA9iWmUxgtf","nombre":"Lustremad Srl"},{"id":"recaImb8Zo5FLEcwE","nombre":"Libreria"},{"id":"recMg4ElPrnWj62na","nombre":"Mario Osvaldo Della Ma - Pintura Horno"},{"id":"recdXQdACnLSB9C7i","nombre":"Herrajes Tronador"},{"id":"recAixjJrawv5LiK9","nombre":"Maria Paula Sanchez"},{"id":"recgzLQ0d0Uz3wLDI","nombre":"Delgado Williams Atila"},{"id":"rec5Frrh0RvVV8jes","nombre":"Embalajes"},{"id":"recKvJzgnWs9T2CqT","nombre":"Sillas Miguel Angel"}];
+
+const RESULTADOS_MAP = {"2025-06":"recSGsJ9XqevRu6W8","2025-07":"rec4ULpO8fjVOqslH","2025-08":"recKRPJeoRryi2arM","2025-09":"recPjy9WaNiXoU5ab","2025-10":"recvm9DYN4Sv8SlFK","2025-11":"reclsseegv3tNIyBg","2025-12":"recUN0OOyDVq9uvFV","2026-01":"recwj34SQfPRe8DL3","2026-02":"recbSFYh8zxXFKcAS","2026-03":"recKBBiL0oU1lFB6W","2026-04":"reclR6BJFbQP0yTpP"};
+
+let movimientos = [];
+let fileBase64 = null;
+let fileType = null;
+
+function handleFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('file-name').textContent = file.name;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const result = e.target.result;
+    fileBase64 = result.split(',')[1];
+    fileType = file.type;
+    if (file.type === 'text/plain' || file.type === 'text/csv') {
+      document.getElementById('raw-text').value = atob(fileBase64);
+      fileBase64 = null; fileType = null;
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+async function parsear() {
+  const texto = document.getElementById('raw-text').value.trim();
+  const ctx = document.getElementById('ctx-input').value.trim();
+  if (!texto && !fileBase64) { alert('Pegá el texto o subí un archivo'); return; }
+
+  document.getElementById('step-input').style.display = 'none';
+  document.getElementById('step-review').style.display = '';
+  setStatus('loading', 'Analizando movimientos...');
+
+  const provListStr = PROVEEDORES.map(p => `${p.id}: ${p.nombre}`).join('\n');
+  const hoy = new Date();
+  const mesActual = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}`;
+
+  const userContent = [];
+  if (fileBase64) {
+    userContent.push({ type: fileType === 'application/pdf' ? 'document' : 'image', source: { type: 'base64', media_type: fileType, data: fileBase64 } });
+  }
+  userContent.push({ type: 'text', text: `Sos el asistente de gestión del taller Mosca Taller. Analizá el siguiente contenido (extracto bancario, comprobante o texto libre) e identificá todos los movimientos financieros.
+
+CONTEXTO ADICIONAL: ${ctx || 'ninguno'}
+
+REGLAS DE CLASIFICACIÓN:
+- Movimientos negativos (débitos, egresos, pagos): tipo = "Gasto"
+- Movimientos positivos (créditos, cobros, ingresos): tipo = "Ingreso"
+- Si es un comprobante donde el destinatario contiene alguno de estos nombres (case insensitive): "lisandro manteca", "javier mosquera", "fernando mosquera", "ciro manteca" → tipo = "Ingreso"
+- Si es una factura por compra o similar con texto aclaratorio → tipo = "Gasto"
+
+CATEGORÍAS DE GASTOS (elige la más adecuada):
+Materiales, Mano de Obra, Alquiler, Servicios, Marketing, Herramientas y Equipos, Reintegro, Otros
+
+REGLAS DE CATEGORIZACIÓN:
+- Reintegros de Mariano: Materiales + Variable
+- Adelantos salario Mariano: Mano de Obra + Fijo
+- Liquidación salario Mariano: Mano de Obra + Fijo
+- Edgar alquiler: Alquiler + Fijo
+- Edenor y utilities: Servicios + Fijo
+- Meta/publicidad: Marketing + Variable
+- Milena CM: Marketing + Fijo
+
+TIPOS DE GASTO: Fijo, Variable, Por unica vez
+
+PARA INGRESOS, tipo_flujo:
+- Seña, Saldo, Venta, Recupero Edgar, Venta Eldra → Operativo
+- Capitalización Javier, Capitalización Lisandro, Recupero capital → Capital
+- Si el receptor es un socio (Javier, Lisandro, Fernando Mosquera) y no parece un pago de cliente → Capital
+
+PROVEEDORES CONOCIDOS (id: nombre):
+${provListStr}
+
+ANTIDUPLICACIÓN: Si ves movimientos con misma fecha y monto, márcalos con "posible_duplicado": true
+
+Respondé SOLO con un JSON válido (sin markdown, sin explicaciones). Formato:
+{
+  "movimientos": [
+    {
+      "concepto": "descripción clara",
+      "monto": 150000,
+      "fecha": "2026-04-01",
+      "tipo": "Gasto",
+      "categoria": "Materiales",
+      "tipo_gasto": "Variable",
+      "tipo_flujo": null,
+      "proveedor_id": "recXXX o null",
+      "proveedor_nombre": "nombre del proveedor",
+      "nota": "nota opcional",
+      "posible_duplicado": false,
+      "sin_match": false
+    }
+  ]
+}
+
+Para "sin_match": true si el proveedor no está en la lista conocida.
+Para "proveedor_id": usa el ID exacto de la lista si hay match claro, sino null.
+Fecha en formato YYYY-MM-DD. Si no aparece fecha, usá ${mesActual}-01.
+Monto siempre positivo (el tipo indica dirección).
+
+CONTENIDO A ANALIZAR:
+${texto}` });
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4000, messages: [{ role: 'user', content: userContent }] })
+    });
+    const data = await resp.json();
+    const raw = data.content.find(b => b.type === 'text')?.text || '';
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    movimientos = parsed.movimientos || [];
+    movimientos.forEach((m, i) => { m._idx = i; m._incluir = true; m._editando = false; });
+    renderMovimientos();
+    setStatus(null);
+  } catch(e) {
+    setStatus('error', 'Error al parsear. Intentá de nuevo o revisá el contenido.');
+    console.error(e);
+  }
+}
+
+function renderMovimientos() {
+  const list = document.getElementById('movimientos-list');
+  const dups = document.getElementById('dup-alerts');
+  dups.innerHTML = '';
+
+  const dupsItems = movimientos.filter(m => m.posible_duplicado);
+  if (dupsItems.length) {
+    dups.innerHTML = `<div class="dup-alert">Posibles duplicados detectados: ${dupsItems.map(m => `<strong>${m.concepto}</strong> $${m.monto.toLocaleString()}`).join(', ')} — revisalos antes de confirmar.</div>`;
+  }
+
+  list.innerHTML = movimientos.map(m => {
+    const isGasto = m.tipo === 'Gasto';
+    const montoFmt = `$${Math.round(m.monto).toLocaleString('es-AR')}`;
+    const editHTML = m._editando ? `
+      <div class="mov-edit">
+        <div><label>Concepto</label><input value="${m.concepto}" onchange="update(${m._idx},'concepto',this.value)"></div>
+        <div><label>Monto</label><input type="number" value="${m.monto}" onchange="update(${m._idx},'monto',+this.value)"></div>
+        <div><label>Fecha</label><input type="date" value="${m.fecha}" onchange="update(${m._idx},'fecha',this.value)"></div>
+        <div><label>Tipo</label><select onchange="update(${m._idx},'tipo',this.value)"><option ${m.tipo==='Gasto'?'selected':''}>Gasto</option><option ${m.tipo==='Ingreso'?'selected':''}>Ingreso</option></select></div>
+        ${isGasto ? `
+        <div><label>Categoría</label><select onchange="update(${m._idx},'categoria',this.value)">${['Materiales','Mano de Obra','Alquiler','Servicios','Marketing','Herramientas y Equipos','Reintegro','Otros'].map(c=>`<option ${m.categoria===c?'selected':''}>${c}</option>`).join('')}</select></div>
+        <div><label>Tipo gasto</label><select onchange="update(${m._idx},'tipo_gasto',this.value)">${['Fijo','Variable','Por unica vez'].map(t=>`<option ${m.tipo_gasto===t?'selected':''}>${t}</option>`).join('')}</select></div>
+        ` : `
+        <div><label>Tipo flujo</label><select onchange="update(${m._idx},'tipo_flujo',this.value)"><option ${m.tipo_flujo==='Operativo'?'selected':''}>Operativo</option><option ${m.tipo_flujo==='Capital'?'selected':''}>Capital</option></select></div>
+        <div></div>
+        `}
+        <div class="mov-edit-full"><label>Proveedor / cliente</label><input value="${m.proveedor_nombre||''}" onchange="buscarProveedor(${m._idx},this.value)" list="prov-list-${m._idx}"><datalist id="prov-list-${m._idx}">${PROVEEDORES.map(p=>`<option value="${p.nombre}">`).join('')}</datalist></div>
+        <div class="mov-edit-full"><label>Nota</label><input value="${m.nota||''}" onchange="update(${m._idx},'nota',this.value)"></div>
+      </div>` : '';
+
+    return `<div class="mov-row ${m._incluir?'':'excluded'}" id="row-${m._idx}">
+      <div class="mov-row-header">
+        <input type="checkbox" class="mov-check" ${m._incluir?'checked':''} onchange="toggleRow(${m._idx},this.checked)">
+        <div class="mov-main">
+          <div class="mov-top">
+            <span class="mov-concepto">${m.concepto}</span>
+            <span class="mov-monto ${isGasto?'monto-gasto':'monto-ingreso'}">${isGasto?'-':'+'} ${montoFmt}</span>
+          </div>
+          <div class="mov-meta">
+            <span class="pill ${isGasto?'pill-gasto':'pill-ingreso'}">${m.tipo}</span>
+            ${isGasto ? `<span class="pill pill-cat">${m.categoria||'—'}</span><span class="pill pill-cat">${m.tipo_gasto||'—'}</span>` : `<span class="pill pill-cat">${m.tipo_flujo||'—'}</span>`}
+            ${m.sin_match ? `<span class="pill pill-warn">sin match</span>` : ''}
+            ${m.posible_duplicado ? `<span class="pill pill-warn">posible dup</span>` : ''}
+            <span class="mov-proveedor">${m.proveedor_nombre||''}</span>
+            <span class="mov-fecha">${m.fecha||''}</span>
+          </div>
+        </div>
+        <button class="edit-toggle" onclick="toggleEdit(${m._idx})">${m._editando?'cerrar':'editar'}</button>
+      </div>
+      ${editHTML}
+    </div>`;
+  }).join('');
+
+  actualizarResumen();
+}
+
+function update(idx, field, val) { movimientos[idx][field] = val; renderMovimientos(); }
+
+function buscarProveedor(idx, nombre) {
+  const match = PROVEEDORES.find(p => p.nombre.toLowerCase() === nombre.toLowerCase());
+  movimientos[idx].proveedor_nombre = nombre;
+  movimientos[idx].proveedor_id = match ? match.id : null;
+  movimientos[idx].sin_match = !match;
+}
+
+function toggleEdit(idx) { movimientos[idx]._editando = !movimientos[idx]._editando; renderMovimientos(); }
+function toggleRow(idx, val) { movimientos[idx]._incluir = val; renderMovimientos(); }
+function toggleAll(val) { movimientos.forEach(m => m._incluir = val); renderMovimientos(); }
+
+function actualizarResumen() {
+  const sel = movimientos.filter(m => m._incluir);
+  const gastos = sel.filter(m => m.tipo === 'Gasto').reduce((a,m) => a + m.monto, 0);
+  const ingresos = sel.filter(m => m.tipo === 'Ingreso').reduce((a,m) => a + m.monto, 0);
+  document.getElementById('summary-bar').innerHTML = `
+    <span>Seleccionados: <strong>${sel.length}</strong> / ${movimientos.length}</span>
+    <span>Gastos: <strong>$${Math.round(gastos).toLocaleString('es-AR')}</strong></span>
+    <span>Ingresos: <strong>$${Math.round(ingresos).toLocaleString('es-AR')}</strong></span>
+  `;
+  document.getElementById('sel-count').textContent = `${sel.length} movimiento(s) se guardarán`;
+}
+
+function getMesResultado(fecha) {
+  const d = new Date(fecha + 'T12:00:00');
+  const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  return RESULTADOS_MAP[k] || null;
+}
+
+async function confirmar() {
+  const aConfirmar = movimientos.filter(m => m._incluir);
+  if (!aConfirmar.length) { alert('No hay movimientos seleccionados'); return; }
+
+  setStatus('loading', `Guardando ${aConfirmar.length} movimiento(s) en Airtable...`);
+
+  const resultados = [];
+  for (const m of aConfirmar) {
+    const mesId = getMesResultado(m.fecha);
+    try {
+      const prompt = m.tipo === 'Gasto'
+        ? `Crea un registro en la tabla de Gastos (tbll52naofFFppi2u) de la base appBThGsxqCSljqH1 con estos campos: concepto="${m.concepto}", monto=${m.monto}, categoria="${m.categoria}", tipo="${m.tipo_gasto}"${m.proveedor_id ? `, proveedor_id="${m.proveedor_id}"` : ''}${m.nota ? `, nota="${m.nota}"` : ''}${m.fecha ? `, fecha="${m.fecha}"` : ''}${mesId ? `, resultados_id="${mesId}"` : ''}. Respondé solo: OK o ERROR.`
+        : `Crea un registro en la tabla de Ingresos (tblS8mrLsVnt5yvSC) de la base appBThGsxqCSljqH1 con: concepto="${m.concepto}", monto=${m.monto}, tipo_flujo="${m.tipo_flujo||'Operativo'}"${m.fecha ? `, fecha="${m.fecha}"` : ''}${mesId ? `, resultados_id="${mesId}"` : ''}. Respondé solo: OK o ERROR.`;
+
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514', max_tokens: 500,
+          mcp_servers: [{ type: 'url', url: 'https://n8n.groumachine.com.ar/mcp/airtable-info/sse', name: 'mosca' }],
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+      const d = await resp.json();
+      resultados.push({ concepto: m.concepto, ok: d.content.some(b => b.type === 'mcp_tool_result') });
+    } catch(e) {
+      resultados.push({ concepto: m.concepto, ok: false });
+    }
+  }
+
+  const ok = resultados.filter(r => r.ok).length;
+  const err = resultados.filter(r => !r.ok).length;
+
+  document.getElementById('step-review').style.display = 'none';
+  document.getElementById('step-done').style.display = '';
+  document.getElementById('done-msg').innerHTML = `
+    <div class="status-bar ${err===0?'status-ok':'status-error'}">
+      ${ok} guardado(s) correctamente${err>0 ? ` · ${err} con error (${resultados.filter(r=>!r.ok).map(r=>r.concepto).join(', ')})` : ''}
+    </div>
+  `;
+}
+
+function setStatus(type, msg) {
+  const el = document.getElementById('status-msg');
+  if (!type) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="status-bar status-${type==='loading'?'loading':type}">${msg}</div>`;
+}
+
+function resetear() {
+  movimientos = []; fileBase64 = null; fileType = null;
+  document.getElementById('raw-text').value = '';
+  document.getElementById('ctx-input').value = '';
+  document.getElementById('file-name').textContent = '';
+  document.getElementById('step-input').style.display = '';
+  document.getElementById('step-review').style.display = 'none';
+  document.getElementById('step-done').style.display = 'none';
+  setStatus(null);
+}
+</script>
+</body>
+</html>
