@@ -196,81 +196,16 @@ async function parsear() {
   document.getElementById('step-review').style.display = '';
   setStatus('loading', 'Analizando movimientos...');
 
-  const provListStr = PROVEEDORES.map(p => `${p.id}: ${p.nombre}`).join('\n');
-  const hoy = new Date();
-  const mesActual = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}`;
-
-  const userContent = [];
-  if (fileBase64) {
-    userContent.push({ type: fileType === 'application/pdf' ? 'document' : 'image', source: { type: 'base64', media_type: fileType, data: fileBase64 } });
-  }
-  userContent.push({ type: 'text', text: `Sos el asistente de gestión del taller Mosca Taller. Analizá el siguiente contenido (extracto bancario, comprobante o texto libre) e identificá todos los movimientos financieros.
-
-CONTEXTO ADICIONAL: ${ctx || 'ninguno'}
-
-REGLAS DE CLASIFICACIÓN:
-- Movimientos negativos (débitos, egresos, pagos): tipo = "Gasto"
-- Movimientos positivos (créditos, cobros, ingresos): tipo = "Ingreso"
-- Si es un comprobante donde el destinatario contiene alguno de estos nombres (case insensitive): "lisandro manteca", "javier mosquera", "fernando mosquera", "ciro manteca" → tipo = "Ingreso"
-- Si es una factura por compra o similar con texto aclaratorio → tipo = "Gasto"
-
-CATEGORÍAS DE GASTOS (elige la más adecuada):
-Materiales, Mano de Obra, Alquiler, Servicios, Marketing, Herramientas y Equipos, Reintegro, Otros
-
-REGLAS DE CATEGORIZACIÓN:
-- Reintegros de Mariano: Materiales + Variable
-- Adelantos salario Mariano: Mano de Obra + Fijo
-- Liquidación salario Mariano: Mano de Obra + Fijo
-- Edgar alquiler: Alquiler + Fijo
-- Edenor y utilities: Servicios + Fijo
-- Meta/publicidad: Marketing + Variable
-- Milena CM: Marketing + Fijo
-
-TIPOS DE GASTO: Fijo, Variable, Por unica vez
-
-PARA INGRESOS, tipo_flujo:
-- Seña, Saldo, Venta, Recupero Edgar, Venta Eldra → Operativo
-- Capitalización Javier, Capitalización Lisandro, Recupero capital → Capital
-- Si el receptor es un socio (Javier, Lisandro, Fernando Mosquera) y no parece un pago de cliente → Capital
-
-PROVEEDORES CONOCIDOS (id: nombre):
-${provListStr}
-
-ANTIDUPLICACIÓN: Si ves movimientos con misma fecha y monto, márcalos con "posible_duplicado": true
-
-Respondé SOLO con un JSON válido (sin markdown, sin explicaciones). Formato:
-{
-  "movimientos": [
-    {
-      "concepto": "descripción clara",
-      "monto": 150000,
-      "fecha": "2026-04-01",
-      "tipo": "Gasto",
-      "categoria": "Materiales",
-      "tipo_gasto": "Variable",
-      "tipo_flujo": null,
-      "proveedor_id": "recXXX o null",
-      "proveedor_nombre": "nombre del proveedor",
-      "nota": "nota opcional",
-      "posible_duplicado": false,
-      "sin_match": false
-    }
-  ]
-}
-
-Para "sin_match": true si el proveedor no está en la lista conocida.
-Para "proveedor_id": usa el ID exacto de la lista si hay match claro, sino null.
-Fecha en formato YYYY-MM-DD. Si no aparece fecha, usá ${mesActual}-01.
-Monto siempre positivo (el tipo indica dirección).
-
-CONTENIDO A ANALIZAR:
-${texto}` });
-
   try {
+    const payload = { texto, contexto: ctx };
+    if (fileBase64) {
+      payload.archivo_base64 = fileBase64;
+      payload.archivo_tipo = fileType;
+    }
     const resp = await fetch('https://n8n.groumachine.com.ar/webhook/mosca-parseo', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ texto, contexto: ctx })
+      body: JSON.stringify(payload)
     });
     const rawText = await resp.text();
     showDebug(rawText);
