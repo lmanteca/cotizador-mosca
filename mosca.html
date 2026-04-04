@@ -167,45 +167,76 @@ const PROVEEDORES = [{"id":"rec5rktQe7QTvDWJ6","nombre":"Empleado Mariano Mujica
 const RESULTADOS_MAP = {"2025-06":"recSGsJ9XqevRu6W8","2025-07":"rec4ULpO8fjVOqslH","2025-08":"recKRPJeoRryi2arM","2025-09":"recPjy9WaNiXoU5ab","2025-10":"recvm9DYN4Sv8SlFK","2025-11":"reclsseegv3tNIyBg","2025-12":"recUN0OOyDVq9uvFV","2026-01":"recwj34SQfPRe8DL3","2026-02":"recbSFYh8zxXFKcAS","2026-03":"recKBBiL0oU1lFB6W","2026-04":"reclR6BJFbQP0yTpP"};
 
 let movimientos = [];
-let fileBase64 = null;
-let fileType = null;
 
-function handleFile(input) {
+async function handleFile(input) {
   const file = input.files[0];
   if (!file) return;
-  document.getElementById('file-name').textContent = file.name;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const result = e.target.result;
-    fileBase64 = result.split(',')[1];
-    fileType = file.type;
-    if (file.type === 'text/plain' || file.type === 'text/csv') {
-      document.getElementById('raw-text').value = atob(fileBase64);
-      fileBase64 = null; fileType = null;
+  document.getElementById('file-name').textContent = file.name + ' — extrayendo texto...';
+
+  if (file.type === 'application/pdf') {
+    try {
+      const pdfjsLib = await loadPdfJs();
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let fullText = '';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        fullText += content.items.map(s => s.str).join(' ') + '\n';
+      }
+      document.getElementById('raw-text').value = fullText.trim();
+      document.getElementById('file-name').textContent = file.name + ' — texto extraído';
+    } catch(e) {
+      document.getElementById('file-name').textContent = file.name + ' — error al leer PDF, pegá el texto manualmente';
+      console.error(e);
     }
-  };
-  reader.readAsDataURL(file);
+  } else if (file.type.startsWith('image/')) {
+    // Para imágenes: convertir a base64 y poner referencia en texto
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const b64 = e.target.result.split(',')[1];
+      document.getElementById('raw-text').value = `[IMAGEN:${file.type}:${b64}]`;
+      document.getElementById('file-name').textContent = file.name + ' — imagen lista';
+    };
+    reader.readAsDataURL(file);
+  } else {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      document.getElementById('raw-text').value = e.target.result;
+      document.getElementById('file-name').textContent = file.name;
+    };
+    reader.readAsText(file);
+  }
+}
+
+function loadPdfJs() {
+  return new Promise((resolve, reject) => {
+    if (window.pdfjsLib) { resolve(window.pdfjsLib); return; }
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    script.onload = () => {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      resolve(window.pdfjsLib);
+    };
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
 }
 
 async function parsear() {
   const texto = document.getElementById('raw-text').value.trim();
   const ctx = document.getElementById('ctx-input').value.trim();
-  if (!texto && !fileBase64) { alert('Pegá el texto o subí un archivo'); return; }
+  if (!texto) { alert('Pegá el texto o subí un archivo'); return; }
 
   document.getElementById('step-input').style.display = 'none';
   document.getElementById('step-review').style.display = '';
   setStatus('loading', 'Analizando movimientos...');
 
   try {
-    const payload = { texto, contexto: ctx };
-    if (fileBase64) {
-      payload.archivo_base64 = fileBase64;
-      payload.archivo_tipo = fileType;
-    }
     const resp = await fetch('https://n8n.groumachine.com.ar/webhook/mosca-parseo', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({ texto, contexto: ctx })
     });
     const rawText = await resp.text();
     showDebug(rawText);
@@ -403,10 +434,11 @@ function setStatus(type, msg) {
 }
 
 function resetear() {
-  movimientos = []; fileBase64 = null; fileType = null;
+  movimientos = [];
   document.getElementById('raw-text').value = '';
   document.getElementById('ctx-input').value = '';
   document.getElementById('file-name').textContent = '';
+  document.getElementById('file-input').value = '';
   document.getElementById('step-input').style.display = '';
   document.getElementById('step-review').style.display = 'none';
   document.getElementById('step-done').style.display = 'none';
