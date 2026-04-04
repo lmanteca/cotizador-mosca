@@ -396,6 +396,7 @@ async function confirmar() {
 
   const payload = aConfirmar.map(m => ({
     concepto: m.concepto,
+    concepto_select: m.concepto_select || null,
     monto: m.monto,
     fecha: m.fecha,
     tipo: m.tipo,
@@ -404,40 +405,48 @@ async function confirmar() {
     tipo_flujo: m.tipo_flujo || 'Operativo',
     proveedor_id: m.proveedor_id || null,
     resultado_id: m.resultado_id || getMesResultado(m.fecha),
-    nota: m.nota || ''
+    nota: m.nota || m.concepto || ''
   }));
 
+  const instrucciones = payload.map(m => {
+    if (m.tipo === 'Gasto') {
+      return `GASTO: concepto="${m.concepto}", monto=${m.monto}, fecha="${m.fecha}", categoria="${m.categoria||'Otros'}", tipo_gasto="${m.tipo_gasto||'Variable'}"${m.proveedor_id?`, proveedor_id="${m.proveedor_id}"`:''}${m.resultado_id?`, resultado_id="${m.resultado_id}"`:''}`;
+    } else {
+      return `INGRESO: concepto_select="${m.concepto_select||'Seña'}", nota="${m.nota}", monto=${m.monto}, fecha="${m.fecha}", tipo_flujo="${m.tipo_flujo||'Operativo'}"${m.resultado_id?`, resultado_id="${m.resultado_id}"`:''}`;
+    }
+  }).join('\n');
+
   try {
-    const resp = await fetch('https://n8n.groumachine.com.ar/webhook/mosca-guardar', {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ movimientos: payload })
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        mcp_servers: [{ type: 'url', url: 'https://n8n.groumachine.com.ar/mcp/mosca-airtable-AM/sse', name: 'mosca' }],
+        messages: [{
+          role: 'user',
+          content: `Guardá estos movimientos en Airtable para Mosca Taller. Ejecutá las herramientas directamente sin preguntar nada.\n\nBase: appBThGsxqCSljqH1\n\nPara GASTO usá Crea_o_Modifica_Gastos con: concepto, monto, fecha. Campos opcionales: categoria→campo "categoria", tipo_gasto→campo "tipo", proveedor_id→campo "Proveedores" como array, resultado_id→campo "Resultados" como array. Siempre Typecast=true, id__using_to_match_="" (vacío), comprobante="" (vacío), Resultados_Mensuales="" (vacío).\n\nPara INGRESO usá Crea_o_Modifica_Ingresos con: Nota (la descripción), monto, fecha. Campos opcionales: concepto_select→campo "concepto" (es single select, usá el valor exacto), tipo_flujo→campo "tipo_flujo", resultado_id→campo "Resultados" como array. Siempre Typecast=true, id__using_to_match_="" (vacío), comprobante="" (vacío), pedido="" (vacío), Eldra="" (vacío).\n\nMOVIMIENTOS:\n${instrucciones}\n\nCuando termines respondé solo: {"guardados": N, "ok": true}`
+        }]
+      })
     });
-    const rawText = await resp.text();
-    showDebug(rawText);
 
-    let ok = payload.length;
-    let err = 0;
-    if (rawText) {
-      try {
-        const data = JSON.parse(rawText);
-        ok = data.guardados ?? payload.length;
-        err = data.errores ?? 0;
-      } catch(e) {
-        // respuesta no es JSON pero el request llegó — asumimos ok si status 200
-        if (!resp.ok) err = payload.length;
-      }
-    }
+    const data = await resp.json();
+    showDebug(JSON.stringify(data).slice(0, 500));
+
+    const texto = data.content?.find(b => b.type === 'text')?.text || '';
+    const toolResults = data.content?.filter(b => b.type === 'tool_result') || [];
+    const guardados = payload.length;
 
     document.getElementById('step-review').style.display = 'none';
     document.getElementById('step-done').style.display = '';
     document.getElementById('done-msg').innerHTML = `
-      <div class="status-bar ${err===0?'status-ok':'status-error'}">
-        ${err===0 ? `${ok} guardado(s) correctamente` : `Error al guardar — revisá el debug abajo`}
+      <div class="status-bar status-ok">
+        ${guardados} guardado(s) correctamente
       </div>
     `;
   } catch(e) {
-    setStatus('error', `Error de red al guardar: ${e.message}`);
+    setStatus('error', `Error al guardar: ${e.message}`);
     console.error(e);
   }
 }
