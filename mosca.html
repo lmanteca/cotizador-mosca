@@ -417,32 +417,27 @@ async function confirmar() {
   }).join('\n');
 
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    const resp = await fetch('https://n8n.groumachine.com.ar/webhook/mosca-guardar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        mcp_servers: [{ type: 'url', url: 'https://n8n.groumachine.com.ar/mcp/mosca-airtable-AM/sse', name: 'mosca' }],
-        messages: [{
-          role: 'user',
-          content: `Guardá estos movimientos en Airtable para Mosca Taller. Ejecutá las herramientas directamente sin preguntar nada.\n\nBase: appBThGsxqCSljqH1\n\nPara GASTO usá Crea_o_Modifica_Gastos con: concepto, monto, fecha. Campos opcionales: categoria→campo "categoria", tipo_gasto→campo "tipo", proveedor_id→campo "Proveedores" como array, resultado_id→campo "Resultados" como array. Siempre Typecast=true, id__using_to_match_="" (vacío), comprobante="" (vacío), Resultados_Mensuales="" (vacío).\n\nPara INGRESO usá Crea_o_Modifica_Ingresos con: Nota (la descripción), monto, fecha. Campos opcionales: concepto_select→campo "concepto" (es single select, usá el valor exacto), tipo_flujo→campo "tipo_flujo", resultado_id→campo "Resultados" como array. Siempre Typecast=true, id__using_to_match_="" (vacío), comprobante="" (vacío), pedido="" (vacío), Eldra="" (vacío).\n\nMOVIMIENTOS:\n${instrucciones}\n\nCuando termines respondé solo: {"guardados": N, "ok": true}`
-        }]
-      })
+      body: JSON.stringify({ movimientos: payload })
     });
-
-    const data = await resp.json();
-    showDebug(JSON.stringify(data).slice(0, 500));
-
-    const texto = data.content?.find(b => b.type === 'text')?.text || '';
-    const toolResults = data.content?.filter(b => b.type === 'tool_result') || [];
-    const guardados = payload.length;
+    const rawText = await resp.text();
+    showDebug(rawText);
+    let guardados = payload.length;
+    let errores = 0;
+    try {
+      const data = JSON.parse(rawText);
+      guardados = data.guardados ?? payload.length;
+      errores = data.errores ?? 0;
+    } catch(e) {}
+    const guardados_final = guardados;
 
     document.getElementById('step-review').style.display = 'none';
     document.getElementById('step-done').style.display = '';
     document.getElementById('done-msg').innerHTML = `
-      <div class="status-bar status-ok">
-        ${guardados} guardado(s) correctamente
+      <div class="status-bar ${errores===0?'status-ok':'status-error'}">
+        ${errores===0 ? `${guardados_final} guardado(s) correctamente` : `Error al guardar — revisá el debug`}
       </div>
     `;
   } catch(e) {
