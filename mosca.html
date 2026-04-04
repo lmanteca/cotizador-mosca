@@ -267,21 +267,24 @@ CONTENIDO A ANALIZAR:
 ${texto}` });
 
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    const resp = await fetch('https://n8n.groumachine.com.ar/webhook/mosca-parseo', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4000, messages: [{ role: 'user', content: userContent }] })
+      body: JSON.stringify({ texto, contexto: ctx })
     });
     const data = await resp.json();
-    const raw = data.content.find(b => b.type === 'text')?.text || '';
-    const clean = raw.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(clean);
+    const parsed = data.data || data;
     movimientos = parsed.movimientos || [];
-    movimientos.forEach((m, i) => { m._idx = i; m._incluir = true; m._editando = false; });
+    movimientos.forEach((m, i) => {
+      m._idx = i;
+      m._incluir = true;
+      m._editando = false;
+      if (!m.resultado_id) m.resultado_id = getMesResultado(m.fecha);
+    });
     renderMovimientos();
     setStatus(null);
   } catch(e) {
-    setStatus('error', 'Error al parsear. Intentá de nuevo o revisá el contenido.');
+    setStatus('error', 'Error al parsear. Revisá el contenido o intentá de nuevo.');
     console.error(e);
   }
 }
@@ -379,39 +382,40 @@ async function confirmar() {
 
   setStatus('loading', `Guardando ${aConfirmar.length} movimiento(s) en Airtable...`);
 
-  const resultados = [];
-  for (const m of aConfirmar) {
-    const mesId = getMesResultado(m.fecha);
-    try {
-      const prompt = m.tipo === 'Gasto'
-        ? `Crea un registro en la tabla de Gastos (tbll52naofFFppi2u) de la base appBThGsxqCSljqH1 con estos campos: concepto="${m.concepto}", monto=${m.monto}, categoria="${m.categoria}", tipo="${m.tipo_gasto}"${m.proveedor_id ? `, proveedor_id="${m.proveedor_id}"` : ''}${m.nota ? `, nota="${m.nota}"` : ''}${m.fecha ? `, fecha="${m.fecha}"` : ''}${mesId ? `, resultados_id="${mesId}"` : ''}. Respondé solo: OK o ERROR.`
-        : `Crea un registro en la tabla de Ingresos (tblS8mrLsVnt5yvSC) de la base appBThGsxqCSljqH1 con: concepto="${m.concepto}", monto=${m.monto}, tipo_flujo="${m.tipo_flujo||'Operativo'}"${m.fecha ? `, fecha="${m.fecha}"` : ''}${mesId ? `, resultados_id="${mesId}"` : ''}. Respondé solo: OK o ERROR.`;
+  const payload = aConfirmar.map(m => ({
+    concepto: m.concepto,
+    monto: m.monto,
+    fecha: m.fecha,
+    tipo: m.tipo,
+    categoria: m.categoria || null,
+    tipo_gasto: m.tipo_gasto || null,
+    tipo_flujo: m.tipo_flujo || 'Operativo',
+    proveedor_id: m.proveedor_id || null,
+    resultado_id: m.resultado_id || getMesResultado(m.fecha),
+    nota: m.nota || ''
+  }));
 
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514', max_tokens: 500,
-          mcp_servers: [{ type: 'url', url: 'https://n8n.groumachine.com.ar/mcp/airtable-info/sse', name: 'mosca' }],
-          messages: [{ role: 'user', content: prompt }]
-        })
-      });
-      const d = await resp.json();
-      resultados.push({ concepto: m.concepto, ok: d.content.some(b => b.type === 'mcp_tool_result') });
-    } catch(e) {
-      resultados.push({ concepto: m.concepto, ok: false });
-    }
+  try {
+    const resp = await fetch('https://n8n.groumachine.com.ar/webhook/mosca-guardar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ movimientos: payload })
+    });
+    const data = await resp.json();
+    const ok = data.guardados ?? payload.length;
+    const err = data.errores ?? 0;
+
+    document.getElementById('step-review').style.display = 'none';
+    document.getElementById('step-done').style.display = '';
+    document.getElementById('done-msg').innerHTML = `
+      <div class="status-bar ${err===0?'status-ok':'status-error'}">
+        ${ok} guardado(s) correctamente${err>0 ? ` · ${err} con error` : ''}
+      </div>
+    `;
+  } catch(e) {
+    setStatus('error', 'Error al guardar. Revisá la conexión con n8n.');
+    console.error(e);
   }
-
-  const ok = resultados.filter(r => r.ok).length;
-  const err = resultados.filter(r => !r.ok).length;
-
-  document.getElementById('step-review').style.display = 'none';
-  document.getElementById('step-done').style.display = '';
-  document.getElementById('done-msg').innerHTML = `
-    <div class="status-bar ${err===0?'status-ok':'status-error'}">
-      ${ok} guardado(s) correctamente${err>0 ? ` · ${err} con error (${resultados.filter(r=>!r.ok).map(r=>r.concepto).join(', ')})` : ''}
-    </div>
-  `;
 }
 
 function setStatus(type, msg) {
