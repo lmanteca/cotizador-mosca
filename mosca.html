@@ -122,16 +122,19 @@
 
   <div class="card" id="step-input">
     <p class="section-title">Nuevo cargue de movimientos</p>
+
+    <div style="margin-bottom: 12px;">
+      <label style="font-size: 12px; font-weight: 500; color: var(--color-text-primary); display: block; margin-bottom: 6px;">Contexto — qué es esto</label>
+      <input class="context-input" id="ctx-input" placeholder="Ej: seña de Gerkman por el pedido de la mesa, adelanto Mariano, alquiler Edgar abril...">
+      <p style="font-size: 11px; color: var(--color-text-tertiary); margin-top: 4px;">Cuanto más específico, mejor clasifica. Especialmente para comprobantes individuales.</p>
+    </div>
+
     <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
       <p>Subir extracto o comprobante</p>
-      <small>PDF, imagen o texto — o pegá directo abajo</small>
+      <small>PDF o imagen — extrae el texto automáticamente</small>
       <input type="file" id="file-input" accept=".pdf,.png,.jpg,.jpeg,.txt,.csv" style="display:none" onchange="handleFile(this)">
     </div>
     <textarea id="raw-text" placeholder="O pegá el texto del extracto / comprobante acá..."></textarea>
-    <div style="margin-top: 10px;">
-      <label style="font-size: 12px; color: var(--color-text-secondary);">Contexto adicional (opcional)</label>
-      <input class="context-input" id="ctx-input" placeholder="Ej: son gastos de marzo, el proveedor es Mariano, etc.">
-    </div>
     <div class="gap" style="margin-top: 14px;">
       <button class="btn btn-primary" onclick="parsear()">Parsear movimientos</button>
       <span id="file-name" style="font-size: 12px; color: var(--color-text-secondary);"></span>
