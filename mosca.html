@@ -272,9 +272,34 @@ ${texto}` });
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ texto, contexto: ctx })
     });
-    const data = await resp.json();
-    const parsed = data.data || data;
-    movimientos = parsed.movimientos || [];
+    const rawText = await resp.text();
+    showDebug(rawText);
+
+    let data;
+    try { data = JSON.parse(rawText); } catch(e) {
+      setStatus('error', 'n8n devolvió una respuesta que no es JSON — revisá el debug abajo.');
+      return;
+    }
+
+    // Buscar movimientos en distintas estructuras posibles que puede devolver n8n
+    let movs = null;
+    if (data?.data?.movimientos) movs = data.data.movimientos;
+    else if (data?.movimientos) movs = data.movimientos;
+    else if (Array.isArray(data)) {
+      // n8n a veces devuelve array de items
+      const first = data[0];
+      if (first?.data?.movimientos) movs = first.data.movimientos;
+      else if (first?.movimientos) movs = first.movimientos;
+      else if (first?.json?.data?.movimientos) movs = first.json.data.movimientos;
+      else if (first?.json?.movimientos) movs = first.json.movimientos;
+    }
+
+    if (!movs || movs.length === 0) {
+      setStatus('error', 'No se encontraron movimientos en la respuesta — revisá el panel debug abajo.');
+      return;
+    }
+
+    movimientos = movs;
     movimientos.forEach((m, i) => {
       m._idx = i;
       m._incluir = true;
@@ -284,9 +309,27 @@ ${texto}` });
     renderMovimientos();
     setStatus(null);
   } catch(e) {
-    setStatus('error', 'Error al parsear. Revisá el contenido o intentá de nuevo.');
+    setStatus('error', `Error de red: ${e.message}`);
     console.error(e);
   }
+}
+
+function showDebug(raw) {
+  let el = document.getElementById('debug-panel');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'debug-panel';
+    el.style.cssText = 'margin-top:16px; border:0.5px solid var(--color-border-secondary); border-radius:var(--border-radius-md); background:var(--color-background-secondary);';
+    document.getElementById('step-review').appendChild(el);
+  }
+  const preview = raw.length > 2000 ? raw.slice(0, 2000) + '\n... (truncado)' : raw;
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:0.5px solid var(--color-border-tertiary);">
+      <span style="font-size:11px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.06em;">Respuesta cruda de n8n</span>
+      <button onclick="document.getElementById('debug-panel').style.display='none'" style="font-size:11px;border:none;background:none;cursor:pointer;color:var(--color-text-tertiary);">cerrar</button>
+    </div>
+    <pre style="padding:12px;font-size:11px;font-family:var(--font-mono);white-space:pre-wrap;word-break:break-all;color:var(--color-text-primary);max-height:300px;overflow-y:auto;margin:0;">${preview.replace(/</g,'&lt;')}</pre>
+  `;
 }
 
 function renderMovimientos() {
