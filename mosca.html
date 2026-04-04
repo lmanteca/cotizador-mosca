@@ -52,13 +52,7 @@
       --color-border-warning: rgba(250,199,117,0.35);
     }
   }
-  body {
-    font-family: var(--font-sans);
-    background: var(--color-background-tertiary);
-    color: var(--color-text-primary);
-    min-height: 100vh;
-    padding: 2rem 1rem;
-  }
+  body { font-family: var(--font-sans); background: var(--color-background-tertiary); color: var(--color-text-primary); min-height: 100vh; padding: 2rem 1rem; }
   .container { max-width: 860px; margin: 0 auto; }
   .header { margin-bottom: 2rem; }
   .header h1 { font-size: 20px; font-weight: 500; color: var(--color-text-primary); }
@@ -111,34 +105,34 @@
   .summary-bar { display: flex; gap: 16px; padding: 10px 14px; background: var(--color-background-secondary); border-radius: var(--border-radius-md); font-size: 13px; color: var(--color-text-secondary); flex-wrap: wrap; }
   .summary-bar strong { color: var(--color-text-primary); }
   .dup-alert { border: 0.5px solid var(--color-border-warning); border-radius: var(--border-radius-md); padding: 10px 14px; background: var(--color-background-warning); font-size: 13px; color: var(--color-text-warning); margin-bottom: 6px; }
+  .init-status { font-size: 12px; color: var(--color-text-tertiary); margin-top: 8px; }
 </style>
 </head>
 <body>
 <div class="container">
   <div class="header">
     <h1>Movimientos IA</h1>
-    <p>Mosca Taller — carga de gastos e ingresos con parseo automático <span style="color: var(--color-text-tertiary); font-size: 11px;">v0.4 — 2026-04-04</span></p>
+    <p>Mosca Taller — carga de gastos e ingresos con parseo automático <span style="color: var(--color-text-tertiary); font-size: 11px;">v0.7 — 2026-04-04</span></p>
   </div>
 
   <div class="card" id="step-input">
     <p class="section-title">Nuevo cargue de movimientos</p>
-
     <div style="margin-bottom: 12px;">
       <label style="font-size: 12px; font-weight: 500; color: var(--color-text-primary); display: block; margin-bottom: 6px;">Contexto — qué es esto</label>
       <input class="context-input" id="ctx-input" placeholder="Ej: seña de Gerkman por el pedido de la mesa, adelanto Mariano, alquiler Edgar abril...">
       <p style="font-size: 11px; color: var(--color-text-tertiary); margin-top: 4px;">Cuanto más específico, mejor clasifica. Especialmente para comprobantes individuales.</p>
     </div>
-
-    <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+    <div class="upload-zone" onclick="document.getElementById('file-input').click()">
       <p>Subir extracto o comprobante</p>
       <small>PDF o imagen — extrae el texto automáticamente</small>
       <input type="file" id="file-input" accept=".pdf,.png,.jpg,.jpeg,.txt,.csv" style="display:none" onchange="handleFile(this)">
     </div>
     <textarea id="raw-text" placeholder="O pegá el texto del extracto / comprobante acá..."></textarea>
     <div class="gap" style="margin-top: 14px;">
-      <button class="btn btn-primary" onclick="parsear()">Parsear movimientos</button>
+      <button class="btn btn-primary" onclick="parsear()" id="btn-parsear" disabled>Parsear movimientos</button>
       <span id="file-name" style="font-size: 12px; color: var(--color-text-secondary);"></span>
     </div>
+    <p class="init-status" id="init-status">Cargando datos...</p>
   </div>
 
   <div class="card" id="step-review" style="display:none;">
@@ -165,16 +159,45 @@
 </div>
 
 <script>
-const PROVEEDORES = [{"id":"rec5rktQe7QTvDWJ6","nombre":"Empleado Mariano Mujica"},{"id":"recSOErxv33VW5LgM","nombre":"Javier Mosquera - Socio"},{"id":"rect4xz5nHgsLqbbF","nombre":"Edgar"},{"id":"recBMj4t5ZRg79u0x","nombre":"Meta Facebook Instagram"},{"id":"recBx0QqGqJxlh4b1","nombre":"Milena - CM"},{"id":"recPD4Qz9MFr0eqGQ","nombre":"HIERROS TORRENT S.A."},{"id":"recga7wBvZZeL3PwG","nombre":"Maderera - Rivas Ana Noemi"},{"id":"recDrHfd2YkSuHgA6","nombre":"SOLDA FER S.R.L."},{"id":"recDCR9mtiWSZYPTZ","nombre":"SUI COLOR"},{"id":"recJkk9bKHpfWEN5f","nombre":"INDUSTRIAS TAURO S.A."},{"id":"rec8AB2QjGqh5q68n","nombre":"SYG Herrajes"},{"id":"recHZRRtU582KKoWR","nombre":"Mercadolibre - múltiples"},{"id":"recOEVFDUB1rT9mmp","nombre":"TIENDA NUBE"},{"id":"recQZg84F2qZo551o","nombre":"Servicios Públicos Generales"},{"id":"recUfprysVbY4qTUh","nombre":"Herrajes Tigre"},{"id":"reckbUI0ms55ZddwK","nombre":"PROPIMAT SRL"},{"id":"rec48grwMZsEhKz4M","nombre":"Medio de cobro (getnet, uala, mepa)"},{"id":"rec3SFU3sGtMAqkaO","nombre":"Alquiler Sereno Lucia Mabe"},{"id":"recnAOuapuiJ3eL7S","nombre":"adac distribuidora maderas"},{"id":"rechL4IQLuBz3MhyD","nombre":"Sanchez Aljuan Pablo - Maderera"},{"id":"recVvnGJrno3URQT2","nombre":"Volquete Leandro Rosas"},{"id":"recryWAarOyNtxNi7","nombre":"Flete"},{"id":"recAPJhRkcNWM6r57","nombre":"José María Martín González - Empanadas"},{"id":"recmCe61T3Our9JSs","nombre":"Pintura Horno"},{"id":"recs3MG3JFn06pmTw","nombre":"ypf"},{"id":"recfECIM7NQj23Jd2","nombre":"El Rey del Reguetón - Favelis"},{"id":"recrHYEzVSKt5Kegl","nombre":"Varios"},{"id":"rec6At0M188S461Wd","nombre":"Tarjeta Naranja X"},{"id":"recT4PhJCRD4r9ec4","nombre":"Patricia Evelina Arras - Maderera"},{"id":"rec4rSjU6rYOEWo7i","nombre":"Chatty"},{"id":"recisgCmMlKDjlYMp","nombre":"Edenor"},{"id":"reckPtI5iWUciotQn","nombre":"Paola Lorena Britos - Fumigacion"},{"id":"recVVfkJxXbHDjBca","nombre":"Chapas Hermética"},{"id":"recBw5UGZ7YbuTc8P","nombre":"Lusich E Hijos SRL"},{"id":"rec9WCfA9iWmUxgtf","nombre":"Lustremad Srl"},{"id":"recaImb8Zo5FLEcwE","nombre":"Libreria"},{"id":"recMg4ElPrnWj62na","nombre":"Mario Osvaldo Della Ma - Pintura Horno"},{"id":"recdXQdACnLSB9C7i","nombre":"Herrajes Tronador"},{"id":"recAixjJrawv5LiK9","nombre":"Maria Paula Sanchez"},{"id":"recgzLQ0d0Uz3wLDI","nombre":"Delgado Williams Atila"},{"id":"rec5Frrh0RvVV8jes","nombre":"Embalajes"},{"id":"recKvJzgnWs9T2CqT","nombre":"Sillas Miguel Angel"}];
+const N8N_BASE = 'https://n8n.groumachine.com.ar/webhook';
 
-const RESULTADOS_MAP = {"2025-06":"recSGsJ9XqevRu6W8","2025-07":"rec4ULpO8fjVOqslH","2025-08":"recKRPJeoRryi2arM","2025-09":"recPjy9WaNiXoU5ab","2025-10":"recvm9DYN4Sv8SlFK","2025-11":"reclsseegv3tNIyBg","2025-12":"recUN0OOyDVq9uvFV","2026-01":"recwj34SQfPRe8DL3","2026-02":"recbSFYh8zxXFKcAS","2026-03":"recKBBiL0oU1lFB6W","2026-04":"reclR6BJFbQP0yTpP"};
-
+let PROVEEDORES = [];
+let RESULTADOS_MAP = {};
+let datosListos = false;
 let movimientos = [];
+let imagenAdjunta = null;
+
+// ─── CARGA DINÁMICA DESDE N8N ─────────────────────────────────────────────────
+
+async function cargarDatos() {
+  const initEl = document.getElementById('init-status');
+  try {
+    initEl.textContent = 'Cargando datos...';
+    const resp = await fetch(`${N8N_BASE}/mosca-datos`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+
+    PROVEEDORES = data.proveedores || [];
+    RESULTADOS_MAP = data.resultados || {};
+
+    datosListos = true;
+    document.getElementById('btn-parsear').disabled = false;
+    initEl.textContent = `${PROVEEDORES.length} proveedores · ${Object.keys(RESULTADOS_MAP).length} meses cargados`;
+    initEl.style.color = 'var(--color-text-success)';
+  } catch(e) {
+    initEl.textContent = `Error al cargar datos: ${e.message} — recargá la página`;
+    initEl.style.color = 'var(--color-text-danger)';
+    console.error(e);
+  }
+}
+
+// ─── ARCHIVO ─────────────────────────────────────────────────────────────────
 
 async function handleFile(input) {
   const file = input.files[0];
   if (!file) return;
-  document.getElementById('file-name').textContent = file.name + ' — extrayendo texto...';
+  document.getElementById('file-name').textContent = file.name + ' — procesando...';
+  imagenAdjunta = null;
 
   if (file.type === 'application/pdf') {
     try {
@@ -191,14 +214,12 @@ async function handleFile(input) {
       document.getElementById('file-name').textContent = file.name + ' — texto extraído';
     } catch(e) {
       document.getElementById('file-name').textContent = file.name + ' — error al leer PDF, pegá el texto manualmente';
-      console.error(e);
     }
   } else if (file.type.startsWith('image/')) {
-    // Para imágenes: convertir a base64 y poner referencia en texto
     const reader = new FileReader();
     reader.onload = (e) => {
-      const b64 = e.target.result.split(',')[1];
-      document.getElementById('raw-text').value = `[IMAGEN:${file.type}:${b64}]`;
+      imagenAdjunta = { media_type: file.type, data: e.target.result.split(',')[1] };
+      document.getElementById('raw-text').value = '';
       document.getElementById('file-name').textContent = file.name + ' — imagen lista';
     };
     reader.readAsDataURL(file);
@@ -226,36 +247,44 @@ function loadPdfJs() {
   });
 }
 
+// ─── PARSEO ───────────────────────────────────────────────────────────────────
+
 async function parsear() {
+  if (!datosListos) { alert('Esperá que terminen de cargar los datos'); return; }
   const texto = document.getElementById('raw-text').value.trim();
   const ctx = document.getElementById('ctx-input').value.trim();
-  if (!texto) { alert('Pegá el texto o subí un archivo'); return; }
+  if (!texto && !imagenAdjunta) { alert('Pegá el texto o subí un archivo'); return; }
 
   document.getElementById('step-input').style.display = 'none';
   document.getElementById('step-review').style.display = '';
   setStatus('loading', 'Analizando movimientos...');
 
   try {
-    const resp = await fetch('https://n8n.groumachine.com.ar/webhook/mosca-parseo', {
+    const bodyObj = imagenAdjunta
+      ? { contexto: ctx, imagen: { media_type: imagenAdjunta.media_type, data: imagenAdjunta.data } }
+      : { texto, contexto: ctx };
+
+    const resp = await fetch(`${N8N_BASE}/mosca-parseo`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ texto, contexto: ctx })
+      body: JSON.stringify(bodyObj)
     });
     const rawText = await resp.text();
     showDebug(rawText);
 
     let data;
-    try { data = JSON.parse(rawText); } catch(e) {
+    try {
+      const clean = rawText.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+      data = JSON.parse(clean);
+    } catch(e) {
       setStatus('error', 'n8n devolvió una respuesta que no es JSON — revisá el debug abajo.');
       return;
     }
 
-    // Buscar movimientos en distintas estructuras posibles que puede devolver n8n
     let movs = null;
     if (data?.data?.movimientos) movs = data.data.movimientos;
     else if (data?.movimientos) movs = data.movimientos;
     else if (Array.isArray(data)) {
-      // n8n a veces devuelve array de items
       const first = data[0];
       if (first?.data?.movimientos) movs = first.data.movimientos;
       else if (first?.movimientos) movs = first.movimientos;
@@ -264,7 +293,7 @@ async function parsear() {
     }
 
     if (!movs || movs.length === 0) {
-      setStatus('error', 'No se encontraron movimientos en la respuesta — revisá el panel debug abajo.');
+      setStatus('error', 'No se encontraron movimientos — revisá el panel debug abajo.');
       return;
     }
 
@@ -279,9 +308,10 @@ async function parsear() {
     setStatus(null);
   } catch(e) {
     setStatus('error', `Error de red: ${e.message}`);
-    console.error(e);
   }
 }
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
 
 function showDebug(raw) {
   let el = document.getElementById('debug-panel');
@@ -308,7 +338,7 @@ function renderMovimientos() {
 
   const dupsItems = movimientos.filter(m => m.posible_duplicado);
   if (dupsItems.length) {
-    dups.innerHTML = `<div class="dup-alert">Posibles duplicados detectados: ${dupsItems.map(m => `<strong>${m.concepto}</strong> $${m.monto.toLocaleString()}`).join(', ')} — revisalos antes de confirmar.</div>`;
+    dups.innerHTML = `<div class="dup-alert">Posibles duplicados: ${dupsItems.map(m => `<strong>${m.concepto}</strong> $${m.monto.toLocaleString()}`).join(', ')} — revisalos antes de confirmar.</div>`;
   }
 
   list.innerHTML = movimientos.map(m => {
@@ -341,10 +371,13 @@ function renderMovimientos() {
           </div>
           <div class="mov-meta">
             <span class="pill ${isGasto?'pill-gasto':'pill-ingreso'}">${m.tipo}</span>
-            ${isGasto ? `<span class="pill pill-cat">${m.categoria||'—'}</span><span class="pill pill-cat">${m.tipo_gasto||'—'}</span>` : `<span class="pill pill-cat">${m.tipo_flujo||'—'}</span>`}
+            ${isGasto
+              ? `<span class="pill pill-cat">${m.categoria||'—'}</span><span class="pill pill-cat">${m.tipo_gasto||'—'}</span>`
+              : `<span class="pill pill-cat">${m.tipo_flujo||'—'}</span>`
+            }
             ${m.sin_match ? `<span class="pill pill-warn">sin match</span>` : ''}
             ${m.posible_duplicado ? `<span class="pill pill-warn">posible dup</span>` : ''}
-            <span class="mov-proveedor">${m.proveedor_nombre||''}</span>
+            ${isGasto ? `<span class="mov-proveedor">${m.proveedor_nombre||''}</span>` : ''}
             <span class="mov-fecha">${m.fecha||''}</span>
           </div>
         </div>
@@ -383,10 +416,13 @@ function actualizarResumen() {
 }
 
 function getMesResultado(fecha) {
+  if (!fecha) return null;
   const d = new Date(fecha + 'T12:00:00');
   const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
   return RESULTADOS_MAP[k] || null;
 }
+
+// ─── GUARDAR ──────────────────────────────────────────────────────────────────
 
 async function confirmar() {
   const aConfirmar = movimientos.filter(m => m._incluir);
@@ -408,41 +444,30 @@ async function confirmar() {
     nota: m.nota || m.concepto || ''
   }));
 
-  const instrucciones = payload.map(m => {
-    if (m.tipo === 'Gasto') {
-      return `GASTO: concepto="${m.concepto}", monto=${m.monto}, fecha="${m.fecha}", categoria="${m.categoria||'Otros'}", tipo_gasto="${m.tipo_gasto||'Variable'}"${m.proveedor_id?`, proveedor_id="${m.proveedor_id}"`:''}${m.resultado_id?`, resultado_id="${m.resultado_id}"`:''}`;
-    } else {
-      return `INGRESO: concepto_select="${m.concepto_select||'Seña'}", nota="${m.nota}", monto=${m.monto}, fecha="${m.fecha}", tipo_flujo="${m.tipo_flujo||'Operativo'}"${m.resultado_id?`, resultado_id="${m.resultado_id}"`:''}`;
-    }
-  }).join('\n');
-
   try {
-    const resp = await fetch('https://n8n.groumachine.com.ar/webhook/mosca-guardar', {
+    const resp = await fetch(`${N8N_BASE}/mosca-guardar`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ movimientos: payload })
     });
     const rawText = await resp.text();
     showDebug(rawText);
-    let guardados = payload.length;
-    let errores = 0;
+    let guardados = payload.length, errores = 0;
     try {
       const data = JSON.parse(rawText);
       guardados = data.guardados ?? payload.length;
       errores = data.errores ?? 0;
     } catch(e) {}
-    const guardados_final = guardados;
 
     document.getElementById('step-review').style.display = 'none';
     document.getElementById('step-done').style.display = '';
     document.getElementById('done-msg').innerHTML = `
       <div class="status-bar ${errores===0?'status-ok':'status-error'}">
-        ${errores===0 ? `${guardados_final} guardado(s) correctamente` : `Error al guardar — revisá el debug`}
+        ${errores===0 ? `${guardados} guardado(s) correctamente` : `Error al guardar — revisá el debug`}
       </div>
     `;
   } catch(e) {
     setStatus('error', `Error al guardar: ${e.message}`);
-    console.error(e);
   }
 }
 
@@ -454,6 +479,7 @@ function setStatus(type, msg) {
 
 function resetear() {
   movimientos = [];
+  imagenAdjunta = null;
   document.getElementById('raw-text').value = '';
   document.getElementById('ctx-input').value = '';
   document.getElementById('file-name').textContent = '';
@@ -463,6 +489,8 @@ function resetear() {
   document.getElementById('step-done').style.display = 'none';
   setStatus(null);
 }
+
+cargarDatos();
 </script>
 </body>
 </html>
