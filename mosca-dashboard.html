@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mosca Taller — Dashboard v0.3</title>
+  <title>Mosca Taller — Dashboard v0.4</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     :root {
@@ -222,7 +222,7 @@
 
 <!-- NAV -->
 <nav class="nav no-print">
-  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v0.3</span></span>
+  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v0.4</span></span>
   <div class="nav-tabs">
     <button class="nav-tab active" onclick="showPage('reporte')">Reporte</button>
     <button class="nav-tab" onclick="showPage('edgar')">Edgar</button>
@@ -548,7 +548,7 @@ function renderKPIs() {
     if (meta) meta.textContent = mesLabel(selectedMonth);
   } else {
     // Aggregate last 3 months
-    const sorted = [...allData.resultados].sort((a,b) => a.fields.Mes?.localeCompare(b.fields.Mes));
+    const sorted = [...allData.resultados].sort((a,b) => (a.fields.Mes||'').localeCompare(b.fields.Mes||''));
     if (meta) meta.textContent = 'Último mes disponible';
     res = sorted[sorted.length - 1] || null;
   }
@@ -680,7 +680,7 @@ function renderMovimientos() {
         ? r.fields['proveedor (de Proveedores)'].join(', ') : '',
       monto: -(r.fields.monto || 0)
     }))
-  ].sort((a,b) => a.fecha.localeCompare(b.fecha));
+  ].sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
 
   if (meta) meta.textContent = `${rows.length} movimientos`;
 
@@ -888,8 +888,8 @@ function renderProduccion() {
 
   // Active items
   const activosSorted = activos.sort((a,b) => {
-    const da = a.fields.fecha_comprometida || '';
-    const db = b.fields.fecha_comprometida || '';
+    const da = String(Array.isArray(a.fields.fecha_comprometida) ? a.fields.fecha_comprometida[0] : a.fields.fecha_comprometida || '');
+    const db = String(Array.isArray(b.fields.fecha_comprometida) ? b.fields.fecha_comprometida[0] : b.fields.fecha_comprometida || '');
     return da.localeCompare(db);
   });
 
@@ -1035,7 +1035,7 @@ function renderEdgar() {
       devengado: 0,
       pagado: -(r.fields.monto || 0) // negativo = Edgar aporta
     }))
-  ].sort((a,b) => a.fecha.localeCompare(b.fecha));
+  ].sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
 
   // Build running balance
   let saldoAcum = 0;
