@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mosca Taller — Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #f4f3f0;
+      --card: #ffffff;
+      --border: #e0ddd8;
+      --text: #1a1714;
+      --muted: #6b6560;
+      --accent: #2c4a2e;
+      --accent-light: #3d6640;
+      --amber: #c4873a;
+      --positive: #2e7d32;
+      --negative: #c0392b;
+      --blue: #1565c0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* NAV */
+    .nav {
+      background: var(--accent);
+      color: white;
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      height: 54px;
+      gap: 24px;
+    }
+    .nav-brand { font-size: 17px; font-weight: 700; letter-spacing: 1px; white-space: nowrap; }
+    .nav-tabs { display: flex; gap: 2px; flex: 1; }
+    .nav-tab {
+      padding: 7px 16px; border-radius: 4px; cursor: pointer;
+      color: rgba(255,255,255,0.65); border: none; background: none;
+      font-size: 13px; font-weight: 500;
+    }
+    .nav-tab:hover { background: rgba(255,255,255,0.12); color: white; }
+    .nav-tab.active { background: rgba(255,255,255,0.18); color: white; }
+    .nav-actions { display: flex; gap: 8px; align-items: center; }
+    .btn-nav {
+      padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 12px;
+      font-weight: 500; border: 1px solid rgba(255,255,255,0.35); color: white;
+      background: none; white-space: nowrap;
+    }
+    .btn-nav:hover { background: rgba(255,255,255,0.15); }
+    .btn-nav.primary { background: var(--amber); border-color: var(--amber); }
+
+    /* TOOLBAR */
+    .toolbar {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .toolbar label { font-size: 12px; color: var(--muted); font-weight: 500; }
+    select {
+      padding: 5px 10px; border: 1px solid var(--border);
+      border-radius: 4px; background: white; font-size: 13px; color: var(--text);
+    }
+    .status-msg { font-size: 12px; color: var(--muted); margin-left: auto; }
+
+    /* PAGES */
+    .page { display: none; }
+    .page.active { display: block; }
+    .content { padding: 20px 24px; max-width: 1080px; margin: 0 auto; }
+
+    /* SECTION */
+    .section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 18px 20px;
+      margin-bottom: 16px;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+    }
+    .section-meta { font-size: 12px; color: var(--muted); }
+
+    /* KPIs */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+    .kpi {
+      padding: 14px 16px; background: var(--bg); border-radius: 5px;
+      border: 1px solid var(--border);
+    }
+    .kpi-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin-bottom: 5px; }
+    .kpi-value { font-size: 20px; font-weight: 700; }
+    .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .positive { color: var(--positive); }
+    .negative { color: var(--negative); }
+    .neutral { color: var(--text); }
+    .blue { color: var(--blue); }
+
+    /* CHART */
+    .chart-wrap { position: relative; height: 200px; margin-bottom: 14px; }
+
+    /* TABLES */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      text-align: left; padding: 7px 10px;
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.3px; color: var(--muted);
+      border-bottom: 2px solid var(--border);
+      white-space: nowrap;
+    }
+    td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: var(--bg); }
+    .right { text-align: right; }
+    .center { text-align: center; }
+    .mono { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; }
+
+    /* TAGS */
+    .tag {
+      display: inline-block; padding: 2px 8px; border-radius: 10px;
+      font-size: 11px; font-weight: 600; white-space: nowrap;
+    }
+    .tag-green { background: #e8f5e9; color: #2e7d32; }
+    .tag-red { background: #ffebee; color: #c62828; }
+    .tag-blue { background: #e3f2fd; color: #1565c0; }
+    .tag-amber { background: #fff8e1; color: #f57f17; }
+    .tag-gray { background: #f5f5f5; color: #616161; }
+    .tag-purple { background: #f3e5f5; color: #6a1b9a; }
+
+    /* TWO COLUMNS */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
+
+    /* SOCIO CARD */
+    .socio-card {
+      border: 1px solid var(--border); border-radius: 5px; overflow: hidden;
+    }
+    .socio-card-header {
+      background: var(--bg); padding: 10px 14px;
+      font-weight: 600; font-size: 13px;
+      border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .socio-net { font-size: 18px; font-weight: 700; }
+
+    /* PRODUCCION ITEM */
+    .prod-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 0; border-bottom: 1px solid var(--border);
+    }
+    .prod-item:last-child { border-bottom: none; }
+    .prod-estado {
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    }
+    .prod-info { flex: 1; }
+    .prod-nombre { font-weight: 500; font-size: 13px; }
+    .prod-meta { font-size: 11px; color: var(--muted); }
+    .prod-problema { font-size: 11px; color: var(--negative); margin-top: 2px; }
+
+
+    /* ERROR BANNER */
+    .error-banner {
+      background: #ffebee; color: #c62828; padding: 10px 14px;
+      border-radius: 5px; font-size: 13px; margin-bottom: 14px;
+      display: none;
+    }
+
+    /* LOADING */
+    .loading { text-align: center; padding: 32px; color: var(--muted); font-size: 13px; }
+    .spinner {
+      display: inline-block; width: 20px; height: 20px;
+      border: 2px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+      margin-right: 8px; vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* DIVIDER */
+    .divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+    /* SUMMARY ROW */
+    .sum-row td { font-weight: 700; background: var(--bg); border-top: 2px solid var(--border); }
+
+    /* PRINT */
+    @media print {
+      .nav, .toolbar, .no-print { display: none !important; }
+      body { background: white; font-size: 12px; }
+      .content { padding: 0; max-width: none; }
+      .section { break-inside: avoid; border: 1px solid #ddd; margin-bottom: 12px; }
+      .page { display: block !important; }
+      .kpi-value { font-size: 17px; }
+      .chart-wrap { height: 160px; }
+      .section-header { page-break-after: avoid; }
+      h1.print-title { display: block !important; font-size: 18px; margin-bottom: 16px; }
+      .print-break { page-break-before: always; }
+    }
+    h1.print-title { display: none; }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav no-print">
+  <span class="nav-brand">MOSCA TALLER</span>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('reporte')">Reporte</button>
+    <button class="nav-tab" onclick="showPage('edgar')">Edgar</button>
+  </div>
+  <div class="nav-actions">
+    <button class="btn-nav" onclick="loadData()">↻ Actualizar</button>
+    <button class="btn-nav" onclick="window.print()">⎙ Imprimir</button>
+  </div>
+</nav>
+
+<!-- TOOLBAR -->
+<div class="toolbar no-print" id="toolbar">
+  <label>Período</label>
+  <select id="monthSelect" onchange="onMonthChange()">
+    <option value="">Todos los meses</option>
+  </select>
+  <span class="status-msg" id="statusMsg">Cargando datos...</span>
+</div>
+
+<!-- PÁGINA: REPORTE -->
+<div id="page-reporte" class="page active">
+  <div class="content">
+    <h1 class="print-title" id="printTitle">Mosca Taller — Reporte</h1>
+    <div id="errorBanner" class="error-banner"></div>
+
+    <!-- KPIs -->
+    <div class="section" id="secKPIs">
+      <div class="section-header">
+        <span class="section-title">Resumen</span>
+        <span class="section-meta" id="kpiMeta"></span>
+      </div>
+      <div id="kpiGrid" class="kpi-grid"><div class="loading"><span class="spinner"></span>Cargando...</div></div>
+    </div>
+
+    <!-- EVOLUCIÓN -->
+    <div class="section" id="secEvolucion">
+      <div class="section-header">
+        <span class="section-title">Evolución mensual</span>
+      </div>
+      <div class="chart-wrap"><canvas id="chartEvol"></canvas></div>
+      <div class="table-wrap">
+        <table id="tablaEvolucion">
+          <thead><tr>
+            <th>Mes</th>
+            <th class="right">Cobros</th>
+            <th class="right">Ventas</th>
+            <th class="right">Gastos</th>
+            <th class="right">Resultado</th>
+            <th class="right">Por cobrar</th>
+            <th class="right">Q ventas</th>
+            <th class="right">Ticket</th>
+          </tr></thead>
+          <tbody id="bodyEvolucion"><tr><td colspan="8" class="loading"><span class="spinner"></span>Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- MOVIMIENTOS -->
+    <div class="section" id="secMovimientos">
+      <div class="section-header">
+        <span class="section-title">Movimientos</span>
+        <span class="section-meta" id="movMeta"></span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Fecha</th>
+            <th>Tipo</th>
+            <th>Concepto</th>
+            <th>Nota</th>
+            <th class="right">Monto</th>
+          </tr></thead>
+          <tbody id="bodyMovimientos"><tr><td colspan="5" class="loading"><span class="spinner"></span>Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SOCIOS -->
+    <div class="section" id="secSocios">
+      <div class="section-header">
+        <span class="section-title">Situación de socios</span>
+        <span class="section-meta" id="sociosMeta">Histórico completo</span>
+      </div>
+      <div id="contenidoSocios" class="two-col"><div class="loading"><span class="spinner"></span>Cargando...</div></div>
+      <div class="divider"></div>
+      <div class="table-wrap" style="margin-top:12px">
+        <table>
+          <thead><tr>
+            <th>Fecha</th>
+            <th>Socio</th>
+            <th>Concepto</th>
+            <th class="right">Monto</th>
+          </tr></thead>
+          <tbody id="bodyMovSocios"><tr><td colspan="4" class="loading"><span class="spinner"></span>Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- COMERCIAL -->
+    <div class="section print-break" id="secComercial">
+      <div class="section-header">
+        <span class="section-title">Resultado comercial</span>
+        <span class="section-meta" id="comercialMeta"></span>
+      </div>
+      <div id="contenidoComercial"><div class="loading"><span class="spinner"></span>Cargando...</div></div>
+    </div>
+
+    <!-- PRODUCCIÓN -->
+    <div class="section" id="secProduccion">
+      <div class="section-header">
+        <span class="section-title">Producción</span>
+        <span class="section-meta" id="prodMeta"></span>
+      </div>
+      <div id="contenidoProduccion"><div class="loading"><span class="spinner"></span>Cargando...</div></div>
+    </div>
+
+    <!-- POR COBRAR -->
+    <div class="section" id="secPorCobrar">
+      <div class="section-header">
+        <span class="section-title">Por cobrar</span>
+        <span class="section-meta" id="porCobrarMeta"></span>
+      </div>
+      <div id="contenidoPorCobrar"><div class="loading"><span class="spinner"></span>Cargando...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- PÁGINA: EDGAR -->
+<div id="page-edgar" class="page">
+  <div class="content">
+    <h1 class="print-title">Mosca Taller — Cuenta corriente Edgar</h1>
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Cuenta corriente — Edgar</span>
+        <span class="section-meta">Histórico completo</span>
+      </div>
+      <div id="kpiEdgar" class="kpi-grid" style="margin-bottom:16px"></div>
+      <div class="divider"></div>
+      <div class="table-wrap" style="margin-top:14px">
+        <table>
+          <thead><tr>
+            <th>Fecha</th>
+            <th>Tipo</th>
+            <th>Concepto / Pedido</th>
+            <th class="right">Devengado</th>
+            <th class="right">Pagado</th>
+            <th class="right">Saldo acum.</th>
+          </tr></thead>
+          <tbody id="bodyEdgar"><tr><td colspan="6" class="loading"><span class="spinner"></span>Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+// ─── CONFIG ────────────────────────────────────────────────────────────────
+const WEBHOOK_URL = 'https://n8n.groumachine.com.ar/webhook/mosca-dashboard-datos';
+
+// Colores por estado de producción
+const ESTADO_COLORS = {
+  'Pendiente': '#e0e0e0',
+  'En proceso': '#ffd54f',
+  'En producción': '#ffd54f',
+  'Listo': '#81c784',
+  'Listo para entrega': '#81c784',
+  'Entregado': '#4caf50',
+  'Problema': '#ef5350',
+  'default': '#bdbdbd'
+};
+
+// ─── STATE ──────────────────────────────────────────────────────────────────
+let allData = { resultados: [], ingresos: [], gastos: [], pedidos: [], produccion: [] };
+let selectedMonth = '';
+let chartEvol = null;
+
+// ─── UTILITIES ──────────────────────────────────────────────────────────────
+const fmt = n => {
+  if (n === null || n === undefined || (typeof n === 'object' && n.specialValue)) return '—';
+  const abs = Math.abs(n);
+  if (abs >= 1000000) return (n < 0 ? '-' : '') + '$' + (abs/1000000).toFixed(1) + 'M';
+  if (abs >= 1000) return (n < 0 ? '-' : '') + '$' + Math.round(abs/1000) + 'K';
+  return (n < 0 ? '-' : '') + '$' + Math.round(abs).toLocaleString('es-AR');
+};
+const fmtFull = n => {
+  if (n === null || n === undefined || (typeof n === 'object' && n.specialValue)) return '—';
+  return (n < 0 ? '-' : '') + '$' + Math.abs(n).toLocaleString('es-AR', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+};
+const fmtDate = d => {
+  if (!d) return '—';
+  const parts = d.split('-');
+  return `${parts[2]}/${parts[1]}/${parts[0].slice(2)}`;
+};
+const mesLabel = ym => {
+  if (!ym) return '';
+  const [y, m] = ym.split('-');
+  const meses = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  return `${meses[parseInt(m)]} ${y.slice(2)}`;
+};
+const signClass = n => (n > 0 ? 'positive' : n < 0 ? 'negative' : 'neutral');
+const isSpecial = v => typeof v === 'object' && v !== null && v.specialValue;
+
+// ─── LOAD DATA ──────────────────────────────────────────────────────────────
+async function loadData() {
+  setStatus('Cargando...');
+  showError('');
+
+  try {
+    const resp = await fetch(WEBHOOK_URL);
+    if (!resp.ok) throw new Error(`Error del servidor: ${resp.status}`);
+    const payload = await resp.json();
+
+    // El Code node de n8n devuelve el objeto directo o envuelto en array
+    const d = Array.isArray(payload) ? payload[0] : payload;
+    const { resultados, ingresos, gastos, pedidos, produccion } = d;
+
+    allData = { resultados, ingresos, gastos, pedidos, produccion };
+
+    // Populate month selector
+    const sel = document.getElementById('monthSelect');
+    sel.innerHTML = '<option value="">Todos los meses</option>';
+    const sorted = [...resultados].sort((a,b) => a.fields.Mes?.localeCompare(b.fields.Mes));
+    sorted.forEach(r => {
+      const m = r.fields.Mes;
+      if (m) {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.textContent = mesLabel(m);
+        sel.appendChild(opt);
+      }
+    });
+    // Default to latest month
+    if (sorted.length > 0) {
+      const lastMes = sorted[sorted.length - 1].fields.Mes;
+      sel.value = lastMes;
+      selectedMonth = lastMes;
+    }
+
+    setStatus(`Actualizado: ${new Date().toLocaleTimeString('es-AR', {hour:'2-digit',minute:'2-digit'})}`);
+    renderAll();
+  } catch (e) {
+    setStatus('Error al cargar');
+    showError(e.message);
+    console.error(e);
+  }
+}
+
+// ─── RENDER ALL ─────────────────────────────────────────────────────────────
+function renderAll() {
+  renderKPIs();
+  renderEvolucion();
+  renderMovimientos();
+  renderSocios();
+  renderComercial();
+  renderProduccion();
+  renderPorCobrar();
+  renderEdgar();
+}
+
+function onMonthChange() {
+  selectedMonth = document.getElementById('monthSelect').value;
+  renderKPIs();
+  renderMovimientos();
+  renderComercial();
+  // Update print title
+  const t = document.getElementById('printTitle');
+  if (t) t.textContent = selectedMonth
+    ? `Mosca Taller — Reporte ${mesLabel(selectedMonth)}`
+    : 'Mosca Taller — Reporte';
+}
+
+// ─── KPIs ────────────────────────────────────────────────────────────────────
+function renderKPIs() {
+  const meta = document.getElementById('kpiMeta');
+  let res = null;
+  if (selectedMonth) {
+    res = allData.resultados.find(r => r.fields.Mes === selectedMonth);
+    if (meta) meta.textContent = mesLabel(selectedMonth);
+  } else {
+    // Aggregate last 3 months
+    const sorted = [...allData.resultados].sort((a,b) => a.fields.Mes?.localeCompare(b.fields.Mes));
+    if (meta) meta.textContent = 'Último mes disponible';
+    res = sorted[sorted.length - 1] || null;
+  }
+
+  if (!res) {
+    document.getElementById('kpiGrid').innerHTML = '<p style="color:#999;font-size:13px">Sin datos para el período</p>';
+    return;
+  }
+  const f = res.fields;
+  const kpis = [
+    { label: 'Resultado', value: f.Resultado, format: fmtFull },
+    { label: 'Cobros', value: f.Cobros, format: fmtFull },
+    { label: 'Ventas firmadas', value: f.Ventas, format: fmt, sub: `${f.QVentas || 0} pedidos` },
+    { label: 'Gastos', value: -(f.Gastos || 0), format: fmtFull, forceClass: 'negative' },
+    { label: 'Por cobrar', value: f.PorCobrar, format: fmt },
+    { label: 'Ticket promedio', value: isSpecial(f.Ticket) ? null : f.Ticket, format: fmt },
+    { label: 'Posición acum.', value: f.Posicion, format: fmtFull },
+  ];
+
+  document.getElementById('kpiGrid').innerHTML = kpis.map(k => {
+    const cls = k.forceClass || (k.value != null ? signClass(k.value) : 'neutral');
+    const display = (k.value != null && !isSpecial(k.value)) ? k.format(k.value) : '—';
+    return `<div class="kpi">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value ${cls}">${display}</div>
+      ${k.sub ? `<div class="kpi-sub">${k.sub}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ─── EVOLUCIÓN ───────────────────────────────────────────────────────────────
+function renderEvolucion() {
+  const sorted = [...allData.resultados].sort((a,b) => (a.fields.Mes||'').localeCompare(b.fields.Mes||''));
+  const labels = sorted.map(r => mesLabel(r.fields.Mes));
+  const cobros = sorted.map(r => r.fields.Cobros || 0);
+  const gastos = sorted.map(r => -(r.fields.Gastos || 0));
+  const resultados = sorted.map(r => r.fields.Resultado || 0);
+  const posicion = sorted.map(r => r.fields.Posicion || 0);
+
+  if (chartEvol) chartEvol.destroy();
+  const ctx = document.getElementById('chartEvol').getContext('2d');
+  chartEvol = new Chart(ctx, {
+    data: {
+      labels,
+      datasets: [
+        {
+          type: 'bar', label: 'Cobros',
+          data: cobros, backgroundColor: 'rgba(46,125,50,0.7)',
+          yAxisID: 'y'
+        },
+        {
+          type: 'bar', label: 'Gastos',
+          data: gastos, backgroundColor: 'rgba(192,57,43,0.65)',
+          yAxisID: 'y'
+        },
+        {
+          type: 'line', label: 'Resultado',
+          data: resultados, borderColor: '#c4873a', backgroundColor: 'transparent',
+          borderWidth: 2, pointRadius: 3, tension: 0.3, yAxisID: 'y'
+        },
+        {
+          type: 'line', label: 'Posición acum.',
+          data: posicion, borderColor: '#1565c0', backgroundColor: 'transparent',
+          borderWidth: 2, pointRadius: 3, borderDash: [4,3], tension: 0.3, yAxisID: 'y'
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.dataset.label}: ${fmtFull(ctx.raw)}`
+          }
+        }
+      },
+      scales: {
+        y: { ticks: { callback: v => fmt(v), font: { size: 10 } }, grid: { color: '#f0eeeb' } },
+        x: { ticks: { font: { size: 10 } }, grid: { display: false } }
+      }
+    }
+  });
+
+  // Table
+  const tbody = document.getElementById('bodyEvolucion');
+  tbody.innerHTML = sorted.map(r => {
+    const f = r.fields;
+    const res = f.Resultado || 0;
+    const rowCls = res > 0 ? 'positive' : 'negative';
+    return `<tr>
+      <td><strong>${mesLabel(f.Mes)}</strong></td>
+      <td class="right mono">${fmtFull(f.Cobros)}</td>
+      <td class="right mono">${fmtFull(f.Ventas)}</td>
+      <td class="right mono negative">${fmtFull(f.Gastos)}</td>
+      <td class="right mono ${rowCls}"><strong>${fmtFull(res)}</strong></td>
+      <td class="right mono blue">${fmtFull(f.PorCobrar)}</td>
+      <td class="right">${f.QVentas || 0}</td>
+      <td class="right mono">${isSpecial(f.Ticket) ? '—' : fmt(f.Ticket)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── MOVIMIENTOS ─────────────────────────────────────────────────────────────
+function renderMovimientos() {
+  const meta = document.getElementById('movMeta');
+  let ings = allData.ingresos;
+  let gasts = allData.gastos;
+
+  if (selectedMonth) {
+    ings = ings.filter(r => r.fields['mes-a'] === selectedMonth);
+    gasts = gasts.filter(r => r.fields['mes-a'] === selectedMonth);
+  }
+
+  // Combine and sort by date
+  const rows = [
+    ...ings.map(r => ({
+      fecha: r.fields.fecha || '',
+      tipo: 'I',
+      concepto: (r.fields.concepto) || r.fields.tipo_flujo || '—',
+      nota: r.fields.Nota || '',
+      monto: r.fields.monto || 0
+    })),
+    ...gasts.map(r => ({
+      fecha: r.fields.fecha || '',
+      tipo: 'G',
+      concepto: r.fields.concepto || r.fields.categoria || '—',
+      nota: Array.isArray(r.fields['proveedor (de Proveedores)'])
+        ? r.fields['proveedor (de Proveedores)'].join(', ') : '',
+      monto: -(r.fields.monto || 0)
+    }))
+  ].sort((a,b) => a.fecha.localeCompare(b.fecha));
+
+  if (meta) meta.textContent = `${rows.length} movimientos`;
+
+  const totalI = ings.reduce((s,r) => s + (r.fields.monto||0), 0);
+  const totalG = gasts.reduce((s,r) => s + (r.fields.monto||0), 0);
+  const neto = totalI - totalG;
+
+  if (rows.length === 0) {
+    document.getElementById('bodyMovimientos').innerHTML =
+      `<tr><td colspan="5" style="text-align:center;color:#999;padding:20px">Sin movimientos para este período</td></tr>`;
+    return;
+  }
+
+  document.getElementById('bodyMovimientos').innerHTML =
+    rows.map(r => `<tr>
+      <td>${fmtDate(r.fecha)}</td>
+      <td><span class="tag ${r.tipo === 'I' ? 'tag-green' : 'tag-red'}">${r.tipo === 'I' ? 'Ingreso' : 'Gasto'}</span></td>
+      <td>${r.concepto}</td>
+      <td style="color:#999;font-size:12px">${r.nota}</td>
+      <td class="right mono ${r.monto >= 0 ? 'positive' : 'negative'}">${fmtFull(r.monto)}</td>
+    </tr>`).join('')
+    + `<tr class="sum-row">
+      <td colspan="3"></td>
+      <td class="right" style="font-size:12px;color:#999">Cobros / Gastos / Neto</td>
+      <td class="right mono">
+        <span class="positive">${fmtFull(totalI)}</span> /
+        <span class="negative">${fmtFull(-totalG)}</span> /
+        <span class="${signClass(neto)}">${fmtFull(neto)}</span>
+      </td>
+    </tr>`;
+}
+
+// ─── SOCIOS ──────────────────────────────────────────────────────────────────
+function renderSocios() {
+  const socios = {
+    'Lisandro': { aportes: [], conceptos: {} },
+    'Javier':   { aportes: [], conceptos: {} }
+  };
+  const keywords = { 'Lisandro': 'Lisandro', 'Javier': 'Javier' };
+
+  allData.ingresos.forEach(r => {
+    const f = r.fields;
+    const concepto = f.concepto || '';
+    for (const [nombre, kw] of Object.entries(keywords)) {
+      if (concepto.includes(kw)) {
+        socios[nombre].aportes.push({ fecha: f.fecha, concepto, monto: f.monto || 0 });
+        socios[nombre].conceptos[concepto] = (socios[nombre].conceptos[concepto] || 0) + (f.monto || 0);
+      }
+    }
+  });
+
+  const cards = Object.entries(socios).map(([nombre, d]) => {
+    const total = d.aportes.reduce((s,a) => s + a.monto, 0);
+    const capitalRows = Object.entries(d.conceptos).map(([c,m]) =>
+      `<tr><td style="font-size:12px">${c}</td><td class="right mono positive">${fmtFull(m)}</td></tr>`
+    ).join('');
+    const ultimoMes = selectedMonth
+      ? d.aportes.filter(a => a.fecha && a.fecha.startsWith(selectedMonth.replace('-','-'))).reduce((s,a) => s + a.monto, 0)
+      : null;
+    return `<div class="socio-card">
+      <div class="socio-card-header">
+        <span>${nombre}</span>
+        <span class="socio-net positive">${fmtFull(total)}</span>
+      </div>
+      <div style="padding:10px 14px">
+        <table style="font-size:12px">
+          <tbody>${capitalRows || '<tr><td colspan="2" style="color:#999">Sin movimientos</td></tr>'}</tbody>
+        </table>
+        ${ultimoMes ? `<div style="margin-top:8px;font-size:11px;color:#999">Este mes: <strong class="${signClass(ultimoMes)}">${fmtFull(ultimoMes)}</strong></div>` : ''}
+      </div>
+    </div>`;
+  });
+
+  document.getElementById('contenidoSocios').innerHTML = cards.join('');
+
+  // Movement table for socios
+  const allMov = [];
+  Object.entries(socios).forEach(([nombre, d]) => {
+    d.aportes.forEach(a => allMov.push({ ...a, nombre }));
+  });
+  allMov.sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
+
+  document.getElementById('bodyMovSocios').innerHTML = allMov.length === 0
+    ? '<tr><td colspan="4" style="text-align:center;color:#999;padding:20px">Sin datos</td></tr>'
+    : allMov.map(a => `<tr>
+      <td>${fmtDate(a.fecha)}</td>
+      <td>${a.nombre}</td>
+      <td style="font-size:12px">${a.concepto}</td>
+      <td class="right mono positive">${fmtFull(a.monto)}</td>
+    </tr>`).join('');
+}
+
+// ─── COMERCIAL ───────────────────────────────────────────────────────────────
+function renderComercial() {
+  const meta = document.getElementById('comercialMeta');
+  let pedidos = allData.pedidos;
+
+  if (selectedMonth) {
+    pedidos = pedidos.filter(r => {
+      const mp = r.fields.mes_pedido || r.fields.seña || '';
+      return mp.startsWith(selectedMonth);
+    });
+    if (meta) meta.textContent = mesLabel(selectedMonth);
+  } else {
+    if (meta) meta.textContent = 'Histórico';
+  }
+
+  // Filter out cancelled
+  const activos = pedidos.filter(r => {
+    const est = r.fields.estado || '';
+    return est !== 'Cancelado';
+  });
+
+  const totalVentas = activos.reduce((s,r) => s + (r.fields.monto_total_pactado||r.fields.precio_pactado||0), 0);
+  const cantMuebles = activos.reduce((s,r) => s + (r.fields.cant_muebles||0), 0);
+  const cantPedidos = activos.length;
+  const ticket = cantPedidos > 0 ? totalVentas / cantPedidos : 0;
+  const totalPremioEdgar = activos.reduce((s,r) => s + (r.fields.premio_edgar||0), 0);
+
+  // Group by estado
+  const byEstado = {};
+  activos.forEach(r => {
+    const e = r.fields.estado || 'Sin estado';
+    byEstado[e] = (byEstado[e] || 0) + 1;
+  });
+
+  const estadoTags = Object.entries(byEstado).map(([e, n]) => {
+    let cls = 'tag-gray';
+    if (e.includes('Entregado')) cls = 'tag-green';
+    else if (e.includes('producción') || e.includes('Produccion')) cls = 'tag-amber';
+    else if (e.includes('Listo')) cls = 'tag-blue';
+    return `<span class="tag ${cls}" style="margin-right:6px">${e} (${n})</span>`;
+  }).join('');
+
+  // Pedidos table
+  const pedidosRows = activos
+    .sort((a,b) => (b.fields.seña||'').localeCompare(a.fields.seña||''))
+    .map(r => {
+      const f = r.fields;
+      const cliente = Array.isArray(f.cliente) ? f.cliente[0] : (f.cliente || '—');
+      const est = f.estado || '—';
+      let tagCls = 'tag-gray';
+      if (est.includes('Entregado')) tagCls = 'tag-green';
+      else if (est.includes('producción') || est.includes('Produccion')) tagCls = 'tag-amber';
+      else if (est.includes('Listo')) tagCls = 'tag-blue';
+      else if (est === 'Seña') tagCls = 'tag-purple';
+      return `<tr>
+        <td>${fmtDate(f.seña)}</td>
+        <td>${cliente}</td>
+        <td><span class="tag ${tagCls}" style="font-size:10px">${est}</span></td>
+        <td class="right">${f.cant_muebles||'—'}</td>
+        <td class="right mono">${fmtFull(f.monto_total_pactado||f.precio_pactado)}</td>
+        <td class="right mono positive">${fmtFull(f.pagado)}</td>
+        <td class="right mono ${(f.saldo||0) > 0 ? 'blue' : 'positive'}">${fmtFull(f.saldo)}</td>
+      </tr>`;
+    }).join('');
+
+  document.getElementById('contenidoComercial').innerHTML = `
+    <div class="kpi-grid" style="margin-bottom:16px">
+      <div class="kpi"><div class="kpi-label">Pedidos</div><div class="kpi-value neutral">${cantPedidos}</div></div>
+      <div class="kpi"><div class="kpi-label">Muebles</div><div class="kpi-value neutral">${cantMuebles}</div></div>
+      <div class="kpi"><div class="kpi-label">Monto total</div><div class="kpi-value positive">${fmt(totalVentas)}</div></div>
+      <div class="kpi"><div class="kpi-label">Ticket promedio</div><div class="kpi-value neutral">${fmt(ticket)}</div></div>
+      <div class="kpi"><div class="kpi-label">Premio Edgar</div><div class="kpi-value negative">${fmt(totalPremioEdgar)}</div></div>
+    </div>
+    <div style="margin-bottom:14px">${estadoTags}</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Fecha seña</th><th>Cliente</th><th>Estado</th>
+          <th class="right">Muebles</th><th class="right">Total</th>
+          <th class="right">Pagado</th><th class="right">Saldo</th>
+        </tr></thead>
+        <tbody>${pedidosRows || '<tr><td colspan="7" style="text-align:center;color:#999;padding:20px">Sin pedidos</td></tr>'}</tbody>
+      </table>
+    </div>`;
+}
+
+// ─── PRODUCCIÓN ───────────────────────────────────────────────────────────────
+function renderProduccion() {
+  const prods = allData.produccion;
+  const meta = document.getElementById('prodMeta');
+
+  // Stats
+  const porEstado = {};
+  prods.forEach(r => {
+    const e = r.fields.estado || 'Sin estado';
+    porEstado[e] = (porEstado[e] || 0) + 1;
+  });
+
+  const entregados = prods.filter(r => (r.fields.estado||'').includes('Entregado'));
+  const conProblemas = prods.filter(r => r.fields.problemas);
+  const activos = prods.filter(r => !(r.fields.estado||'').includes('Entregado'));
+
+  if (meta) meta.textContent = `${activos.length} activos · ${entregados.length} entregados · ${conProblemas.length} con problemas`;
+
+  // State summary
+  const estadoSummary = Object.entries(porEstado).map(([e, n]) => {
+    const color = ESTADO_COLORS[e] || ESTADO_COLORS.default;
+    return `<span class="tag tag-gray" style="background:${color}20;color:#444;margin-right:6px">
+      <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:4px"></span>
+      ${e} (${n})
+    </span>`;
+  }).join('');
+
+  // Active items
+  const activosSorted = activos.sort((a,b) => {
+    const da = a.fields.fecha_comprometida || '';
+    const db = b.fields.fecha_comprometida || '';
+    return da.localeCompare(db);
+  });
+
+  const prodsHTML = activosSorted.map(r => {
+    const f = r.fields;
+    const estado = f.estado || '?';
+    const color = ESTADO_COLORS[estado] || ESTADO_COLORS.default;
+    const clientes = Array.isArray(f.cliente) ? f.cliente.join(', ') : (f.cliente || '—');
+    const comprometida = Array.isArray(f.fecha_comprometida) ? f.fecha_comprometida[0] : f.fecha_comprometida;
+    const demora = f.dias_de_demora;
+    const variantes = Array.isArray(f.variante) ? `${f.variante.length} mueble(s)` : '';
+    const notas = Array.isArray(f.notas_variante) ? f.notas_variante.filter(Boolean).join(', ') : '';
+    return `<div class="prod-item">
+      <div class="prod-estado" style="background:${color}"></div>
+      <div class="prod-info">
+        <div class="prod-nombre">${clientes} ${notas ? `· ${notas}` : ''}</div>
+        <div class="prod-meta">
+          ${variantes ? variantes + ' · ' : ''}Estado: <strong>${estado}</strong>
+          ${comprometida ? ` · Comprometido: ${fmtDate(comprometida)}` : ''}
+          ${demora != null && demora > 0 ? ` · <span style="color:#f57f17">${demora}d demora</span>` : ''}
+        </div>
+        ${f.problemas ? `<div class="prod-problema">⚠ ${f.problemas}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('') || '<div style="color:#999;font-size:13px;padding:12px 0">No hay items activos en producción</div>';
+
+  document.getElementById('contenidoProduccion').innerHTML = `
+    <div style="margin-bottom:14px">${estadoSummary}</div>
+    <p style="font-size:11px;color:#999;margin-bottom:10px">Nota: las fechas de estado pueden no reflejar con exactitud los movimientos reales.</p>
+    ${prodsHTML}`;
+}
+
+// ─── POR COBRAR ───────────────────────────────────────────────────────────────
+function renderPorCobrar() {
+  const meta = document.getElementById('porCobrarMeta');
+  const produccionById = {};
+  allData.produccion.forEach(r => { produccionById[r.id] = r.fields; });
+
+  const conSaldo = allData.pedidos.filter(r => {
+    const saldo = r.fields.saldo;
+    return saldo && saldo > 0;
+  }).sort((a,b) => (b.fields.saldo||0) - (a.fields.saldo||0));
+
+  const totalPorCobrar = conSaldo.reduce((s,r) => s + (r.fields.saldo||0), 0);
+  if (meta) meta.textContent = `${conSaldo.length} pedidos · ${fmtFull(totalPorCobrar)} total`;
+
+  if (conSaldo.length === 0) {
+    document.getElementById('contenidoPorCobrar').innerHTML =
+      '<div style="color:#999;font-size:13px;padding:12px 0">Sin saldos pendientes</div>';
+    return;
+  }
+
+  const rows = conSaldo.map(r => {
+    const f = r.fields;
+    const cliente = Array.isArray(f.cliente) ? f.cliente[0] : (f.cliente || '—');
+    // Check prod status
+    const prodRecs = (f.produccion || []).map(id => produccionById[id]).filter(Boolean);
+    const pendProd = prodRecs.filter(p => !(p.estado||'').includes('Entregado') && !(p.estado||'').includes('Listo'));
+    const listoProd = prodRecs.filter(p => (p.estado||'').includes('Listo') && !(p.estado||'').includes('Entregado'));
+
+    let prodStatus = '';
+    if (prodRecs.length === 0) prodStatus = '<span class="tag tag-gray">Sin producción</span>';
+    else if (pendProd.length > 0) prodStatus = `<span class="tag tag-amber">En producción (${pendProd.length})</span>`;
+    else if (listoProd.length > 0) prodStatus = `<span class="tag tag-blue">Listo (${listoProd.length})</span>`;
+    else prodStatus = '<span class="tag tag-green">Producción ok</span>';
+
+    return `<tr>
+      <td>${cliente}</td>
+      <td class="right mono">${fmtFull(f.monto_total_pactado||f.precio_pactado)}</td>
+      <td class="right mono positive">${fmtFull(f.pagado)}</td>
+      <td class="right mono blue"><strong>${fmtFull(f.saldo)}</strong></td>
+      <td>${prodStatus}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('contenidoPorCobrar').innerHTML = `
+    <div class="kpi-grid" style="margin-bottom:16px">
+      <div class="kpi"><div class="kpi-label">Pedidos con saldo</div><div class="kpi-value neutral">${conSaldo.length}</div></div>
+      <div class="kpi"><div class="kpi-label">Total por cobrar</div><div class="kpi-value blue">${fmt(totalPorCobrar)}</div></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Cliente</th><th class="right">Total pactado</th>
+          <th class="right">Pagado</th><th class="right">Saldo</th>
+          <th>Producción</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+// ─── EDGAR ───────────────────────────────────────────────────────────────────
+function renderEdgar() {
+  // Ingresos de Edgar (concepto = "Recupero Edgar")
+  const ingEdgar = allData.ingresos.filter(r =>
+    (r.fields.concepto || '').includes('Edgar')
+  );
+
+  // Gastos pagados a Edgar (proveedor = Edgar o concepto incluye Edgar)
+  const gastEdgar = allData.gastos.filter(r => {
+    const prov = Array.isArray(r.fields['proveedor (de Proveedores)'])
+      ? r.fields['proveedor (de Proveedores)'].join(' ')
+      : '';
+    const conc = r.fields.concepto || '';
+    const cc = r.fields.centro_costos || '';
+    return prov.toLowerCase().includes('edgar')
+      || conc.toLowerCase().includes('edgar')
+      || cc.toLowerCase().includes('edgar');
+  });
+
+  // Premio Edgar acumulado de pedidos (lo que se devengó)
+  const totalPremioDevengado = allData.pedidos
+    .filter(r => r.fields.estado !== 'Cancelado')
+    .reduce((s,r) => s + (r.fields.premio_edgar||0), 0);
+
+  const totalPagado = gastEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
+  const totalIngresado = ingEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
+  const saldoEdgar = totalPremioDevengado - totalPagado + totalIngresado;
+
+  // Build combined movement list
+  const movs = [
+    ...allData.pedidos
+      .filter(r => (r.fields.premio_edgar||0) > 0 && r.fields.estado !== 'Cancelado')
+      .map(r => ({
+        fecha: r.fields.seña || '',
+        tipo: 'devengado',
+        concepto: `Premio venta · ${Array.isArray(r.fields.cliente) ? r.fields.cliente[0] : (r.fields.cliente||'—')}`,
+        devengado: r.fields.premio_edgar||0,
+        pagado: 0
+      })),
+    ...gastEdgar.map(r => ({
+      fecha: r.fields.fecha || '',
+      tipo: 'pago',
+      concepto: r.fields.concepto || 'Pago',
+      devengado: 0,
+      pagado: r.fields.monto || 0
+    })),
+    ...ingEdgar.map(r => ({
+      fecha: r.fields.fecha || '',
+      tipo: 'recupero',
+      concepto: r.fields.concepto || 'Recupero',
+      devengado: 0,
+      pagado: -(r.fields.monto || 0) // negativo = Edgar aporta
+    }))
+  ].sort((a,b) => a.fecha.localeCompare(b.fecha));
+
+  // Build running balance
+  let saldoAcum = 0;
+  const rows = movs.map(m => {
+    if (m.tipo === 'devengado') saldoAcum += m.devengado;
+    else if (m.tipo === 'pago') saldoAcum -= m.pagado;
+    else if (m.tipo === 'recupero') saldoAcum += m.pagado; // pagado is negative here
+    const tipTag = m.tipo === 'devengado'
+      ? '<span class="tag tag-amber">Devengado</span>'
+      : m.tipo === 'pago'
+        ? '<span class="tag tag-green">Pagado</span>'
+        : '<span class="tag tag-blue">Recupero</span>';
+    return `<tr>
+      <td>${fmtDate(m.fecha)}</td>
+      <td>${tipTag}</td>
+      <td style="font-size:12px">${m.concepto}</td>
+      <td class="right mono ${m.devengado > 0 ? 'negative' : ''}">${m.devengado > 0 ? fmtFull(m.devengado) : '—'}</td>
+      <td class="right mono ${m.pagado > 0 ? 'positive' : ''}">${m.pagado !== 0 ? fmtFull(Math.abs(m.pagado)) : '—'}</td>
+      <td class="right mono ${signClass(-saldoAcum)}">${fmtFull(saldoAcum)}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('kpiEdgar').innerHTML = `
+    <div class="kpi"><div class="kpi-label">Premio devengado (pedidos)</div><div class="kpi-value negative">${fmtFull(totalPremioDevengado)}</div></div>
+    <div class="kpi"><div class="kpi-label">Total pagado a Edgar</div><div class="kpi-value positive">${fmtFull(totalPagado)}</div></div>
+    <div class="kpi"><div class="kpi-label">Recuperos de Edgar</div><div class="kpi-value neutral">${fmtFull(totalIngresado)}</div></div>
+    <div class="kpi"><div class="kpi-label">Saldo (lo que Mosca le debe)</div><div class="kpi-value ${signClass(saldoEdgar)}">${fmtFull(saldoEdgar)}</div></div>`;
+
+  document.getElementById('bodyEdgar').innerHTML = rows ||
+    '<tr><td colspan="6" style="text-align:center;color:#999;padding:20px">Sin movimientos registrados para Edgar</td></tr>';
+}
+
+// ─── UI HELPERS ──────────────────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name)?.classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach(t => {
+    if (t.textContent.toLowerCase().includes(name === 'reporte' ? 'reporte' : 'edgar'))
+      t.classList.add('active');
+  });
+  document.getElementById('toolbar').style.display = name === 'reporte' ? '' : 'none';
+}
+
+function setStatus(msg) { document.getElementById('statusMsg').textContent = msg; }
+function showError(msg) {
+  const el = document.getElementById('errorBanner');
+  if (!el) return;
+  el.style.display = msg ? 'block' : 'none';
+  el.textContent = msg;
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => loadData());
+</script>
+</body>
+</html>
