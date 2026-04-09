@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mosca Taller — Dashboard v0.4</title>
+  <title>Mosca Taller — Dashboard v0.5</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     :root {
@@ -222,7 +222,7 @@
 
 <!-- NAV -->
 <nav class="nav no-print">
-  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v0.4</span></span>
+  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v0.5</span></span>
   <div class="nav-tabs">
     <button class="nav-tab active" onclick="showPage('reporte')">Reporte</button>
     <button class="nav-tab" onclick="showPage('edgar')">Edgar</button>
@@ -827,9 +827,11 @@ function renderComercial() {
       else if (est.includes('producción') || est.includes('Produccion')) tagCls = 'tag-amber';
       else if (est.includes('Listo')) tagCls = 'tag-blue';
       else if (est === 'Seña') tagCls = 'tag-purple';
+      const variante = Array.isArray(f.variante) ? f.variante.join(', ') : (f.variante || '—');
       return `<tr>
         <td>${fmtDate(f.seña)}</td>
         <td>${cliente}</td>
+        <td style="font-size:12px;color:#555;max-width:200px">${variante}</td>
         <td><span class="tag ${tagCls}" style="font-size:10px">${est}</span></td>
         <td class="right">${f.cant_muebles||'—'}</td>
         <td class="right mono">${fmtFull(f.monto_total_pactado||f.precio_pactado)}</td>
@@ -850,11 +852,11 @@ function renderComercial() {
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>Fecha seña</th><th>Cliente</th><th>Estado</th>
+          <th>Fecha seña</th><th>Cliente</th><th>Variante</th><th>Estado</th>
           <th class="right">Muebles</th><th class="right">Total</th>
           <th class="right">Pagado</th><th class="right">Saldo</th>
         </tr></thead>
-        <tbody>${pedidosRows || '<tr><td colspan="7" style="text-align:center;color:#999;padding:20px">Sin pedidos</td></tr>'}</tbody>
+        <tbody>${pedidosRows || '<tr><td colspan="8" style="text-align:center;color:#999;padding:20px">Sin pedidos</td></tr>'}</tbody>
       </table>
     </div>`;
 }
@@ -900,16 +902,18 @@ function renderProduccion() {
     const clientes = Array.isArray(f.cliente) ? f.cliente.join(', ') : (f.cliente || '—');
     const comprometida = Array.isArray(f.fecha_comprometida) ? f.fecha_comprometida[0] : f.fecha_comprometida;
     const demora = f.dias_de_demora;
-    const variantes = Array.isArray(f.variante) ? `${f.variante.length} mueble(s)` : '';
+    const variantes = Array.isArray(f.variante) ? f.variante.join(', ') : (f.variante || '');
     const notas = Array.isArray(f.notas_variante) ? f.notas_variante.filter(Boolean).join(', ') : '';
     return `<div class="prod-item">
       <div class="prod-estado" style="background:${color}"></div>
       <div class="prod-info">
-        <div class="prod-nombre">${clientes} ${notas ? `· ${notas}` : ''}</div>
+        <div class="prod-nombre">${clientes}</div>
+        ${variantes ? `<div style="font-size:12px;color:#555;margin-top:2px">${variantes}</div>` : ''}
         <div class="prod-meta">
-          ${variantes ? variantes + ' · ' : ''}Estado: <strong>${estado}</strong>
+          Estado: <strong>${estado}</strong>
           ${comprometida ? ` · Comprometido: ${fmtDate(comprometida)}` : ''}
           ${demora != null && demora > 0 ? ` · <span style="color:#f57f17">${demora}d demora</span>` : ''}
+          ${notas ? ` · ${notas}` : ''}
         </div>
         ${f.problemas ? `<div class="prod-problema">⚠ ${f.problemas}</div>` : ''}
       </div>
