@@ -433,12 +433,37 @@ async function loadData() {
 
   try {
     const resp = await fetch(WEBHOOK_URL);
-    if (!resp.ok) throw new Error(`Error del servidor: ${resp.status}`);
-    const payload = await resp.json();
+
+    // Leer como texto primero para diagnosticar mejor
+    const rawText = await resp.text();
+
+    if (!rawText || rawText.trim() === '') {
+      throw new Error(
+        'El webhook devolvió una respuesta vacía. ' +
+        'Verificá que el workflow en n8n esté ACTIVO (toggle "Active" en la esquina superior derecha) ' +
+        'y no en modo Test.'
+      );
+    }
+
+    if (!resp.ok) {
+      throw new Error(`Error del servidor ${resp.status}: ${rawText.slice(0, 200)}`);
+    }
+
+    let payload;
+    try {
+      payload = JSON.parse(rawText);
+    } catch {
+      throw new Error(`La respuesta no es JSON válido. Primeros 200 chars: ${rawText.slice(0, 200)}`);
+    }
 
     // El Code node de n8n devuelve el objeto directo o envuelto en array
     const d = Array.isArray(payload) ? payload[0] : payload;
-    const { resultados, ingresos, gastos, pedidos, produccion } = d;
+    if (!d || typeof d !== 'object') throw new Error('Estructura de respuesta inesperada.');
+    const resultados  = d.resultados  || [];
+    const ingresos    = d.ingresos    || [];
+    const gastos      = d.gastos      || [];
+    const pedidos     = d.pedidos     || [];
+    const produccion  = d.produccion  || [];
 
     allData = { resultados, ingresos, gastos, pedidos, produccion };
 
