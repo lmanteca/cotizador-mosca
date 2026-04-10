@@ -3,21 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mosca Taller — Dashboard v0.5</title>
+  <title>Mosca Taller — Dashboard v0.6</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     :root {
-      --bg: #f4f3f0;
+      --bg: #f5f2ef;
       --card: #ffffff;
       --border: #e0ddd8;
       --text: #1a1714;
       --muted: #6b6560;
-      --accent: #2c4a2e;
-      --accent-light: #3d6640;
+      --accent: #0a465a;
+      --accent-light: #136b85;
       --amber: #c4873a;
       --positive: #2e7d32;
       --negative: #c0392b;
       --blue: #1565c0;
+      --mosca-beige: #d2beaa;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -222,7 +223,7 @@
 
 <!-- NAV -->
 <nav class="nav no-print">
-  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v0.5</span></span>
+  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v0.6</span></span>
   <div class="nav-tabs">
     <button class="nav-tab active" onclick="showPage('reporte')">Reporte</button>
     <button class="nav-tab" onclick="showPage('edgar')">Edgar</button>
@@ -255,6 +256,7 @@
         <span class="section-meta" id="kpiMeta"></span>
       </div>
       <div id="kpiGrid" class="kpi-grid"><div class="loading"><span class="spinner"></span>Cargando...</div></div>
+      <div id="gastosBreakdown" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)"></div>
     </div>
 
     <!-- EVOLUCIÓN -->
@@ -366,9 +368,9 @@
           <thead><tr>
             <th>Fecha</th>
             <th>Tipo</th>
-            <th>Concepto / Pedido</th>
-            <th class="right">Devengado</th>
-            <th class="right">Pagado</th>
+            <th>Concepto</th>
+            <th class="right">Adelanto (deuda)</th>
+            <th class="right">Recupero / Premio</th>
             <th class="right">Saldo acum.</th>
           </tr></thead>
           <tbody id="bodyEdgar"><tr><td colspan="6" class="loading"><span class="spinner"></span>Cargando...</td></tr></tbody>
@@ -380,7 +382,7 @@
 
 
 <script>
-// ─── CONFIG ────────────────────────────────────────────────────────────────
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
 const WEBHOOK_URL = 'https://n8n.groumachine.com.ar/webhook/mosca-dashboard-datos';
 
 // Colores por estado de producción
@@ -547,25 +549,29 @@ function renderKPIs() {
     res = allData.resultados.find(r => r.fields.Mes === selectedMonth);
     if (meta) meta.textContent = mesLabel(selectedMonth);
   } else {
-    // Aggregate last 3 months
     const sorted = [...allData.resultados].sort((a,b) => (a.fields.Mes||'').localeCompare(b.fields.Mes||''));
-    if (meta) meta.textContent = 'Último mes disponible';
     res = sorted[sorted.length - 1] || null;
+    if (meta) meta.textContent = res ? `Último: ${mesLabel(res.fields.Mes)}` : 'Sin datos';
   }
 
   if (!res) {
     document.getElementById('kpiGrid').innerHTML = '<p style="color:#999;font-size:13px">Sin datos para el período</p>';
+    const bd = document.getElementById('gastosBreakdown');
+    if (bd) bd.innerHTML = '';
     return;
   }
   const f = res.fields;
+  const resFinanciero = f.Resultado || 0;
+  const resEconomico = (f.Ventas || 0) - (f.Gastos || 0);
+
   const kpis = [
-    { label: 'Resultado', value: f.Resultado, format: fmtFull },
-    { label: 'Cobros', value: f.Cobros, format: fmtFull },
+    { label: 'Resultado caja', value: resFinanciero, format: fmtFull, sub: 'Cobros − Gastos' },
+    { label: 'Resultado económico', value: resEconomico, format: fmtFull, sub: 'Ventas firmadas − Gastos' },
+    { label: 'Cobros del mes', value: f.Cobros, format: fmtFull },
     { label: 'Ventas firmadas', value: f.Ventas, format: fmt, sub: `${f.QVentas || 0} pedidos` },
     { label: 'Gastos', value: -(f.Gastos || 0), format: fmtFull, forceClass: 'negative' },
-    { label: 'Por cobrar', value: f.PorCobrar, format: fmt },
+    { label: 'Por cobrar', value: f.PorCobrar, format: fmt, sub: 'Saldos pendientes' },
     { label: 'Ticket promedio', value: isSpecial(f.Ticket) ? null : f.Ticket, format: fmt },
-    { label: 'Posición acum.', value: f.Posicion, format: fmtFull },
   ];
 
   document.getElementById('kpiGrid').innerHTML = kpis.map(k => {
@@ -577,16 +583,67 @@ function renderKPIs() {
       ${k.sub ? `<div class="kpi-sub">${k.sub}</div>` : ''}
     </div>`;
   }).join('');
+
+  // Gastos breakdown (Fijos / Variables / Única vez)
+  const fijos    = f['Gastos Fijos']     || 0;
+  const variables= f['Gastos Variables'] || 0;
+  const unicaVez = f['Gastos Unica Vez'] || 0;
+  const totalG   = f.Gastos || 0;
+  const cobros   = f.Cobros || 0;
+  const cubrenFijos = cobros >= fijos;
+
+  const bd = document.getElementById('gastosBreakdown');
+  if (!bd) return;
+  bd.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <span class="section-title">Estructura de gastos</span>
+      ${fijos > 0
+        ? (!cubrenFijos
+            ? `<span style="background:#ffebee;color:#c62828;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600">⚠ Cobros no cubren fijos (faltan ${fmtFull(fijos - cobros)})</span>`
+            : `<span style="background:#e8f5e9;color:#2e7d32;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600">✓ Fijos cubiertos</span>`)
+        : ''}
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="kpi-label">Fijos</div>
+        <div class="kpi-value negative" style="font-size:17px">${fmtFull(fijos)}</div>
+        <div class="kpi-sub">${totalG > 0 ? Math.round(fijos/totalG*100) : 0}% del total</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Variables</div>
+        <div class="kpi-value negative" style="font-size:17px">${fmtFull(variables)}</div>
+        <div class="kpi-sub">${totalG > 0 ? Math.round(variables/totalG*100) : 0}% del total</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Por única vez</div>
+        <div class="kpi-value neutral" style="font-size:17px">${fmtFull(unicaVez)}</div>
+        <div class="kpi-sub">${totalG > 0 ? Math.round(unicaVez/totalG*100) : 0}% del total</div>
+      </div>
+    </div>
+    <div style="height:6px;background:#e8e4e0;border-radius:3px;overflow:hidden;display:flex;margin-top:10px">
+      ${totalG > 0 ? `
+        <div style="width:${fijos/totalG*100}%;background:#c62828;opacity:0.8"></div>
+        <div style="width:${variables/totalG*100}%;background:#e57373;opacity:0.8"></div>
+        <div style="width:${unicaVez/totalG*100}%;background:#ef9a9a;opacity:0.8"></div>
+      ` : ''}
+    </div>
+    <div style="display:flex;gap:16px;margin-top:6px;font-size:11px;color:var(--muted)">
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#c62828;margin-right:4px"></span>Fijos</span>
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#e57373;margin-right:4px"></span>Variables</span>
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#ef9a9a;margin-right:4px"></span>Única vez</span>
+    </div>
+  `;
 }
 
 // ─── EVOLUCIÓN ───────────────────────────────────────────────────────────────
 function renderEvolucion() {
   const sorted = [...allData.resultados].sort((a,b) => (a.fields.Mes||'').localeCompare(b.fields.Mes||''));
-  const labels = sorted.map(r => mesLabel(r.fields.Mes));
-  const cobros = sorted.map(r => r.fields.Cobros || 0);
-  const gastos = sorted.map(r => -(r.fields.Gastos || 0));
-  const resultados = sorted.map(r => r.fields.Resultado || 0);
-  const posicion = sorted.map(r => r.fields.Posicion || 0);
+  const labels       = sorted.map(r => mesLabel(r.fields.Mes));
+  const cobros       = sorted.map(r => r.fields.Cobros || 0);
+  const ventas       = sorted.map(r => r.fields.Ventas || 0);
+  const gastos       = sorted.map(r => -(r.fields.Gastos || 0));
+  const resFinanc    = sorted.map(r => r.fields.Resultado || 0);
+  const resEcon      = sorted.map(r => (r.fields.Ventas||0) - (r.fields.Gastos||0));
 
   if (chartEvol) chartEvol.destroy();
   const ctx = document.getElementById('chartEvol').getContext('2d');
@@ -594,62 +651,96 @@ function renderEvolucion() {
     data: {
       labels,
       datasets: [
-        {
-          type: 'bar', label: 'Cobros',
-          data: cobros, backgroundColor: 'rgba(46,125,50,0.7)',
-          yAxisID: 'y'
-        },
-        {
-          type: 'bar', label: 'Gastos',
-          data: gastos, backgroundColor: 'rgba(192,57,43,0.65)',
-          yAxisID: 'y'
-        },
-        {
-          type: 'line', label: 'Resultado',
-          data: resultados, borderColor: '#c4873a', backgroundColor: 'transparent',
-          borderWidth: 2, pointRadius: 3, tension: 0.3, yAxisID: 'y'
-        },
-        {
-          type: 'line', label: 'Posición acum.',
-          data: posicion, borderColor: '#1565c0', backgroundColor: 'transparent',
-          borderWidth: 2, pointRadius: 3, borderDash: [4,3], tension: 0.3, yAxisID: 'y'
-        }
+        { type: 'bar',  label: 'Cobros',        data: cobros,    backgroundColor: 'rgba(10,70,90,0.65)',   yAxisID: 'y' },
+        { type: 'bar',  label: 'Ventas firm.',   data: ventas,    backgroundColor: 'rgba(210,190,170,0.55)', yAxisID: 'y' },
+        { type: 'bar',  label: 'Gastos',         data: gastos,    backgroundColor: 'rgba(192,57,43,0.6)',   yAxisID: 'y' },
+        { type: 'line', label: 'Res. Caja',      data: resFinanc, borderColor: '#c4873a', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, tension: 0.3, yAxisID: 'y' },
+        { type: 'line', label: 'Res. Económico', data: resEcon,   borderColor: '#d2beaa', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, borderDash: [5,3], tension: 0.3, yAxisID: 'y' }
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } },
-        tooltip: {
-          callbacks: {
-            label: ctx => ` ${ctx.dataset.label}: ${fmtFull(ctx.raw)}`
-          }
-        }
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmtFull(ctx.raw)}` } }
       },
       scales: {
-        y: { ticks: { callback: v => fmt(v), font: { size: 10 } }, grid: { color: '#f0eeeb' } },
+        y: { ticks: { callback: v => fmt(v), font: { size: 10 } }, grid: { color: '#ece8e3' } },
         x: { ticks: { font: { size: 10 } }, grid: { display: false } }
       }
     }
   });
 
-  // Table
-  const tbody = document.getElementById('bodyEvolucion');
-  tbody.innerHTML = sorted.map(r => {
+  // Update table headers
+  const thead = document.querySelector('#tablaEvolucion thead tr');
+  if (thead) thead.innerHTML = `
+    <th>Mes</th>
+    <th class="right">Cobros</th>
+    <th class="right">Ventas</th>
+    <th class="right">Gastos</th>
+    <th class="right">Res. Caja</th>
+    <th class="right">Res. Econ.</th>
+    <th class="right">Por cobrar</th>
+    <th class="right">Q ventas</th>
+  `;
+
+  // Table: año vigente decreciente, años anteriores agrupados y colapsados
+  const currentYear = new Date().getFullYear().toString();
+  const desc = [...sorted].reverse();
+  const curRows  = desc.filter(r => (r.fields.Mes||'').startsWith(currentYear));
+  const prevRows = desc.filter(r => !(r.fields.Mes||'').startsWith(currentYear));
+
+  const byYear = {};
+  prevRows.forEach(r => {
+    const y = (r.fields.Mes||'').split('-')[0] || '?';
+    if (!byYear[y]) byYear[y] = [];
+    byYear[y].push(r);
+  });
+
+  const makeRow = r => {
     const f = r.fields;
-    const res = f.Resultado || 0;
-    const rowCls = res > 0 ? 'positive' : 'negative';
+    const resF = f.Resultado || 0;
+    const resE = (f.Ventas||0) - (f.Gastos||0);
     return `<tr>
       <td><strong>${mesLabel(f.Mes)}</strong></td>
       <td class="right mono">${fmtFull(f.Cobros)}</td>
       <td class="right mono">${fmtFull(f.Ventas)}</td>
       <td class="right mono negative">${fmtFull(f.Gastos)}</td>
-      <td class="right mono ${rowCls}"><strong>${fmtFull(res)}</strong></td>
+      <td class="right mono ${signClass(resF)}">${fmtFull(resF)}</td>
+      <td class="right mono ${signClass(resE)}">${fmtFull(resE)}</td>
       <td class="right mono blue">${fmtFull(f.PorCobrar)}</td>
       <td class="right">${f.QVentas || 0}</td>
-      <td class="right mono">${isSpecial(f.Ticket) ? '—' : fmt(f.Ticket)}</td>
     </tr>`;
-  }).join('');
+  };
+
+  let html = curRows.map(makeRow).join('');
+
+  Object.entries(byYear).sort((a,b) => b[0].localeCompare(a[0])).forEach(([year, rows]) => {
+    const totalC = rows.reduce((s,r) => s+(r.fields.Cobros||0), 0);
+    const totalV = rows.reduce((s,r) => s+(r.fields.Ventas||0), 0);
+    const totalG = rows.reduce((s,r) => s+(r.fields.Gastos||0), 0);
+    html += `<tr style="cursor:pointer;background:#ece8e3" onclick="toggleYearGroup('y${year}')">
+      <td colspan="8" style="padding:8px 10px;font-size:12px;font-weight:600;color:var(--accent)">
+        <span id="yr-arrow-${year}">▶</span> ${year} — ${rows.length} meses &nbsp;·&nbsp; Cobros ${fmtFull(totalC)} &nbsp;·&nbsp; Ventas ${fmtFull(totalV)} &nbsp;·&nbsp; Gastos ${fmtFull(totalG)}
+      </td>
+    </tr>`;
+    rows.forEach(r => {
+      const inner = makeRow(r).replace(/^<tr>/, '').replace(/<\/tr>$/, '');
+      html += `<tr class="y${year}" style="display:none">${inner}</tr>`;
+    });
+  });
+
+  document.getElementById('bodyEvolucion').innerHTML = html;
+}
+
+function toggleYearGroup(cls) {
+  const rows = document.querySelectorAll('.' + cls);
+  const year = cls.replace('y', '');
+  const arrow = document.getElementById('yr-arrow-' + year);
+  let anyVisible = false;
+  rows.forEach(r => { if (r.style.display !== 'none') anyVisible = true; });
+  rows.forEach(r => { r.style.display = anyVisible ? 'none' : ''; });
+  if (arrow) arrow.textContent = anyVisible ? '▶' : '▼';
 }
 
 // ─── MOVIMIENTOS ─────────────────────────────────────────────────────────────
@@ -680,7 +771,7 @@ function renderMovimientos() {
         ? r.fields['proveedor (de Proveedores)'].join(', ') : '',
       monto: -(r.fields.monto || 0)
     }))
-  ].sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
+  ].sort((a,b) => (b.fecha||'').localeCompare(a.fecha||'')); // decreciente
 
   if (meta) meta.textContent = `${rows.length} movimientos`;
 
@@ -715,62 +806,101 @@ function renderMovimientos() {
 
 // ─── SOCIOS ──────────────────────────────────────────────────────────────────
 function renderSocios() {
-  const socios = {
-    'Lisandro': { aportes: [], conceptos: {} },
-    'Javier':   { aportes: [], conceptos: {} }
-  };
-  const keywords = { 'Lisandro': 'Lisandro', 'Javier': 'Javier' };
+  // Solo movimientos de Capital que involucren socios
+  const capitalMovs = allData.ingresos.filter(r =>
+    r.fields.tipo_flujo === 'Capital' &&
+    /Lisandro|Javier/.test(r.fields.concepto || '')
+  );
 
-  allData.ingresos.forEach(r => {
-    const f = r.fields;
-    const concepto = f.concepto || '';
-    for (const [nombre, kw] of Object.entries(keywords)) {
-      if (concepto.includes(kw)) {
-        socios[nombre].aportes.push({ fecha: f.fecha, concepto, monto: f.monto || 0 });
-        socios[nombre].conceptos[concepto] = (socios[nombre].conceptos[concepto] || 0) + (f.monto || 0);
-      }
-    }
+  const socios = { 'Lisandro': [], 'Javier': [] };
+  capitalMovs.forEach(r => {
+    const c = r.fields.concepto || '';
+    if (c.includes('Lisandro')) socios['Lisandro'].push(r);
+    else if (c.includes('Javier')) socios['Javier'].push(r);
   });
 
-  const cards = Object.entries(socios).map(([nombre, d]) => {
-    const total = d.aportes.reduce((s,a) => s + a.monto, 0);
-    const capitalRows = Object.entries(d.conceptos).map(([c,m]) =>
-      `<tr><td style="font-size:12px">${c}</td><td class="right mono positive">${fmtFull(m)}</td></tr>`
-    ).join('');
-    const ultimoMes = selectedMonth
-      ? d.aportes.filter(a => a.fecha && a.fecha.startsWith(selectedMonth.replace('-','-'))).reduce((s,a) => s + a.monto, 0)
-      : null;
+  // Signo: capitalización original=positivo → display negativo (negocio le debe al socio)
+  //        recupero original=negativo       → display positivo (devolvió, reduce deuda)
+  const cards = Object.entries(socios).map(([nombre, movs]) => {
+    const netDisplay = movs.reduce((s,r) => s - (r.fields.monto||0), 0);
+    const caps   = movs.filter(r => (r.fields.concepto||'').includes('Capitaliz'));
+    const recups = movs.filter(r => (r.fields.concepto||'').includes('Recupero'));
+    const totalCaps  = caps.reduce((s,r)   => s + (r.fields.monto||0), 0);
+    const totalRecup = recups.reduce((s,r) => s + (r.fields.monto||0), 0);
     return `<div class="socio-card">
       <div class="socio-card-header">
         <span>${nombre}</span>
-        <span class="socio-net positive">${fmtFull(total)}</span>
+        <span class="socio-net ${netDisplay < 0 ? 'negative' : 'positive'}">${fmtFull(netDisplay)}</span>
       </div>
       <div style="padding:10px 14px">
-        <table style="font-size:12px">
-          <tbody>${capitalRows || '<tr><td colspan="2" style="color:#999">Sin movimientos</td></tr>'}</tbody>
+        <table style="font-size:12px;width:100%">
+          <tr><td style="color:#666">Capitalizaciones</td><td class="right mono negative">${fmtFull(-totalCaps)}</td></tr>
+          <tr><td style="color:#666">Recuperos</td><td class="right mono positive">${fmtFull(-totalRecup)}</td></tr>
+          <tr style="border-top:1px solid var(--border)">
+            <td style="font-weight:600">Posición neta</td>
+            <td class="right mono ${signClass(netDisplay)}" style="font-weight:600">${fmtFull(netDisplay)}</td>
+          </tr>
         </table>
-        ${ultimoMes ? `<div style="margin-top:8px;font-size:11px;color:#999">Este mes: <strong class="${signClass(ultimoMes)}">${fmtFull(ultimoMes)}</strong></div>` : ''}
+        <div style="margin-top:6px;font-size:11px;color:var(--muted)">Negativo = el negocio le debe al socio</div>
       </div>
     </div>`;
   });
 
   document.getElementById('contenidoSocios').innerHTML = cards.join('');
 
-  // Movement table for socios
-  const allMov = [];
-  Object.entries(socios).forEach(([nombre, d]) => {
-    d.aportes.forEach(a => allMov.push({ ...a, nombre }));
-  });
-  allMov.sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
+  // Movimientos de capital: agrupados por mes, decrecientes, mes vigente y anterior abiertos
+  const allMovsSorted = [...capitalMovs].sort((a,b) =>
+    (b.fields.fecha||'').localeCompare(a.fields.fecha||'')
+  );
 
-  document.getElementById('bodyMovSocios').innerHTML = allMov.length === 0
-    ? '<tr><td colspan="4" style="text-align:center;color:#999;padding:20px">Sin datos</td></tr>'
-    : allMov.map(a => `<tr>
-      <td>${fmtDate(a.fecha)}</td>
-      <td>${a.nombre}</td>
-      <td style="font-size:12px">${a.concepto}</td>
-      <td class="right mono positive">${fmtFull(a.monto)}</td>
-    </tr>`).join('');
+  const now = new Date();
+  const curMes  = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const prevDate = new Date(now.getFullYear(), now.getMonth()-1, 1);
+  const prevMes  = `${prevDate.getFullYear()}-${String(prevDate.getMonth()+1).padStart(2,'0')}`;
+
+  const byMonth = {};
+  allMovsSorted.forEach(r => {
+    const m = r.fields['mes-a'] || '?';
+    if (!byMonth[m]) byMonth[m] = [];
+    byMonth[m].push(r);
+  });
+
+  const monthsSorted = Object.keys(byMonth).sort((a,b) => b.localeCompare(a));
+  let movHtml = '';
+  monthsSorted.forEach(mes => {
+    const isOpen = mes === curMes || mes === prevMes;
+    const movs = byMonth[mes];
+    const total = movs.reduce((s,r) => s - (r.fields.monto||0), 0);
+    movHtml += `<tr style="cursor:pointer;background:var(--bg)" onclick="toggleMesCapital('cm-${mes}')">
+      <td colspan="4" style="padding:8px 10px;font-size:12px;font-weight:600;color:var(--accent)">
+        <span id="cm-arrow-${mes}">${isOpen ? '▼' : '▶'}</span> ${mesLabel(mes)}
+        <span style="font-weight:400;color:var(--muted);margin-left:8px">Posición: <span class="${signClass(total)}">${fmtFull(total)}</span></span>
+      </td>
+    </tr>`;
+    movs.forEach(r => {
+      const f = r.fields;
+      const dispMonto = -(f.monto || 0);
+      movHtml += `<tr class="cm-${mes}" style="${isOpen ? '' : 'display:none'}">
+        <td>${fmtDate(f.fecha)}</td>
+        <td style="font-size:12px">${f.concepto||'—'}</td>
+        <td style="font-size:12px;color:var(--muted)">${f.Nota||''}</td>
+        <td class="right mono ${signClass(dispMonto)}">${fmtFull(dispMonto)}</td>
+      </tr>`;
+    });
+  });
+
+  document.getElementById('bodyMovSocios').innerHTML = movHtml ||
+    '<tr><td colspan="4" style="text-align:center;color:#999;padding:20px">Sin movimientos de capital</td></tr>';
+}
+
+function toggleMesCapital(cls) {
+  const rows = document.querySelectorAll('.' + cls);
+  const mes = cls.replace('cm-', '');
+  const arrow = document.getElementById('cm-arrow-' + mes);
+  let anyVisible = false;
+  rows.forEach(r => { if (r.style.display !== 'none') anyVisible = true; });
+  rows.forEach(r => { r.style.display = anyVisible ? 'none' : ''; });
+  if (arrow) arrow.textContent = anyVisible ? '▶' : '▼';
 }
 
 // ─── COMERCIAL ───────────────────────────────────────────────────────────────
@@ -827,7 +957,8 @@ function renderComercial() {
       else if (est.includes('producción') || est.includes('Produccion')) tagCls = 'tag-amber';
       else if (est.includes('Listo')) tagCls = 'tag-blue';
       else if (est === 'Seña') tagCls = 'tag-purple';
-      const variante = Array.isArray(f.variante) ? f.variante.join(', ') : (f.variante || '—');
+      // Fix: el campo se llama 'variantes' (plural) en Airtable
+      const variante = Array.isArray(f.variantes) ? f.variantes.join(', ') : (f.variantes || '—');
       return `<tr>
         <td>${fmtDate(f.seña)}</td>
         <td>${cliente}</td>
@@ -902,7 +1033,8 @@ function renderProduccion() {
     const clientes = Array.isArray(f.cliente) ? f.cliente.join(', ') : (f.cliente || '—');
     const comprometida = Array.isArray(f.fecha_comprometida) ? f.fecha_comprometida[0] : f.fecha_comprometida;
     const demora = f.dias_de_demora;
-    const variantes = Array.isArray(f.variante) ? f.variante.join(', ') : (f.variante || '');
+    // Fix: el campo se llama 'variantes' (plural) en Airtable
+    const variantes = Array.isArray(f.variantes) ? f.variantes.join(', ') : (f.variantes || f.variante || '');
     const notas = Array.isArray(f.notas_variante) ? f.notas_variante.filter(Boolean).join(', ') : '';
     return `<div class="prod-item">
       <div class="prod-estado" style="background:${color}"></div>
@@ -987,89 +1119,138 @@ function renderPorCobrar() {
 }
 
 // ─── EDGAR ───────────────────────────────────────────────────────────────────
+// Lógica: Mosca adelanta plata a Edgar (alquiler, adelantos) = Edgar genera deuda con Mosca
+//         Recuperos (trabajo Edgar) y Premio devengado = descontán deuda
+//         Saldo siempre ≤ 0 → negativo = Edgar le debe a Mosca
 function renderEdgar() {
-  // Ingresos de Edgar (concepto = "Recupero Edgar")
-  const ingEdgar = allData.ingresos.filter(r =>
-    (r.fields.concepto || '').includes('Edgar')
-  );
-
-  // Gastos pagados a Edgar (proveedor = Edgar o concepto incluye Edgar)
+  // Adelantos / pagos a Edgar → generan deuda de Edgar con Mosca
   const gastEdgar = allData.gastos.filter(r => {
     const prov = Array.isArray(r.fields['proveedor (de Proveedores)'])
-      ? r.fields['proveedor (de Proveedores)'].join(' ')
-      : '';
-    const conc = r.fields.concepto || '';
-    const cc = r.fields.centro_costos || '';
+      ? r.fields['proveedor (de Proveedores)'].join(' ') : '';
     return prov.toLowerCase().includes('edgar')
-      || conc.toLowerCase().includes('edgar')
-      || cc.toLowerCase().includes('edgar');
+      || (r.fields.concepto||'').toLowerCase().includes('edgar');
   });
 
-  // Premio Edgar acumulado de pedidos (lo que se devengó)
+  // Recuperos de Edgar: trabajos/pagos que descuentan la deuda
+  const ingEdgar = allData.ingresos.filter(r =>
+    (r.fields.concepto || '') === 'Recupero Edgar'
+  );
+
+  // Premio devengado de pedidos = por ventas que Edgar trajo
   const totalPremioDevengado = allData.pedidos
     .filter(r => r.fields.estado !== 'Cancelado')
     .reduce((s,r) => s + (r.fields.premio_edgar||0), 0);
 
-  const totalPagado = gastEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
-  const totalIngresado = ingEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
-  const saldoEdgar = totalPremioDevengado - totalPagado + totalIngresado;
+  const totalAdelantado  = gastEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
+  const totalRecuperado  = ingEdgar.reduce((s,r)  => s + (r.fields.monto||0), 0);
 
-  // Build combined movement list
+  // Saldo = premios + recuperos - adelantado → negativo = Edgar le debe a Mosca
+  const saldo = totalPremioDevengado + totalRecuperado - totalAdelantado;
+
+  document.getElementById('kpiEdgar').innerHTML = `
+    <div class="kpi">
+      <div class="kpi-label">Adelantado a Edgar</div>
+      <div class="kpi-value negative">${fmtFull(-totalAdelantado)}</div>
+      <div class="kpi-sub">Deuda de Edgar con Mosca</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Recuperado</div>
+      <div class="kpi-value positive">${fmtFull(totalRecuperado)}</div>
+      <div class="kpi-sub">Trabajo y pagos de Edgar</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Premio devengado</div>
+      <div class="kpi-value positive">${fmtFull(totalPremioDevengado)}</div>
+      <div class="kpi-sub">Por ventas cerradas</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Edgar debe a Mosca</div>
+      <div class="kpi-value ${saldo <= 0 ? 'negative' : 'positive'}">${fmtFull(saldo)}</div>
+      <div class="kpi-sub">${saldo < 0 ? 'Pendiente de trabajo' : saldo === 0 ? 'Al día' : 'Mosca le debe a Edgar'}</div>
+    </div>
+  `;
+
+  // Lista de movimientos combinada: impacto en saldo (positivo = reduce deuda Edgar)
   const movs = [
-    ...allData.pedidos
-      .filter(r => (r.fields.premio_edgar||0) > 0 && r.fields.estado !== 'Cancelado')
-      .map(r => ({
-        fecha: r.fields.seña || '',
-        tipo: 'devengado',
-        concepto: `Premio venta · ${Array.isArray(r.fields.cliente) ? r.fields.cliente[0] : (r.fields.cliente||'—')}`,
-        devengado: r.fields.premio_edgar||0,
-        pagado: 0
-      })),
     ...gastEdgar.map(r => ({
       fecha: r.fields.fecha || '',
-      tipo: 'pago',
-      concepto: r.fields.concepto || 'Pago',
-      devengado: 0,
-      pagado: r.fields.monto || 0
+      tipo: 'adelanto',
+      concepto: r.fields.concepto || 'Pago/Adelanto',
+      impacto: -(r.fields.monto||0)  // negativo → aumenta deuda Edgar
     })),
     ...ingEdgar.map(r => ({
       fecha: r.fields.fecha || '',
       tipo: 'recupero',
-      concepto: r.fields.concepto || 'Recupero',
-      devengado: 0,
-      pagado: -(r.fields.monto || 0) // negativo = Edgar aporta
-    }))
-  ].sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
+      concepto: r.fields.Nota || 'Recupero',
+      impacto: r.fields.monto||0     // positivo → reduce deuda Edgar
+    })),
+    ...allData.pedidos
+      .filter(r => (r.fields.premio_edgar||0) > 0 && r.fields.estado !== 'Cancelado')
+      .map(r => ({
+        fecha: r.fields.seña || '',
+        tipo: 'premio',
+        concepto: `Premio · ${Array.isArray(r.fields.cliente) ? r.fields.cliente[0] : (r.fields.cliente||'—')}`,
+        impacto: r.fields.premio_edgar||0  // positivo → reduce deuda
+      }))
+  ];
 
-  // Build running balance
-  let saldoAcum = 0;
-  const rows = movs.map(m => {
-    if (m.tipo === 'devengado') saldoAcum += m.devengado;
-    else if (m.tipo === 'pago') saldoAcum -= m.pagado;
-    else if (m.tipo === 'recupero') saldoAcum += m.pagado; // pagado is negative here
-    const tipTag = m.tipo === 'devengado'
-      ? '<span class="tag tag-amber">Devengado</span>'
-      : m.tipo === 'pago'
-        ? '<span class="tag tag-green">Pagado</span>'
-        : '<span class="tag tag-blue">Recupero</span>';
-    return `<tr>
-      <td>${fmtDate(m.fecha)}</td>
-      <td>${tipTag}</td>
-      <td style="font-size:12px">${m.concepto}</td>
-      <td class="right mono ${m.devengado > 0 ? 'negative' : ''}">${m.devengado > 0 ? fmtFull(m.devengado) : '—'}</td>
-      <td class="right mono ${m.pagado > 0 ? 'positive' : ''}">${m.pagado !== 0 ? fmtFull(Math.abs(m.pagado)) : '—'}</td>
-      <td class="right mono ${signClass(-saldoAcum)}">${fmtFull(saldoAcum)}</td>
+  // Calcular saldo acumulado en orden cronológico
+  const movsAsc = [...movs].sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
+  let bal = 0;
+  const balMap = new Map();
+  movsAsc.forEach(m => { bal += m.impacto; balMap.set(m, bal); });
+
+  // Agrupar por mes, mostrar decreciente
+  const movsByMonth = {};
+  movs.forEach(m => {
+    const mes = (m.fecha||'').slice(0,7) || '?';
+    if (!movsByMonth[mes]) movsByMonth[mes] = [];
+    movsByMonth[mes].push(m);
+  });
+
+  const monthsSorted = Object.keys(movsByMonth).sort((a,b) => b.localeCompare(a));
+  let tableHtml = '';
+
+  monthsSorted.forEach(mes => {
+    const mesMovs = [...movsByMonth[mes]].sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+    const mesTotal = mesMovs.reduce((s,m) => s + m.impacto, 0);
+    const mesLabel_ = mes !== '?' ? mesLabel(mes) : 'Sin fecha';
+    tableHtml += `<tr style="cursor:pointer;background:var(--bg)" onclick="toggleEdgarMes('em-${mes.replace('-','_')}')">
+      <td colspan="6" style="padding:8px 10px;font-size:12px;font-weight:600;color:var(--accent)">
+        <span id="em-arrow-${mes.replace('-','_')}">▼</span> ${mesLabel_}
+        <span style="font-weight:400;color:var(--muted);margin-left:8px">${mesMovs.length} mov. · ${mesTotal >= 0 ? '+' : ''}${fmtFull(mesTotal)}</span>
+      </td>
     </tr>`;
-  }).join('');
+    mesMovs.forEach(m => {
+      const balance = balMap.get(m);
+      const tipTag = m.tipo === 'adelanto'
+        ? '<span class="tag tag-red">Adelanto</span>'
+        : m.tipo === 'recupero'
+          ? '<span class="tag tag-green">Recupero</span>'
+          : '<span class="tag tag-amber">Premio</span>';
+      tableHtml += `<tr class="em-${mes.replace('-','_')}">
+        <td>${fmtDate(m.fecha)}</td>
+        <td>${tipTag}</td>
+        <td style="font-size:12px">${m.concepto}</td>
+        <td class="right mono">${m.tipo === 'adelanto' ? `<span class="negative">${fmtFull(m.impacto)}</span>` : '—'}</td>
+        <td class="right mono">${m.tipo !== 'adelanto' ? `<span class="positive">+${fmtFull(m.impacto)}</span>` : '—'}</td>
+        <td class="right mono ${balance < 0 ? 'negative' : 'neutral'}">${fmtFull(balance)}</td>
+      </tr>`;
+    });
+  });
 
-  document.getElementById('kpiEdgar').innerHTML = `
-    <div class="kpi"><div class="kpi-label">Premio devengado (pedidos)</div><div class="kpi-value negative">${fmtFull(totalPremioDevengado)}</div></div>
-    <div class="kpi"><div class="kpi-label">Total pagado a Edgar</div><div class="kpi-value positive">${fmtFull(totalPagado)}</div></div>
-    <div class="kpi"><div class="kpi-label">Recuperos de Edgar</div><div class="kpi-value neutral">${fmtFull(totalIngresado)}</div></div>
-    <div class="kpi"><div class="kpi-label">Saldo (lo que Mosca le debe)</div><div class="kpi-value ${signClass(saldoEdgar)}">${fmtFull(saldoEdgar)}</div></div>`;
-
-  document.getElementById('bodyEdgar').innerHTML = rows ||
+  document.getElementById('bodyEdgar').innerHTML = tableHtml ||
     '<tr><td colspan="6" style="text-align:center;color:#999;padding:20px">Sin movimientos registrados para Edgar</td></tr>';
+}
+
+function toggleEdgarMes(cls) {
+  const rows = document.querySelectorAll('.' + cls);
+  const key = cls.replace('em-', '');
+  const arrow = document.getElementById('em-arrow-' + key);
+  let anyVisible = false;
+  rows.forEach(r => { if (r.style.display !== 'none') anyVisible = true; });
+  rows.forEach(r => { r.style.display = anyVisible ? 'none' : ''; });
+  if (arrow) arrow.textContent = anyVisible ? '▶' : '▼';
 }
 
 // ─── UI HELPERS ──────────────────────────────────────────────────────────────
