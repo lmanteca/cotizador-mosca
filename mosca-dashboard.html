@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mosca Taller — Dashboard v0.6</title>
+  <title>Mosca Taller — Dashboard v0.7</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     :root {
@@ -165,19 +165,60 @@
     }
     .socio-net { font-size: 18px; font-weight: 700; }
 
-    /* PRODUCCION ITEM */
+    /* PRODUCCION ITEM (legacy, kept for fallback) */
     .prod-item {
       display: flex; align-items: center; gap: 12px;
       padding: 10px 0; border-bottom: 1px solid var(--border);
     }
     .prod-item:last-child { border-bottom: none; }
-    .prod-estado {
-      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
-    }
+    .prod-estado { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
     .prod-info { flex: 1; }
     .prod-nombre { font-weight: 500; font-size: 13px; }
     .prod-meta { font-size: 11px; color: var(--muted); }
     .prod-problema { font-size: 11px; color: var(--negative); margin-top: 2px; }
+
+    /* KANBAN */
+    .kanban-board {
+      display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; min-height: 160px;
+    }
+    .kanban-col {
+      flex: 0 0 200px; background: var(--bg); border-radius: 6px; overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .kanban-col-header {
+      padding: 8px 10px; font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; display: flex; justify-content: space-between;
+      align-items: center; color: white;
+    }
+    .kanban-count {
+      background: rgba(0,0,0,0.2); border-radius: 8px; padding: 1px 6px;
+      font-size: 11px; font-weight: 700;
+    }
+    .kanban-cards { padding: 6px; display: flex; flex-direction: column; gap: 6px; min-height: 40px; }
+    .kanban-card {
+      background: white; border-radius: 5px; padding: 9px 10px;
+      border: 1px solid var(--border); font-size: 12px;
+    }
+    .kanban-card-title { font-weight: 600; font-size: 12px; margin-bottom: 3px; color: var(--text); }
+    .kanban-card-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .kanban-card-problema { font-size: 10px; color: var(--negative); margin-top: 3px; }
+    .days-badge {
+      display: inline-block; padding: 1px 6px; border-radius: 8px; font-size: 10px;
+      font-weight: 600; margin-top: 4px;
+    }
+    .days-ok { background: #e8f5e9; color: #2e7d32; }
+    .days-warn { background: #fff8e1; color: #f57f17; }
+    .days-late { background: #ffebee; color: #c62828; }
+
+    /* INSIGHT */
+    .insight-block {
+      background: linear-gradient(135deg, #0a465a08 0%, #d2beaa18 100%);
+      border: 1px solid var(--mosca-beige); border-radius: 6px;
+      padding: 12px 16px; margin-top: 16px; font-size: 13px; line-height: 1.6;
+      color: var(--text);
+    }
+    .insight-label { font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; color: var(--accent); margin-bottom: 6px; }
 
 
     /* ERROR BANNER */
@@ -223,7 +264,7 @@
 
 <!-- NAV -->
 <nav class="nav no-print">
-  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v0.6</span></span>
+  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v0.7</span></span>
   <div class="nav-tabs">
     <button class="nav-tab active" onclick="showPage('reporte')">Reporte</button>
     <button class="nav-tab" onclick="showPage('edgar')">Edgar</button>
@@ -277,7 +318,7 @@
             <th class="right">Q ventas</th>
             <th class="right">Ticket</th>
           </tr></thead>
-          <tbody id="bodyEvolucion"><tr><td colspan="8" class="loading"><span class="spinner"></span>Cargando...</td></tr></tbody>
+          <tbody id="bodyEvolucion"><tr><td colspan="9" class="loading"><span class="spinner"></span>Cargando...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -385,20 +426,30 @@
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 const WEBHOOK_URL = 'https://n8n.groumachine.com.ar/webhook/mosca-dashboard-datos';
 
-// Colores por estado de producción
-const ESTADO_COLORS = {
-  'Pendiente': '#e0e0e0',
-  'En proceso': '#ffd54f',
-  'En producción': '#ffd54f',
-  'Listo': '#81c784',
-  'Listo para entrega': '#81c784',
-  'Entregado': '#4caf50',
-  'Problema': '#ef5350',
-  'default': '#bdbdbd'
-};
+// Kanban states config (orden, label, color de header)
+const KANBAN_STATES = [
+  { key: 'backlog',       label: 'Backlog',        color: '#78909c' },
+  { key: 'planificado',   label: 'Planificado',    color: '#5c7bd6' },
+  { key: 'estructura',    label: 'Estructura',     color: '#e6ac30' },
+  { key: 'terminacion',   label: 'Terminación',    color: '#e08030' },
+  { key: 'paraentregar',  label: 'Para entregar',  color: '#43a047' },
+  { key: 'entregado',     label: 'Entregado',      color: '#1b6b3a' }
+];
+
+function getKanbanBucket(estado) {
+  const e = (estado || '').toLowerCase().trim();
+  if (!e || e === 'sin estado') return 'backlog';
+  if (e.includes('backlog'))    return 'backlog';
+  if (e.includes('planificado') || e.includes('planeado')) return 'planificado';
+  if (e.includes('estructura')) return 'estructura';
+  if (e.includes('terminac'))   return 'terminacion';
+  if (e.includes('para entregar') || (e.includes('listo') && !e.includes('entregado'))) return 'paraentregar';
+  if (e.includes('entregado'))  return 'entregado';
+  return 'backlog';
+}
 
 // ─── STATE ──────────────────────────────────────────────────────────────────
-let allData = { resultados: [], ingresos: [], gastos: [], pedidos: [], produccion: [] };
+let allData = { resultados: [], ingresos: [], gastos: [], pedidos: [], produccion: [], variantes_map: {} };
 let selectedMonth = '';
 let chartEvol = null;
 
@@ -481,11 +532,12 @@ async function loadData() {
     }
 
     allData = {
-      resultados: normalizeRecords(resultados),
-      ingresos:   normalizeRecords(ingresos),
-      gastos:     normalizeRecords(gastos),
-      pedidos:    normalizeRecords(pedidos),
-      produccion: normalizeRecords(produccion)
+      resultados:    normalizeRecords(resultados),
+      ingresos:      normalizeRecords(ingresos),
+      gastos:        normalizeRecords(gastos),
+      pedidos:       normalizeRecords(pedidos),
+      produccion:    normalizeRecords(produccion),
+      variantes_map: d.variantes_map || {}
     };
 
     // Populate month selector
@@ -562,16 +614,17 @@ function renderKPIs() {
   }
   const f = res.fields;
   const resFinanciero = f.Resultado || 0;
-  const resEconomico = (f.Ventas || 0) - (f.Gastos || 0);
+  const resEconomico  = (f.Ventas || 0) - (f.Gastos || 0);
 
+  // Orden natural: Ventas → Cobros → Gastos → Res.Caja → Res.Econ → Por cobrar → Ticket
   const kpis = [
-    { label: 'Resultado caja', value: resFinanciero, format: fmtFull, sub: 'Cobros − Gastos' },
-    { label: 'Resultado económico', value: resEconomico, format: fmtFull, sub: 'Ventas firmadas − Gastos' },
-    { label: 'Cobros del mes', value: f.Cobros, format: fmtFull },
-    { label: 'Ventas firmadas', value: f.Ventas, format: fmt, sub: `${f.QVentas || 0} pedidos` },
-    { label: 'Gastos', value: -(f.Gastos || 0), format: fmtFull, forceClass: 'negative' },
-    { label: 'Por cobrar', value: f.PorCobrar, format: fmt, sub: 'Saldos pendientes' },
-    { label: 'Ticket promedio', value: isSpecial(f.Ticket) ? null : f.Ticket, format: fmt },
+    { label: 'Ventas firmadas',    value: f.Ventas,                                    format: fmt,     sub: `${f.QVentas || 0} pedidos` },
+    { label: 'Cobros del mes',     value: f.Cobros,                                    format: fmtFull, sub: 'Ingresos netos' },
+    { label: 'Gastos',             value: -(f.Gastos || 0),                            format: fmtFull, forceClass: 'negative' },
+    { label: 'Resultado caja',     value: resFinanciero,                               format: fmtFull, sub: 'Cobros − Gastos' },
+    { label: 'Resultado económico',value: resEconomico,                                format: fmtFull, sub: 'Ventas − Gastos' },
+    { label: 'Por cobrar',         value: f.PorCobrar,                                 format: fmt,     sub: 'Saldos pendientes' },
+    { label: 'Ticket promedio',    value: isSpecial(f.Ticket) ? null : f.Ticket,       format: fmt },
   ];
 
   document.getElementById('kpiGrid').innerHTML = kpis.map(k => {
@@ -585,23 +638,35 @@ function renderKPIs() {
   }).join('');
 
   // Gastos breakdown (Fijos / Variables / Única vez)
-  const fijos    = f['Gastos Fijos']     || 0;
-  const variables= f['Gastos Variables'] || 0;
-  const unicaVez = f['Gastos Unica Vez'] || 0;
-  const totalG   = f.Gastos || 0;
-  const cobros   = f.Cobros || 0;
+  const fijos     = f['Gastos Fijos']     || 0;
+  const variables = f['Gastos Variables'] || 0;
+  const unicaVez  = f['Gastos Unica Vez'] || 0;
+  const totalG    = f.Gastos || 0;
+  const cobros    = f.Cobros || 0;
   const cubrenFijos = cobros >= fijos;
+
+  // Gastos sin catalogar del período
+  const gastosDelMes = selectedMonth
+    ? allData.gastos.filter(r => r.fields['mes-a'] === selectedMonth)
+    : allData.gastos;
+  const sinCatalogCount = gastosDelMes.filter(r => !r.fields.tipo || !r.fields.categoria).length;
 
   const bd = document.getElementById('gastosBreakdown');
   if (!bd) return;
   bd.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
       <span class="section-title">Estructura de gastos</span>
-      ${fijos > 0
-        ? (!cubrenFijos
-            ? `<span style="background:#ffebee;color:#c62828;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600">⚠ Cobros no cubren fijos (faltan ${fmtFull(fijos - cobros)})</span>`
-            : `<span style="background:#e8f5e9;color:#2e7d32;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600">✓ Fijos cubiertos</span>`)
-        : ''}
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        ${sinCatalogCount > 0
+          ? `<span style="background:#fff3e0;color:#e65100;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600">
+               ⚠ ${sinCatalogCount} gasto${sinCatalogCount > 1 ? 's' : ''} sin catalogar — revisá en Airtable
+             </span>` : ''}
+        ${fijos > 0
+          ? (!cubrenFijos
+              ? `<span style="background:#ffebee;color:#c62828;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600">⚠ Cobros no cubren fijos (faltan ${fmtFull(fijos - cobros)})</span>`
+              : `<span style="background:#e8f5e9;color:#2e7d32;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600">✓ Fijos cubiertos</span>`)
+          : ''}
+      </div>
     </div>
     <div class="kpi-grid">
       <div class="kpi">
@@ -632,18 +697,57 @@ function renderKPIs() {
       <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#e57373;margin-right:4px"></span>Variables</span>
       <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#ef9a9a;margin-right:4px"></span>Única vez</span>
     </div>
+    ${buildInsight(res)}
   `;
+}
+
+function buildInsight(res) {
+  if (!res) return '';
+  const f = res.fields;
+  const cobros   = f.Cobros   || 0;
+  const gastos   = f.Gastos   || 0;
+  const ventas   = f.Ventas   || 0;
+  const fijos    = f['Gastos Fijos'] || 0;
+  const resF     = f.Resultado || 0;
+  const resE     = ventas - gastos;
+  const porCobrar= f.PorCobrar || 0;
+
+  const lines = [];
+
+  // Resultado caja
+  if (resF > 0) lines.push(`Caja positiva: sobraron ${fmtFull(resF)} después de gastos.`);
+  else if (resF < 0) lines.push(`Caja negativa: los gastos superaron los cobros en ${fmtFull(-resF)}.`);
+
+  // Fijos cubiertos
+  if (fijos > 0 && cobros < fijos) {
+    lines.push(`Los cobros no cubrieron los gastos fijos (faltaron ${fmtFull(fijos - cobros)}).`);
+  }
+
+  // Gap caja vs devengado
+  const gap = resE - resF;
+  if (gap > 10000) lines.push(`Hay ${fmtFull(gap)} en ventas firmadas que todavía no entraron a caja.`);
+  else if (gap < -10000) lines.push(`Se cobró más de lo vendido este mes — probable cobro de saldos de meses anteriores.`);
+
+  // Por cobrar
+  if (porCobrar > 0) lines.push(`Quedan ${fmtFull(porCobrar)} pendientes de cobro en pedidos activos.`);
+
+  if (lines.length === 0) return '';
+  return `<div class="insight-block">
+    <div class="insight-label">Lectura del período</div>
+    ${lines.join(' ')}
+  </div>`;
 }
 
 // ─── EVOLUCIÓN ───────────────────────────────────────────────────────────────
 function renderEvolucion() {
-  const sorted = [...allData.resultados].sort((a,b) => (a.fields.Mes||'').localeCompare(b.fields.Mes||''));
-  const labels       = sorted.map(r => mesLabel(r.fields.Mes));
-  const cobros       = sorted.map(r => r.fields.Cobros || 0);
-  const ventas       = sorted.map(r => r.fields.Ventas || 0);
-  const gastos       = sorted.map(r => -(r.fields.Gastos || 0));
-  const resFinanc    = sorted.map(r => r.fields.Resultado || 0);
-  const resEcon      = sorted.map(r => (r.fields.Ventas||0) - (r.fields.Gastos||0));
+  const sorted     = [...allData.resultados].sort((a,b) => (a.fields.Mes||'').localeCompare(b.fields.Mes||''));
+  const labels     = sorted.map(r => mesLabel(r.fields.Mes));
+  const cobros     = sorted.map(r => r.fields.Cobros || 0);
+  const ventas     = sorted.map(r => r.fields.Ventas || 0);
+  const gastFijos  = sorted.map(r => r.fields['Gastos Fijos']     || 0);
+  const gastVars   = sorted.map(r => r.fields['Gastos Variables'] || 0);
+  const resFinanc  = sorted.map(r => r.fields.Resultado || 0);
+  const resEcon    = sorted.map(r => (r.fields.Ventas||0) - (r.fields.Gastos||0));
 
   if (chartEvol) chartEvol.destroy();
   const ctx = document.getElementById('chartEvol').getContext('2d');
@@ -651,11 +755,12 @@ function renderEvolucion() {
     data: {
       labels,
       datasets: [
-        { type: 'bar',  label: 'Cobros',        data: cobros,    backgroundColor: 'rgba(10,70,90,0.65)',   yAxisID: 'y' },
-        { type: 'bar',  label: 'Ventas firm.',   data: ventas,    backgroundColor: 'rgba(210,190,170,0.55)', yAxisID: 'y' },
-        { type: 'bar',  label: 'Gastos',         data: gastos,    backgroundColor: 'rgba(192,57,43,0.6)',   yAxisID: 'y' },
-        { type: 'line', label: 'Res. Caja',      data: resFinanc, borderColor: '#c4873a', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, tension: 0.3, yAxisID: 'y' },
-        { type: 'line', label: 'Res. Económico', data: resEcon,   borderColor: '#d2beaa', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, borderDash: [5,3], tension: 0.3, yAxisID: 'y' }
+        { type: 'bar',  label: 'Cobros',       data: cobros,   backgroundColor: 'rgba(10,70,90,0.65)',    stack: 'cobros',  yAxisID: 'y' },
+        { type: 'bar',  label: 'Ventas firm.',  data: ventas,   backgroundColor: 'rgba(210,190,170,0.6)',  stack: 'ventas',  yAxisID: 'y' },
+        { type: 'bar',  label: 'G. Fijos',      data: gastFijos,backgroundColor: 'rgba(192,57,43,0.75)',  stack: 'gastos',  yAxisID: 'y' },
+        { type: 'bar',  label: 'G. Variables',  data: gastVars, backgroundColor: 'rgba(229,115,115,0.65)',stack: 'gastos',  yAxisID: 'y' },
+        { type: 'line', label: 'Res. Caja',     data: resFinanc,borderColor: '#c4873a', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, tension: 0.3, yAxisID: 'y' },
+        { type: 'line', label: 'Res. Econ.',    data: resEcon,  borderColor: '#d2beaa', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, borderDash: [5,3], tension: 0.3, yAxisID: 'y' }
       ]
     },
     options: {
@@ -665,7 +770,7 @@ function renderEvolucion() {
         tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmtFull(ctx.raw)}` } }
       },
       scales: {
-        y: { ticks: { callback: v => fmt(v), font: { size: 10 } }, grid: { color: '#ece8e3' } },
+        y: { stacked: false, ticks: { callback: v => fmt(v), font: { size: 10 } }, grid: { color: '#ece8e3' } },
         x: { ticks: { font: { size: 10 } }, grid: { display: false } }
       }
     }
@@ -677,7 +782,8 @@ function renderEvolucion() {
     <th>Mes</th>
     <th class="right">Cobros</th>
     <th class="right">Ventas</th>
-    <th class="right">Gastos</th>
+    <th class="right">G. Fijos</th>
+    <th class="right">G. Variables</th>
     <th class="right">Res. Caja</th>
     <th class="right">Res. Econ.</th>
     <th class="right">Por cobrar</th>
@@ -699,13 +805,16 @@ function renderEvolucion() {
 
   const makeRow = r => {
     const f = r.fields;
-    const resF = f.Resultado || 0;
-    const resE = (f.Ventas||0) - (f.Gastos||0);
+    const resF  = f.Resultado || 0;
+    const resE  = (f.Ventas||0) - (f.Gastos||0);
+    const gFij  = f['Gastos Fijos']     || 0;
+    const gVar  = f['Gastos Variables'] || 0;
     return `<tr>
       <td><strong>${mesLabel(f.Mes)}</strong></td>
       <td class="right mono">${fmtFull(f.Cobros)}</td>
       <td class="right mono">${fmtFull(f.Ventas)}</td>
-      <td class="right mono negative">${fmtFull(f.Gastos)}</td>
+      <td class="right mono negative">${fmtFull(gFij)}</td>
+      <td class="right mono negative">${fmtFull(gVar)}</td>
       <td class="right mono ${signClass(resF)}">${fmtFull(resF)}</td>
       <td class="right mono ${signClass(resE)}">${fmtFull(resE)}</td>
       <td class="right mono blue">${fmtFull(f.PorCobrar)}</td>
@@ -720,7 +829,7 @@ function renderEvolucion() {
     const totalV = rows.reduce((s,r) => s+(r.fields.Ventas||0), 0);
     const totalG = rows.reduce((s,r) => s+(r.fields.Gastos||0), 0);
     html += `<tr style="cursor:pointer;background:#ece8e3" onclick="toggleYearGroup('y${year}')">
-      <td colspan="8" style="padding:8px 10px;font-size:12px;font-weight:600;color:var(--accent)">
+      <td colspan="9" style="padding:8px 10px;font-size:12px;font-weight:600;color:var(--accent)">
         <span id="yr-arrow-${year}">▶</span> ${year} — ${rows.length} meses &nbsp;·&nbsp; Cobros ${fmtFull(totalC)} &nbsp;·&nbsp; Ventas ${fmtFull(totalV)} &nbsp;·&nbsp; Gastos ${fmtFull(totalG)}
       </td>
     </tr>`;
@@ -754,22 +863,25 @@ function renderMovimientos() {
     gasts = gasts.filter(r => r.fields['mes-a'] === selectedMonth);
   }
 
-  // Combine and sort by date
+  // Combine and sort by date descending
+  // Ingresos: concepto = tipo ingreso (singleSelect), nota = Nota text
+  // Gastos:   concepto = proveedor lookup,            nota = concepto text (descripción)
   const rows = [
     ...ings.map(r => ({
-      fecha: r.fields.fecha || '',
-      tipo: 'I',
-      concepto: (r.fields.concepto) || r.fields.tipo_flujo || '—',
-      nota: r.fields.Nota || '',
-      monto: r.fields.monto || 0
+      fecha:   r.fields.fecha || '',
+      tipo:    'I',
+      concepto: r.fields.concepto || r.fields.tipo_flujo || '—',
+      nota:    r.fields.Nota || '',
+      monto:   r.fields.monto || 0
     })),
     ...gasts.map(r => ({
-      fecha: r.fields.fecha || '',
-      tipo: 'G',
-      concepto: r.fields.concepto || r.fields.categoria || '—',
-      nota: Array.isArray(r.fields['proveedor (de Proveedores)'])
-        ? r.fields['proveedor (de Proveedores)'].join(', ') : '',
-      monto: -(r.fields.monto || 0)
+      fecha:   r.fields.fecha || '',
+      tipo:    'G',
+      concepto: Array.isArray(r.fields['proveedor (de Proveedores)'])
+        ? r.fields['proveedor (de Proveedores)'].join(', ')
+        : (r.fields['proveedor (de Proveedores)'] || r.fields.categoria || '—'),
+      nota:    r.fields.concepto || '',
+      monto:   -(r.fields.monto || 0)
     }))
   ].sort((a,b) => (b.fecha||'').localeCompare(a.fecha||'')); // decreciente
 
@@ -871,12 +983,32 @@ function renderSocios() {
     const isOpen = mes === curMes || mes === prevMes;
     const movs = byMonth[mes];
     const total = movs.reduce((s,r) => s - (r.fields.monto||0), 0);
+
+    // Per-socio totals for this month
+    const socioTotals = {};
+    movs.forEach(r => {
+      const c = r.fields.concepto || '';
+      const nm = c.includes('Lisandro') ? 'Lisandro' : c.includes('Javier') ? 'Javier' : 'Otro';
+      socioTotals[nm] = (socioTotals[nm] || 0) - (r.fields.monto || 0);
+    });
+    const socioSummary = Object.entries(socioTotals)
+      .map(([nm, v]) => `${nm}: <strong class="${signClass(v)}">${fmtFull(v)}</strong>`)
+      .join(' &nbsp;·&nbsp; ');
+
     movHtml += `<tr style="cursor:pointer;background:var(--bg)" onclick="toggleMesCapital('cm-${mes}')">
       <td colspan="4" style="padding:8px 10px;font-size:12px;font-weight:600;color:var(--accent)">
         <span id="cm-arrow-${mes}">${isOpen ? '▼' : '▶'}</span> ${mesLabel(mes)}
-        <span style="font-weight:400;color:var(--muted);margin-left:8px">Posición: <span class="${signClass(total)}">${fmtFull(total)}</span></span>
+        <span style="font-weight:400;color:var(--muted);margin-left:8px">Total: <span class="${signClass(total)}">${fmtFull(total)}</span></span>
       </td>
     </tr>`;
+    // Per-socio summary row (visible when month is open)
+    if (socioSummary) {
+      movHtml += `<tr class="cm-${mes}" style="${isOpen ? '' : 'display:none'}">
+        <td colspan="4" style="padding:4px 10px 6px 20px;font-size:11px;background:#f4f1ed;color:var(--muted)">
+          ${socioSummary}
+        </td>
+      </tr>`;
+    }
     movs.forEach(r => {
       const f = r.fields;
       const dispMonto = -(f.monto || 0);
@@ -928,7 +1060,6 @@ function renderComercial() {
   const cantMuebles = activos.reduce((s,r) => s + (r.fields.cant_muebles||0), 0);
   const cantPedidos = activos.length;
   const ticket = cantPedidos > 0 ? totalVentas / cantPedidos : 0;
-  const totalPremioEdgar = activos.reduce((s,r) => s + (r.fields.premio_edgar||0), 0);
 
   // Group by estado
   const byEstado = {};
@@ -977,7 +1108,6 @@ function renderComercial() {
       <div class="kpi"><div class="kpi-label">Muebles</div><div class="kpi-value neutral">${cantMuebles}</div></div>
       <div class="kpi"><div class="kpi-label">Monto total</div><div class="kpi-value positive">${fmt(totalVentas)}</div></div>
       <div class="kpi"><div class="kpi-label">Ticket promedio</div><div class="kpi-value neutral">${fmt(ticket)}</div></div>
-      <div class="kpi"><div class="kpi-label">Premio Edgar</div><div class="kpi-value negative">${fmt(totalPremioEdgar)}</div></div>
     </div>
     <div style="margin-bottom:14px">${estadoTags}</div>
     <div class="table-wrap">
@@ -994,80 +1124,99 @@ function renderComercial() {
 
 // ─── PRODUCCIÓN ───────────────────────────────────────────────────────────────
 function renderProduccion() {
-  const prods = allData.produccion;
   const meta = document.getElementById('prodMeta');
+  const today = new Date(); today.setHours(0,0,0,0);
 
-  // Stats
-  const porEstado = {};
-  prods.forEach(r => {
-    const e = r.fields.estado || 'Sin estado';
-    porEstado[e] = (porEstado[e] || 0) + 1;
+  // Exclude "Mosca Taller" (internal) clients
+  const prods = allData.produccion.filter(r => {
+    const clientes = Array.isArray(r.fields.cliente) ? r.fields.cliente : [r.fields.cliente || ''];
+    return !clientes.some(c => /mosca\s*taller/i.test(c || ''));
   });
 
-  const entregados = prods.filter(r => (r.fields.estado||'').includes('Entregado'));
-  const conProblemas = prods.filter(r => r.fields.problemas);
-  const activos = prods.filter(r => !(r.fields.estado||'').includes('Entregado'));
+  const activos    = prods.filter(r => getKanbanBucket(r.fields.estado) !== 'entregado');
+  const entregados = prods.filter(r => getKanbanBucket(r.fields.estado) === 'entregado');
+  const conProbs   = prods.filter(r => r.fields.problemas);
+  if (meta) meta.textContent = `${activos.length} activos · ${entregados.length} entregados${conProbs.length ? ' · ' + conProbs.length + ' con problemas' : ''}`;
 
-  if (meta) meta.textContent = `${activos.length} activos · ${entregados.length} entregados · ${conProblemas.length} con problemas`;
+  // Build kanban buckets (show all states except entregado for activos; entregado column shows recent 10)
+  const buckets = {};
+  KANBAN_STATES.forEach(s => { buckets[s.key] = []; });
 
-  // State summary
-  const estadoSummary = Object.entries(porEstado).map(([e, n]) => {
-    const color = ESTADO_COLORS[e] || ESTADO_COLORS.default;
-    return `<span class="tag tag-gray" style="background:${color}20;color:#444;margin-right:6px">
-      <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:4px"></span>
-      ${e} (${n})
-    </span>`;
-  }).join('');
+  prods.forEach(r => {
+    const bk = getKanbanBucket(r.fields.estado);
+    buckets[bk].push(r);
+  });
 
-  // Active items
-  const activosSorted = activos.sort((a,b) => {
+  // Sort each bucket by fecha_comprometida asc
+  Object.values(buckets).forEach(arr => arr.sort((a,b) => {
     const da = String(Array.isArray(a.fields.fecha_comprometida) ? a.fields.fecha_comprometida[0] : a.fields.fecha_comprometida || '');
     const db = String(Array.isArray(b.fields.fecha_comprometida) ? b.fields.fecha_comprometida[0] : b.fields.fecha_comprometida || '');
     return da.localeCompare(db);
-  });
+  }));
 
-  const prodsHTML = activosSorted.map(r => {
-    const f = r.fields;
-    const estado = f.estado || '?';
-    const color = ESTADO_COLORS[estado] || ESTADO_COLORS.default;
-    const clientes = Array.isArray(f.cliente) ? f.cliente.join(', ') : (f.cliente || '—');
-    const comprometida = Array.isArray(f.fecha_comprometida) ? f.fecha_comprometida[0] : f.fecha_comprometida;
-    const demora = f.dias_de_demora;
-    // Fix: el campo se llama 'variantes' (plural) en Airtable
-    const variantes = Array.isArray(f.variantes) ? f.variantes.join(', ') : (f.variantes || f.variante || '');
-    const notas = Array.isArray(f.notas_variante) ? f.notas_variante.filter(Boolean).join(', ') : '';
-    return `<div class="prod-item">
-      <div class="prod-estado" style="background:${color}"></div>
-      <div class="prod-info">
-        <div class="prod-nombre">${clientes}</div>
-        ${variantes ? `<div style="font-size:12px;color:#555;margin-top:2px">${variantes}</div>` : ''}
-        <div class="prod-meta">
-          Estado: <strong>${estado}</strong>
-          ${comprometida ? ` · Comprometido: ${fmtDate(comprometida)}` : ''}
-          ${demora != null && demora > 0 ? ` · <span style="color:#f57f17">${demora}d demora</span>` : ''}
-          ${notas ? ` · ${notas}` : ''}
-        </div>
-        ${f.problemas ? `<div class="prod-problema">⚠ ${f.problemas}</div>` : ''}
+  // Limit entregado to most recent 10
+  if (buckets.entregado.length > 10) buckets.entregado = buckets.entregado.slice(-10);
+
+  const cols = KANBAN_STATES.map(st => {
+    const cards = buckets[st.key].map(r => {
+      const f = r.fields;
+      const clientes = Array.isArray(f.cliente) ? f.cliente : [f.cliente || '—'];
+      const cliente  = clientes.filter(Boolean).join(', ') || '—';
+
+      // Variante names from variantes_map
+      const varIds   = Array.isArray(f.variante) ? f.variante : [];
+      const varName  = varIds.map(id => allData.variantes_map[id] || '').filter(Boolean).join(', ')
+                    || (Array.isArray(f.notas_variante) ? f.notas_variante.filter(Boolean).join(', ') : '');
+
+      const fechaRaw = Array.isArray(f.fecha_comprometida) ? f.fecha_comprometida[0] : f.fecha_comprometida;
+      const daysLeft = fechaRaw
+        ? Math.round((new Date(fechaRaw) - today) / 86400000)
+        : null;
+
+      let daysBadge = '';
+      if (daysLeft !== null && st.key !== 'entregado') {
+        if (daysLeft < 0)      daysBadge = `<div class="days-badge days-late">${daysLeft}d vencido</div>`;
+        else if (daysLeft <= 7) daysBadge = `<div class="days-badge days-warn">${daysLeft}d</div>`;
+        else                   daysBadge = `<div class="days-badge days-ok">${daysLeft}d</div>`;
+      }
+
+      return `<div class="kanban-card">
+        <div class="kanban-card-title">${varName || '(sin variante)'}</div>
+        <div class="kanban-card-meta">${cliente}</div>
+        ${fechaRaw ? `<div class="kanban-card-meta">${fmtDate(fechaRaw)}</div>` : ''}
+        ${daysBadge}
+        ${f.problemas ? `<div class="kanban-card-problema">⚠ ${f.problemas}</div>` : ''}
+      </div>`;
+    }).join('');
+
+    return `<div class="kanban-col">
+      <div class="kanban-col-header" style="background:${st.color}">
+        <span>${st.label}</span>
+        <span class="kanban-count">${buckets[st.key].length}</span>
       </div>
+      <div class="kanban-cards">${cards || '<div style="padding:8px;font-size:11px;color:#bbb;text-align:center">—</div>'}</div>
     </div>`;
-  }).join('') || '<div style="color:#999;font-size:13px;padding:12px 0">No hay items activos en producción</div>';
+  }).join('');
 
-  document.getElementById('contenidoProduccion').innerHTML = `
-    <div style="margin-bottom:14px">${estadoSummary}</div>
-    <p style="font-size:11px;color:#999;margin-bottom:10px">Nota: las fechas de estado pueden no reflejar con exactitud los movimientos reales.</p>
-    ${prodsHTML}`;
+  document.getElementById('contenidoProduccion').innerHTML = `<div class="kanban-board">${cols}</div>`;
 }
 
 // ─── POR COBRAR ───────────────────────────────────────────────────────────────
 function renderPorCobrar() {
   const meta = document.getElementById('porCobrarMeta');
+  const today = new Date(); today.setHours(0,0,0,0);
+
   const produccionById = {};
   allData.produccion.forEach(r => { produccionById[r.id] = r.fields; });
 
-  const conSaldo = allData.pedidos.filter(r => {
-    const saldo = r.fields.saldo;
-    return saldo && saldo > 0;
-  }).sort((a,b) => (b.fields.saldo||0) - (a.fields.saldo||0));
+  // Sort by fecha_entrega asc (nulls last), then by saldo desc
+  const conSaldo = allData.pedidos.filter(r => (r.fields.saldo||0) > 0)
+    .sort((a,b) => {
+      const da = a.fields.fecha_entrega || 'zzz';
+      const db = b.fields.fecha_entrega || 'zzz';
+      if (da !== db) return da.localeCompare(db);
+      return (b.fields.saldo||0) - (a.fields.saldo||0);
+    });
 
   const totalPorCobrar = conSaldo.reduce((s,r) => s + (r.fields.saldo||0), 0);
   if (meta) meta.textContent = `${conSaldo.length} pedidos · ${fmtFull(totalPorCobrar)} total`;
@@ -1080,22 +1229,38 @@ function renderPorCobrar() {
 
   const rows = conSaldo.map(r => {
     const f = r.fields;
-    const cliente = Array.isArray(f.cliente) ? f.cliente[0] : (f.cliente || '—');
-    // Check prod status
-    const prodRecs = (f.produccion || []).map(id => produccionById[id]).filter(Boolean);
-    const pendProd = prodRecs.filter(p => !(p.estado||'').includes('Entregado') && !(p.estado||'').includes('Listo'));
-    const listoProd = prodRecs.filter(p => (p.estado||'').includes('Listo') && !(p.estado||'').includes('Entregado'));
+    const cliente  = Array.isArray(f.cliente) ? f.cliente[0] : (f.cliente || '—');
 
-    let prodStatus = '';
-    if (prodRecs.length === 0) prodStatus = '<span class="tag tag-gray">Sin producción</span>';
-    else if (pendProd.length > 0) prodStatus = `<span class="tag tag-amber">En producción (${pendProd.length})</span>`;
+    // Variante names
+    const varIds  = Array.isArray(f.variantes) ? f.variantes : [];
+    const varName = varIds.map(id => allData.variantes_map[id] || '').filter(Boolean).join(', ') || '—';
+
+    // fecha_entrega & days remaining
+    const fechaEnt = f.fecha_entrega || '';
+    const daysLeft = fechaEnt
+      ? Math.round((new Date(fechaEnt) - today) / 86400000)
+      : null;
+    let diasCell = '—';
+    if (daysLeft !== null) {
+      const cls = daysLeft < 0 ? 'days-late' : daysLeft <= 7 ? 'days-warn' : 'days-ok';
+      diasCell = `<span class="days-badge ${cls}">${daysLeft < 0 ? daysLeft + 'd' : '+' + daysLeft + 'd'}</span>`;
+    }
+
+    // Producción status
+    const prodRecs  = (f.produccion || []).map(id => produccionById[id]).filter(Boolean);
+    const pendProd  = prodRecs.filter(p => getKanbanBucket(p.estado||'') !== 'entregado' && getKanbanBucket(p.estado||'') !== 'paraentregar');
+    const listoProd = prodRecs.filter(p => getKanbanBucket(p.estado||'') === 'paraentregar');
+    let prodStatus  = '';
+    if (prodRecs.length === 0)     prodStatus = '<span class="tag tag-gray">Sin prod.</span>';
+    else if (pendProd.length > 0)  prodStatus = `<span class="tag tag-amber">En prod. (${pendProd.length})</span>`;
     else if (listoProd.length > 0) prodStatus = `<span class="tag tag-blue">Listo (${listoProd.length})</span>`;
-    else prodStatus = '<span class="tag tag-green">Producción ok</span>';
+    else                           prodStatus = '<span class="tag tag-green">Entregado</span>';
 
     return `<tr>
       <td>${cliente}</td>
-      <td class="right mono">${fmtFull(f.monto_total_pactado||f.precio_pactado)}</td>
-      <td class="right mono positive">${fmtFull(f.pagado)}</td>
+      <td style="font-size:11px;color:#555;max-width:180px">${varName}</td>
+      <td>${fmtDate(fechaEnt)}</td>
+      <td class="center">${diasCell}</td>
       <td class="right mono blue"><strong>${fmtFull(f.saldo)}</strong></td>
       <td>${prodStatus}</td>
     </tr>`;
@@ -1109,9 +1274,8 @@ function renderPorCobrar() {
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>Cliente</th><th class="right">Total pactado</th>
-          <th class="right">Pagado</th><th class="right">Saldo</th>
-          <th>Producción</th>
+          <th>Cliente</th><th>Variante</th><th>Fecha entrega</th>
+          <th class="center">Días</th><th class="right">Saldo</th><th>Producción</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -1269,6 +1433,178 @@ function setStatus(msg) { document.getElementById('statusMsg').textContent = msg
 function showError(msg) {
   const el = document.getElementById('errorBanner');
   if (!el) return;
+  el.style.display = msg ? 'block' : 'none';
+  el.textContent = msg;
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => loadData());
+</script>
+</body>
+</html>
+</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Cliente</th><th>Variante</th><th>Fecha entrega</th>
+          <th class="center">Días</th><th class="right">Saldo</th><th>Producción</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>\`;
+}
+
+// ─── EDGAR ───────────────────────────────────────────────────────────────────
+// Lógica: Mosca adelanta plata a Edgar (alquiler, adelantos) = Edgar genera deuda con Mosca
+//         Recuperos (trabajo Edgar) y Premio devengado = descontán deuda
+//         Saldo siempre ≤ 0 → negativo = Edgar le debe a Mosca
+function renderEdgar() {
+  // Adelantos / pagos a Edgar → generan deuda de Edgar con Mosca
+  const gastEdgar = allData.gastos.filter(r => {
+    const prov = Array.isArray(r.fields['proveedor (de Proveedores)'])
+      ? r.fields['proveedor (de Proveedores)'].join(' ') : '';
+    return prov.toLowerCase().includes('edgar')
+      || (r.fields.concepto||'').toLowerCase().includes('edgar');
+  });
+
+  // Recuperos de Edgar: trabajos/pagos que descuentan la deuda
+  const ingEdgar = allData.ingresos.filter(r =>
+    (r.fields.concepto || '') === 'Recupero Edgar'
+  );
+
+  // Premio devengado de pedidos = por ventas que Edgar trajo
+  const totalPremioDevengado = allData.pedidos
+    .filter(r => r.fields.estado \!== 'Cancelado')
+    .reduce((s,r) => s + (r.fields.premio_edgar||0), 0);
+
+  const totalAdelantado  = gastEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
+  const totalRecuperado  = ingEdgar.reduce((s,r)  => s + (r.fields.monto||0), 0);
+
+  // Saldo = premios + recuperos - adelantado → negativo = Edgar le debe a Mosca
+  const saldo = totalPremioDevengado + totalRecuperado - totalAdelantado;
+
+  document.getElementById('kpiEdgar').innerHTML = \`
+    <div class="kpi">
+      <div class="kpi-label">Adelantado a Edgar</div>
+      <div class="kpi-value negative">\${fmtFull(-totalAdelantado)}</div>
+      <div class="kpi-sub">Deuda de Edgar con Mosca</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Recuperado</div>
+      <div class="kpi-value positive">\${fmtFull(totalRecuperado)}</div>
+      <div class="kpi-sub">Trabajo y pagos de Edgar</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Premio devengado</div>
+      <div class="kpi-value positive">\${fmtFull(totalPremioDevengado)}</div>
+      <div class="kpi-sub">Por ventas cerradas</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Edgar debe a Mosca</div>
+      <div class="kpi-value \${saldo <= 0 ? 'negative' : 'positive'}">\${fmtFull(saldo)}</div>
+      <div class="kpi-sub">\${saldo < 0 ? 'Pendiente de trabajo' : saldo === 0 ? 'Al día' : 'Mosca le debe a Edgar'}</div>
+    </div>
+  \`;
+
+  // Lista de movimientos combinada: impacto en saldo (positivo = reduce deuda Edgar)
+  const movs = [
+    ...gastEdgar.map(r => ({
+      fecha: r.fields.fecha || '',
+      tipo: 'adelanto',
+      concepto: r.fields.concepto || 'Pago/Adelanto',
+      impacto: -(r.fields.monto||0)  // negativo → aumenta deuda Edgar
+    })),
+    ...ingEdgar.map(r => ({
+      fecha: r.fields.fecha || '',
+      tipo: 'recupero',
+      concepto: r.fields.Nota || 'Recupero',
+      impacto: r.fields.monto||0     // positivo → reduce deuda Edgar
+    })),
+    ...allData.pedidos
+      .filter(r => (r.fields.premio_edgar||0) > 0 && r.fields.estado \!== 'Cancelado')
+      .map(r => ({
+        fecha: r.fields.seña || '',
+        tipo: 'premio',
+        concepto: \`Premio · \${Array.isArray(r.fields.cliente) ? r.fields.cliente[0] : (r.fields.cliente||'—')}\`,
+        impacto: r.fields.premio_edgar||0  // positivo → reduce deuda
+      }))
+  ];
+
+  // Calcular saldo acumulado en orden cronológico
+  const movsAsc = [...movs].sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
+  let bal = 0;
+  const balMap = new Map();
+  movsAsc.forEach(m => { bal += m.impacto; balMap.set(m, bal); });
+
+  // Agrupar por mes, mostrar decreciente
+  const movsByMonth = {};
+  movs.forEach(m => {
+    const mes = (m.fecha||'').slice(0,7) || '?';
+    if (\!movsByMonth[mes]) movsByMonth[mes] = [];
+    movsByMonth[mes].push(m);
+  });
+
+  const monthsSorted = Object.keys(movsByMonth).sort((a,b) => b.localeCompare(a));
+  let tableHtml = '';
+
+  monthsSorted.forEach(mes => {
+    const mesMovs = [...movsByMonth[mes]].sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+    const mesTotal = mesMovs.reduce((s,m) => s + m.impacto, 0);
+    const mesLabel_ = mes \!== '?' ? mesLabel(mes) : 'Sin fecha';
+    tableHtml += \`<tr style="cursor:pointer;background:var(--bg)" onclick="toggleEdgarMes('em-\${mes.replace('-','_')}')">
+      <td colspan="6" style="padding:8px 10px;font-size:12px;font-weight:600;color:var(--accent)">
+        <span id="em-arrow-\${mes.replace('-','_')}">▼</span> \${mesLabel_}
+        <span style="font-weight:400;color:var(--muted);margin-left:8px">\${mesMovs.length} mov. · \${mesTotal >= 0 ? '+' : ''}\${fmtFull(mesTotal)}</span>
+      </td>
+    </tr>\`;
+    mesMovs.forEach(m => {
+      const balance = balMap.get(m);
+      const tipTag = m.tipo === 'adelanto'
+        ? '<span class="tag tag-red">Adelanto</span>'
+        : m.tipo === 'recupero'
+          ? '<span class="tag tag-green">Recupero</span>'
+          : '<span class="tag tag-amber">Premio</span>';
+      tableHtml += \`<tr class="em-\${mes.replace('-','_')}">
+        <td>\${fmtDate(m.fecha)}</td>
+        <td>\${tipTag}</td>
+        <td style="font-size:12px">\${m.concepto}</td>
+        <td class="right mono">\${m.tipo === 'adelanto' ? \`<span class="negative">\${fmtFull(m.impacto)}</span>\` : '—'}</td>
+        <td class="right mono">\${m.tipo \!== 'adelanto' ? \`<span class="positive">+\${fmtFull(m.impacto)}</span>\` : '—'}</td>
+        <td class="right mono \${balance < 0 ? 'negative' : 'neutral'}">\${fmtFull(balance)}</td>
+      </tr>\`;
+    });
+  });
+
+  document.getElementById('bodyEdgar').innerHTML = tableHtml ||
+    '<tr><td colspan="6" style="text-align:center;color:#999;padding:20px">Sin movimientos registrados para Edgar</td></tr>';
+}
+
+function toggleEdgarMes(cls) {
+  const rows = document.querySelectorAll('.' + cls);
+  const key = cls.replace('em-', '');
+  const arrow = document.getElementById('em-arrow-' + key);
+  let anyVisible = false;
+  rows.forEach(r => { if (r.style.display \!== 'none') anyVisible = true; });
+  rows.forEach(r => { r.style.display = anyVisible ? 'none' : ''; });
+  if (arrow) arrow.textContent = anyVisible ? '▶' : '▼';
+}
+
+// ─── UI HELPERS ──────────────────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name)?.classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach(t => {
+    if (t.textContent.toLowerCase().includes(name === 'reporte' ? 'reporte' : 'edgar'))
+      t.classList.add('active');
+  });
+  document.getElementById('toolbar').style.display = name === 'reporte' ? '' : 'none';
+}
+
+function setStatus(msg) { document.getElementById('statusMsg').textContent = msg; }
+function showError(msg) {
+  const el = document.getElementById('errorBanner');
+  if (\!el) return;
   el.style.display = msg ? 'block' : 'none';
   el.textContent = msg;
 }
