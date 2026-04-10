@@ -182,7 +182,7 @@
       display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; min-height: 160px;
     }
     .kanban-col {
-      flex: 0 0 200px; background: var(--bg); border-radius: 6px; overflow: hidden;
+      flex: 0 0 210px; background: var(--bg); border-radius: 6px; overflow: hidden;
       border: 1px solid var(--border);
     }
     .kanban-col-header {
@@ -194,7 +194,7 @@
       background: rgba(0,0,0,0.2); border-radius: 8px; padding: 1px 6px;
       font-size: 11px; font-weight: 700;
     }
-    .kanban-cards { padding: 6px; display: flex; flex-direction: column; gap: 6px; min-height: 40px; }
+    .kanban-cards { padding: 6px; display: flex; flex-direction: column; gap: 6px; min-height: 40px; max-height: 420px; overflow-y: auto; }
     .kanban-card {
       background: white; border-radius: 5px; padding: 9px 10px;
       border: 1px solid var(--border); font-size: 12px;
@@ -318,7 +318,7 @@
             <th class="right">Q ventas</th>
             <th class="right">Ticket</th>
           </tr></thead>
-          <tbody id="bodyEvolucion"><tr><td colspan="9" class="loading"><span class="spinner"></span>Cargando...</td></tr></tbody>
+          <tbody id="bodyEvolucion"><tr><td colspan="10" class="loading"><span class="spinner"></span>Cargando...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -429,7 +429,6 @@ const WEBHOOK_URL = 'https://n8n.groumachine.com.ar/webhook/mosca-dashboard-dato
 // Kanban states config (orden, label, color de header)
 const KANBAN_STATES = [
   { key: 'backlog',       label: 'Backlog',        color: '#78909c' },
-  { key: 'planificado',   label: 'Planificado',    color: '#5c7bd6' },
   { key: 'estructura',    label: 'Estructura',     color: '#e6ac30' },
   { key: 'terminacion',   label: 'Terminación',    color: '#e08030' },
   { key: 'paraentregar',  label: 'Para entregar',  color: '#43a047' },
@@ -748,6 +747,7 @@ function renderEvolucion() {
   const gastVars   = sorted.map(r => r.fields['Gastos Variables'] || 0);
   const resFinanc  = sorted.map(r => r.fields.Resultado || 0);
   const resEcon    = sorted.map(r => (r.fields.Ventas||0) - (r.fields.Gastos||0));
+  const capital    = sorted.map(r => r.fields.Capitalizacion || 0);
 
   if (chartEvol) chartEvol.destroy();
   const ctx = document.getElementById('chartEvol').getContext('2d');
@@ -760,7 +760,8 @@ function renderEvolucion() {
         { type: 'bar',  label: 'G. Fijos',      data: gastFijos,backgroundColor: 'rgba(192,57,43,0.75)',  stack: 'gastos',  yAxisID: 'y' },
         { type: 'bar',  label: 'G. Variables',  data: gastVars, backgroundColor: 'rgba(229,115,115,0.65)',stack: 'gastos',  yAxisID: 'y' },
         { type: 'line', label: 'Res. Caja',     data: resFinanc,borderColor: '#c4873a', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, tension: 0.3, yAxisID: 'y' },
-        { type: 'line', label: 'Res. Econ.',    data: resEcon,  borderColor: '#d2beaa', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, borderDash: [5,3], tension: 0.3, yAxisID: 'y' }
+        { type: 'line', label: 'Res. Econ.',    data: resEcon,  borderColor: '#d2beaa', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, borderDash: [5,3], tension: 0.3, yAxisID: 'y' },
+        { type: 'line', label: 'Capital/Ret.',  data: capital,  borderColor: '#8e44ad', backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 3, borderDash: [3,3], tension: 0.3, yAxisID: 'y' }
       ]
     },
     options: {
@@ -781,6 +782,7 @@ function renderEvolucion() {
   if (thead) thead.innerHTML = `
     <th>Mes</th>
     <th class="right">Cobros</th>
+    <th class="right">Capital</th>
     <th class="right">Ventas</th>
     <th class="right">G. Fijos</th>
     <th class="right">G. Variables</th>
@@ -809,9 +811,11 @@ function renderEvolucion() {
     const resE  = (f.Ventas||0) - (f.Gastos||0);
     const gFij  = f['Gastos Fijos']     || 0;
     const gVar  = f['Gastos Variables'] || 0;
+    const cap = f.Capitalizacion || 0;
     return `<tr>
       <td><strong>${mesLabel(f.Mes)}</strong></td>
       <td class="right mono">${fmtFull(f.Cobros)}</td>
+      <td class="right mono ${signClass(cap)}">${cap !== 0 ? fmtFull(cap) : '—'}</td>
       <td class="right mono">${fmtFull(f.Ventas)}</td>
       <td class="right mono negative">${fmtFull(gFij)}</td>
       <td class="right mono negative">${fmtFull(gVar)}</td>
@@ -829,7 +833,7 @@ function renderEvolucion() {
     const totalV = rows.reduce((s,r) => s+(r.fields.Ventas||0), 0);
     const totalG = rows.reduce((s,r) => s+(r.fields.Gastos||0), 0);
     html += `<tr style="cursor:pointer;background:#ece8e3" onclick="toggleYearGroup('y${year}')">
-      <td colspan="9" style="padding:8px 10px;font-size:12px;font-weight:600;color:var(--accent)">
+      <td colspan="10" style="padding:8px 10px;font-size:12px;font-weight:600;color:var(--accent)">
         <span id="yr-arrow-${year}">▶</span> ${year} — ${rows.length} meses &nbsp;·&nbsp; Cobros ${fmtFull(totalC)} &nbsp;·&nbsp; Ventas ${fmtFull(totalV)} &nbsp;·&nbsp; Gastos ${fmtFull(totalG)}
       </td>
     </tr>`;
@@ -1088,17 +1092,24 @@ function renderComercial() {
       else if (est.includes('producción') || est.includes('Produccion')) tagCls = 'tag-amber';
       else if (est.includes('Listo')) tagCls = 'tag-blue';
       else if (est === 'Seña') tagCls = 'tag-purple';
-      // Fix: el campo se llama 'variantes' (plural) en Airtable
-      const variante = Array.isArray(f.variantes) ? f.variantes.join(', ') : (f.variantes || '—');
-      return `<tr>
+      // Resolve variante IDs via variantes_map
+      const varIds = Array.isArray(f.variante) ? f.variante : (Array.isArray(f.variantes) ? f.variantes : []);
+      const variante = varIds.map(id => allData.variantes_map[id] || '').filter(Boolean).join(', ') || '—';
+      const saldo = f.saldo || 0;
+      // Highlight: entregado pero con saldo pendiente positivo (debe plata) o negativo (overpaid)
+      const entregadoConSaldo = est.includes('Entregado') && saldo !== 0;
+      const rowStyle = entregadoConSaldo
+        ? (saldo > 0 ? 'style="background:#fff8e1"' : 'style="background:#fce4ec"')
+        : '';
+      return `<tr ${rowStyle}>
         <td>${fmtDate(f.seña)}</td>
         <td>${cliente}</td>
         <td style="font-size:12px;color:#555;max-width:200px">${variante}</td>
-        <td><span class="tag ${tagCls}" style="font-size:10px">${est}</span></td>
+        <td><span class="tag ${tagCls}" style="font-size:10px">${est}</span>${entregadoConSaldo ? (saldo > 0 ? ' <span title="Saldo pendiente" style="color:#e65100;font-size:11px">⚠</span>' : ' <span title="Overpaid" style="color:#880e4f;font-size:11px">↩</span>') : ''}</td>
         <td class="right">${f.cant_muebles||'—'}</td>
         <td class="right mono">${fmtFull(f.monto_total_pactado||f.precio_pactado)}</td>
         <td class="right mono positive">${fmtFull(f.pagado)}</td>
-        <td class="right mono ${(f.saldo||0) > 0 ? 'blue' : 'positive'}">${fmtFull(f.saldo)}</td>
+        <td class="right mono ${saldo > 0 ? 'blue' : saldo < 0 ? 'negative' : 'positive'}">${fmtFull(saldo)}</td>
       </tr>`;
     }).join('');
 
@@ -1127,10 +1138,12 @@ function renderProduccion() {
   const meta = document.getElementById('prodMeta');
   const today = new Date(); today.setHours(0,0,0,0);
 
-  // Exclude "Mosca Taller" (internal) clients
+  // Only show records with a real client (non-empty, not "Mosca Taller")
   const prods = allData.produccion.filter(r => {
     const clientes = Array.isArray(r.fields.cliente) ? r.fields.cliente : [r.fields.cliente || ''];
-    return !clientes.some(c => /mosca\s*taller/i.test(c || ''));
+    const hasClient = clientes.some(c => c && c.trim());
+    const isMosca   = clientes.some(c => /mosca\s*taller/i.test(c || ''));
+    return hasClient && !isMosca;
   });
 
   const activos    = prods.filter(r => getKanbanBucket(r.fields.estado) !== 'entregado');
@@ -1231,8 +1244,8 @@ function renderPorCobrar() {
     const f = r.fields;
     const cliente  = Array.isArray(f.cliente) ? f.cliente[0] : (f.cliente || '—');
 
-    // Variante names
-    const varIds  = Array.isArray(f.variantes) ? f.variantes : [];
+    // Variante names (check both field name variants)
+    const varIds  = Array.isArray(f.variante) ? f.variante : (Array.isArray(f.variantes) ? f.variantes : []);
     const varName = varIds.map(id => allData.variantes_map[id] || '').filter(Boolean).join(', ') || '—';
 
     // fecha_entrega & days remaining
@@ -1417,199 +1430,7 @@ function toggleEdgarMes(cls) {
   if (arrow) arrow.textContent = anyVisible ? '▶' : '▼';
 }
 
-// ─── UI HELPERS ──────────────────────────────────────────────────────────────
-function showPage(name) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('page-' + name)?.classList.add('active');
-  document.querySelectorAll('.nav-tab').forEach(t => {
-    if (t.textContent.toLowerCase().includes(name === 'reporte' ? 'reporte' : 'edgar'))
-      t.classList.add('active');
-  });
-  document.getElementById('toolbar').style.display = name === 'reporte' ? '' : 'none';
-}
-
-function setStatus(msg) { document.getElementById('statusMsg').textContent = msg; }
-function showError(msg) {
-  const el = document.getElementById('errorBanner');
-  if (!el) return;
-  el.style.display = msg ? 'block' : 'none';
-  el.textContent = msg;
-}
-
-// ─── INIT ────────────────────────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', () => loadData());
-</script>
-</body>
-</html>
-</div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr>
-          <th>Cliente</th><th>Variante</th><th>Fecha entrega</th>
-          <th class="center">Días</th><th class="right">Saldo</th><th>Producción</th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>\`;
-}
-
-// ─── EDGAR ───────────────────────────────────────────────────────────────────
-// Lógica: Mosca adelanta plata a Edgar (alquiler, adelantos) = Edgar genera deuda con Mosca
-//         Recuperos (trabajo Edgar) y Premio devengado = descontán deuda
-//         Saldo siempre ≤ 0 → negativo = Edgar le debe a Mosca
-function renderEdgar() {
-  // Adelantos / pagos a Edgar → generan deuda de Edgar con Mosca
-  const gastEdgar = allData.gastos.filter(r => {
-    const prov = Array.isArray(r.fields['proveedor (de Proveedores)'])
-      ? r.fields['proveedor (de Proveedores)'].join(' ') : '';
-    return prov.toLowerCase().includes('edgar')
-      || (r.fields.concepto||'').toLowerCase().includes('edgar');
-  });
-
-  // Recuperos de Edgar: trabajos/pagos que descuentan la deuda
-  const ingEdgar = allData.ingresos.filter(r =>
-    (r.fields.concepto || '') === 'Recupero Edgar'
-  );
-
-  // Premio devengado de pedidos = por ventas que Edgar trajo
-  const totalPremioDevengado = allData.pedidos
-    .filter(r => r.fields.estado \!== 'Cancelado')
-    .reduce((s,r) => s + (r.fields.premio_edgar||0), 0);
-
-  const totalAdelantado  = gastEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
-  const totalRecuperado  = ingEdgar.reduce((s,r)  => s + (r.fields.monto||0), 0);
-
-  // Saldo = premios + recuperos - adelantado → negativo = Edgar le debe a Mosca
-  const saldo = totalPremioDevengado + totalRecuperado - totalAdelantado;
-
-  document.getElementById('kpiEdgar').innerHTML = \`
-    <div class="kpi">
-      <div class="kpi-label">Adelantado a Edgar</div>
-      <div class="kpi-value negative">\${fmtFull(-totalAdelantado)}</div>
-      <div class="kpi-sub">Deuda de Edgar con Mosca</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Recuperado</div>
-      <div class="kpi-value positive">\${fmtFull(totalRecuperado)}</div>
-      <div class="kpi-sub">Trabajo y pagos de Edgar</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Premio devengado</div>
-      <div class="kpi-value positive">\${fmtFull(totalPremioDevengado)}</div>
-      <div class="kpi-sub">Por ventas cerradas</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Edgar debe a Mosca</div>
-      <div class="kpi-value \${saldo <= 0 ? 'negative' : 'positive'}">\${fmtFull(saldo)}</div>
-      <div class="kpi-sub">\${saldo < 0 ? 'Pendiente de trabajo' : saldo === 0 ? 'Al día' : 'Mosca le debe a Edgar'}</div>
-    </div>
-  \`;
-
-  // Lista de movimientos combinada: impacto en saldo (positivo = reduce deuda Edgar)
-  const movs = [
-    ...gastEdgar.map(r => ({
-      fecha: r.fields.fecha || '',
-      tipo: 'adelanto',
-      concepto: r.fields.concepto || 'Pago/Adelanto',
-      impacto: -(r.fields.monto||0)  // negativo → aumenta deuda Edgar
-    })),
-    ...ingEdgar.map(r => ({
-      fecha: r.fields.fecha || '',
-      tipo: 'recupero',
-      concepto: r.fields.Nota || 'Recupero',
-      impacto: r.fields.monto||0     // positivo → reduce deuda Edgar
-    })),
-    ...allData.pedidos
-      .filter(r => (r.fields.premio_edgar||0) > 0 && r.fields.estado \!== 'Cancelado')
-      .map(r => ({
-        fecha: r.fields.seña || '',
-        tipo: 'premio',
-        concepto: \`Premio · \${Array.isArray(r.fields.cliente) ? r.fields.cliente[0] : (r.fields.cliente||'—')}\`,
-        impacto: r.fields.premio_edgar||0  // positivo → reduce deuda
-      }))
-  ];
-
-  // Calcular saldo acumulado en orden cronológico
-  const movsAsc = [...movs].sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
-  let bal = 0;
-  const balMap = new Map();
-  movsAsc.forEach(m => { bal += m.impacto; balMap.set(m, bal); });
-
-  // Agrupar por mes, mostrar decreciente
-  const movsByMonth = {};
-  movs.forEach(m => {
-    const mes = (m.fecha||'').slice(0,7) || '?';
-    if (\!movsByMonth[mes]) movsByMonth[mes] = [];
-    movsByMonth[mes].push(m);
-  });
-
-  const monthsSorted = Object.keys(movsByMonth).sort((a,b) => b.localeCompare(a));
-  let tableHtml = '';
-
-  monthsSorted.forEach(mes => {
-    const mesMovs = [...movsByMonth[mes]].sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
-    const mesTotal = mesMovs.reduce((s,m) => s + m.impacto, 0);
-    const mesLabel_ = mes \!== '?' ? mesLabel(mes) : 'Sin fecha';
-    tableHtml += \`<tr style="cursor:pointer;background:var(--bg)" onclick="toggleEdgarMes('em-\${mes.replace('-','_')}')">
-      <td colspan="6" style="padding:8px 10px;font-size:12px;font-weight:600;color:var(--accent)">
-        <span id="em-arrow-\${mes.replace('-','_')}">▼</span> \${mesLabel_}
-        <span style="font-weight:400;color:var(--muted);margin-left:8px">\${mesMovs.length} mov. · \${mesTotal >= 0 ? '+' : ''}\${fmtFull(mesTotal)}</span>
-      </td>
-    </tr>\`;
-    mesMovs.forEach(m => {
-      const balance = balMap.get(m);
-      const tipTag = m.tipo === 'adelanto'
-        ? '<span class="tag tag-red">Adelanto</span>'
-        : m.tipo === 'recupero'
-          ? '<span class="tag tag-green">Recupero</span>'
-          : '<span class="tag tag-amber">Premio</span>';
-      tableHtml += \`<tr class="em-\${mes.replace('-','_')}">
-        <td>\${fmtDate(m.fecha)}</td>
-        <td>\${tipTag}</td>
-        <td style="font-size:12px">\${m.concepto}</td>
-        <td class="right mono">\${m.tipo === 'adelanto' ? \`<span class="negative">\${fmtFull(m.impacto)}</span>\` : '—'}</td>
-        <td class="right mono">\${m.tipo \!== 'adelanto' ? \`<span class="positive">+\${fmtFull(m.impacto)}</span>\` : '—'}</td>
-        <td class="right mono \${balance < 0 ? 'negative' : 'neutral'}">\${fmtFull(balance)}</td>
-      </tr>\`;
-    });
-  });
-
-  document.getElementById('bodyEdgar').innerHTML = tableHtml ||
-    '<tr><td colspan="6" style="text-align:center;color:#999;padding:20px">Sin movimientos registrados para Edgar</td></tr>';
-}
-
-function toggleEdgarMes(cls) {
-  const rows = document.querySelectorAll('.' + cls);
-  const key = cls.replace('em-', '');
-  const arrow = document.getElementById('em-arrow-' + key);
-  let anyVisible = false;
-  rows.forEach(r => { if (r.style.display \!== 'none') anyVisible = true; });
-  rows.forEach(r => { r.style.display = anyVisible ? 'none' : ''; });
-  if (arrow) arrow.textContent = anyVisible ? '▶' : '▼';
-}
-
-// ─── UI HELPERS ──────────────────────────────────────────────────────────────
-function showPage(name) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('page-' + name)?.classList.add('active');
-  document.querySelectorAll('.nav-tab').forEach(t => {
-    if (t.textContent.toLowerCase().includes(name === 'reporte' ? 'reporte' : 'edgar'))
-      t.classList.add('active');
-  });
-  document.getElementById('toolbar').style.display = name === 'reporte' ? '' : 'none';
-}
-
-function setStatus(msg) { document.getElementById('statusMsg').textContent = msg; }
-function showError(msg) {
-  const el = document.getElementById('errorBanner');
-  if (\!el) return;
-  el.style.display = msg ? 'block' : 'none';
-  el.textContent = msg;
-}
-
-// ─── INIT ────────────────────────────────────────────────────────────────────
+// ─── UI HELPERS ────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => loadData());
 </script>
 </body>
