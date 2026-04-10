@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mosca Taller — Dashboard v0.7</title>
+  <title>Mosca Taller — Dashboard v0.8</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     :root {
@@ -264,7 +264,7 @@
 
 <!-- NAV -->
 <nav class="nav no-print">
-  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v0.7</span></span>
+  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v0.8</span></span>
   <div class="nav-tabs">
     <button class="nav-tab active" onclick="showPage('reporte')">Reporte</button>
     <button class="nav-tab" onclick="showPage('edgar')">Edgar</button>
@@ -484,7 +484,17 @@ async function loadData() {
   showError('');
 
   try {
-    const resp = await fetch(WEBHOOK_URL);
+    const controller = new AbortController();
+    const timeoutId  = setTimeout(() => controller.abort(), 20000);
+    let resp;
+    try {
+      resp = await fetch(WEBHOOK_URL, { signal: controller.signal });
+    } catch (fetchErr) {
+      if (fetchErr.name === 'AbortError') throw new Error('Timeout: el webhook no respondió en 20 segundos. Verificá que n8n esté activo.');
+      throw new Error('No se pudo conectar al webhook. Posible problema de red o CORS. Detalle: ' + fetchErr.message);
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     // Leer como texto primero para diagnosticar mejor
     const rawText = await resp.text();
