@@ -273,8 +273,48 @@
       .section-header { page-break-after: avoid; }
       h1.print-title { display: block !important; font-size: 18px; margin-bottom: 16px; }
       .print-break { page-break-before: always; }
+      /* FICHAS DE TALLER */
+      body.printing-fichas .page,
+      body.printing-fichas .nav,
+      body.printing-fichas .toolbar { display: none !important; }
+      body.printing-fichas #fichasContainer { display: block !important; }
+      .ficha-card {
+        width: 180mm; min-height: 267mm; padding: 12mm 14mm;
+        page-break-after: always; box-sizing: border-box;
+        border: 1px solid #ccc; font-family: Arial, sans-serif;
+        display: flex; flex-direction: column;
+      }
+      .ficha-card:last-child { page-break-after: avoid; }
     }
     h1.print-title { display: none; }
+    /* PROD TOOLBAR */
+    .prod-toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .prod-search { flex: 1; min-width: 200px; padding: 7px 12px; font-size: 13px; border: 1px solid var(--border); border-radius: 5px; background: white; }
+    .prod-search:focus { outline: none; border-color: var(--accent); }
+    /* FICHAS container (screen preview, hidden by default) */
+    #fichasContainer { display: none; padding: 20px; background: #888; }
+    .ficha-card {
+      width: 180mm; min-height: 267mm; margin: 0 auto 20px; padding: 12mm 14mm;
+      background: white; box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+      font-family: Arial, sans-serif; box-sizing: border-box;
+      display: flex; flex-direction: column; border: 1px solid #ddd;
+    }
+    .ficha-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #0a465a; padding-bottom: 8px; margin-bottom: 12px; }
+    .ficha-brand { font-size: 18px; font-weight: 900; letter-spacing: 2px; color: #0a465a; }
+    .ficha-meta { font-size: 11px; color: #666; text-align: right; }
+    .ficha-title { font-size: 22px; font-weight: 700; color: #1a1714; margin-bottom: 6px; line-height: 1.3; }
+    .ficha-row { display: flex; gap: 20px; margin-bottom: 10px; flex-wrap: wrap; }
+    .ficha-field { flex: 1; min-width: 120px; }
+    .ficha-field-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: #888; font-weight: 700; margin-bottom: 3px; }
+    .ficha-field-value { font-size: 14px; font-weight: 600; color: #1a1714; }
+    .ficha-box { border: 1px solid #ddd; border-radius: 4px; padding: 10px 12px; margin-bottom: 10px; min-height: 60px; }
+    .ficha-box-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: #888; font-weight: 700; margin-bottom: 6px; }
+    .ficha-box-content { font-size: 12px; color: #333; line-height: 1.5; }
+    .ficha-photo { flex: 1; border: 2px dashed #ddd; border-radius: 4px; min-height: 80mm; display: flex; align-items: center; justify-content: center; color: #bbb; font-size: 13px; margin-bottom: 10px; }
+    .ficha-checklist { display: flex; gap: 16px; flex-wrap: wrap; border-top: 1px solid #eee; padding-top: 10px; margin-top: auto; }
+    .ficha-check { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+    .ficha-check-box { width: 16px; height: 16px; border: 2px solid #333; border-radius: 2px; flex-shrink: 0; }
+    .ficha-problema { background: #fff3e0; border: 1px solid #ffb74d; border-radius: 4px; padding: 8px 10px; margin-bottom: 10px; font-size: 12px; color: #e65100; }
   </style>
 </head>
 <body>
@@ -283,8 +323,10 @@
 <nav class="nav no-print">
   <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v0.9</span></span>
   <div class="nav-tabs">
-    <button class="nav-tab active" onclick="showPage('reporte')">Reporte</button>
-    <button class="nav-tab" onclick="showPage('edgar')">Edgar</button>
+    <button class="nav-tab active" data-page="reporte" onclick="showPage('reporte')">Financiero</button>
+    <button class="nav-tab" data-page="comercial" onclick="showPage('comercial')">Comercial</button>
+    <button class="nav-tab" data-page="produccion" onclick="showPage('produccion')">Producción</button>
+    <button class="nav-tab" data-page="edgar" onclick="showPage('edgar')">Edgar</button>
   </div>
   <div class="nav-actions">
     <button class="btn-nav" onclick="loadData()">↻ Actualizar</button>
@@ -370,25 +412,20 @@
       </div>
     </div>
 
-    <!-- COMERCIAL -->
-    <div class="section print-break" id="secComercial">
+  </div>
+</div>
+
+<!-- PÁGINA: COMERCIAL -->
+<div id="page-comercial" class="page">
+  <div class="content">
+    <h1 class="print-title">Mosca Taller — Comercial</h1>
+    <div class="section" id="secComercial">
       <div class="section-header">
-        <span class="section-title">Resultado comercial</span>
+        <span class="section-title">Pedidos</span>
         <span class="section-meta" id="comercialMeta"></span>
       </div>
       <div id="contenidoComercial"><div class="loading"><span class="spinner"></span>Cargando...</div></div>
     </div>
-
-    <!-- PRODUCCIÓN -->
-    <div class="section" id="secProduccion">
-      <div class="section-header">
-        <span class="section-title">Producción</span>
-        <span class="section-meta" id="prodMeta"></span>
-      </div>
-      <div id="contenidoProduccion"><div class="loading"><span class="spinner"></span>Cargando...</div></div>
-    </div>
-
-    <!-- POR COBRAR -->
     <div class="section" id="secPorCobrar">
       <div class="section-header">
         <span class="section-title">Por cobrar</span>
@@ -397,6 +434,29 @@
       <div id="contenidoPorCobrar"><div class="loading"><span class="spinner"></span>Cargando...</div></div>
     </div>
   </div>
+</div>
+
+<!-- PÁGINA: PRODUCCIÓN -->
+<div id="page-produccion" class="page">
+  <div class="content">
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Producción</span>
+        <span class="section-meta" id="prodMeta"></span>
+      </div>
+      <div id="prodToolbar" class="prod-toolbar no-print"></div>
+      <div id="contenidoProduccion"><div class="loading"><span class="spinner"></span>Cargando...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- FICHAS container (screen + print) -->
+<div id="fichasContainer">
+  <div style="text-align:center;padding:12px 0 20px;no-print">
+    <button onclick="closeFichas()" class="btn-nav" style="background:#c62828;margin-right:8px">✕ Cerrar</button>
+    <button onclick="window.print()" class="btn-nav">⎙ Imprimir</button>
+  </div>
+  <div id="fichasInner"></div>
 </div>
 
 <!-- PÁGINA: EDGAR -->
@@ -456,6 +516,8 @@ function getKanbanBucket(estado) {
 // ─── STATE ──────────────────────────────────────────────────────────────────
 let allData = { resultados: [], ingresos: [], gastos: [], pedidos: [], produccion: [], variantes_map: {} };
 let movFilter = { tipo: 'all', cat: '', subtipo: '' };
+let prodSearch = '';
+let prodEstadoFilter = '';
 let selectedMonth = '';
 let chartEvol = null;
 
@@ -602,6 +664,7 @@ function onMonthChange() {
   renderKPIs();
   renderMovimientos();
   renderComercial();
+  renderPorCobrar();
   // Update print title
   const t = document.getElementById('printTitle');
   if (t) t.textContent = selectedMonth
@@ -884,7 +947,7 @@ function renderMovimientos() {
     gasts = gasts.filter(r => r.fields['mes-a'] === selectedMonth);
   }
 
-  // Build unified row dataset
+  // Build unified row dataset — unclassified → 'No Clasificados'
   const allRows = [
     ...ings.map(r => ({
       fecha:   r.fields.fecha || '',
@@ -892,7 +955,7 @@ function renderMovimientos() {
       concepto: r.fields.concepto || r.fields.tipo_flujo || '—',
       nota:    r.fields.Nota || '',
       monto:   r.fields.monto || 0,
-      cat:     r.fields.concepto || r.fields.tipo_flujo || '—',
+      cat:     r.fields.concepto || r.fields.tipo_flujo || 'No Clasificados',
       subtipo: r.fields.tipo_flujo || 'Operativo'
     })),
     ...gasts.map(r => ({
@@ -903,34 +966,39 @@ function renderMovimientos() {
         : (r.fields['proveedor (de Proveedores)'] || r.fields.categoria || '—'),
       nota:    r.fields.concepto || '',
       monto:   -(r.fields.monto || 0),
-      cat:     r.fields.categoria || '—',
-      subtipo: r.fields.tipo || '—'
+      cat:     r.fields.categoria || 'No Clasificados',
+      subtipo: r.fields.tipo || 'No Clasificados'
     }))
   ].sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
 
-  // Totals
-  const totalI     = ings.reduce((s,r)  => s + (r.fields.monto||0), 0);
-  const totalG     = gasts.reduce((s,r) => s + (r.fields.monto||0), 0);
-  const gastFijos  = gasts.filter(r => r.fields.tipo === 'Fijo').reduce((s,r) => s + (r.fields.monto||0), 0);
-  const gastVars   = gasts.filter(r => r.fields.tipo === 'Variable').reduce((s,r) => s + (r.fields.monto||0), 0);
-  const gastSinTipo = totalG - gastFijos - gastVars;
+  // Global totals (always full period)
+  const totalI    = ings.reduce((s,r)  => s + (r.fields.monto||0), 0);
+  const totalG    = gasts.reduce((s,r) => s + (r.fields.monto||0), 0);
+  const gastFijos = gasts.filter(r => r.fields.tipo === 'Fijo').reduce((s,r) => s + (r.fields.monto||0), 0);
+  const gastVars  = gasts.filter(r => r.fields.tipo === 'Variable').reduce((s,r) => s + (r.fields.monto||0), 0);
 
-  // Category breakdowns
+  // Category breakdowns for analysis panels
   const gastByCat = {};
   gasts.forEach(r => {
-    const c = r.fields.categoria || '(sin categoría)';
-    if (!gastByCat[c]) gastByCat[c] = { total: 0, subtipo: r.fields.tipo || '—' };
+    const c = r.fields.categoria || 'No Clasificados';
+    if (!gastByCat[c]) gastByCat[c] = { total: 0, subtipo: r.fields.tipo || 'No Clasificados' };
     gastByCat[c].total += r.fields.monto || 0;
   });
   const ingByCat = {};
   ings.forEach(r => {
-    const c = r.fields.concepto || r.fields.tipo_flujo || '(sin tipo)';
+    const c = r.fields.concepto || r.fields.tipo_flujo || 'No Clasificados';
     ingByCat[c] = (ingByCat[c] || 0) + (r.fields.monto || 0);
   });
 
-  // Unique cats for dropdown
-  const allCats = [...new Set(allRows.map(r => r.cat).filter(Boolean))].sort();
-  const catOptions = allCats.map(c =>
+  // Smart category dropdown: filter cats by current tipo selection
+  const ingCats  = [...new Set(ings.map(r  => r.fields.concepto || r.fields.tipo_flujo || 'No Clasificados'))].sort();
+  const gastCats = [...new Set(gasts.map(r => r.fields.categoria || 'No Clasificados'))].sort();
+  const visibleCats = movFilter.tipo === 'I' ? ingCats
+                    : movFilter.tipo === 'G' ? gastCats
+                    : [...new Set([...ingCats, ...gastCats])].sort();
+  // Reset cat filter if selected cat not in visible set
+  if (movFilter.cat && !visibleCats.includes(movFilter.cat)) movFilter.cat = '';
+  const catOptions = visibleCats.map(c =>
     `<option value="${c}" ${movFilter.cat === c ? 'selected' : ''}>${c}</option>`
   ).join('');
 
@@ -974,14 +1042,25 @@ function renderMovimientos() {
     return true;
   });
 
-  if (meta) meta.textContent = `${filtered.length} de ${allRows.length} movimientos`;
+  // Filtered subtotals
+  const filtI   = filtered.filter(r => r.tipo === 'I').reduce((s,r) => s + r.monto, 0);
+  const filtG   = filtered.filter(r => r.tipo === 'G').reduce((s,r) => s + Math.abs(r.monto), 0);
+  const filtNet = filtI - filtG;
+  const isFiltered = movFilter.tipo !== 'all' || movFilter.cat || movFilter.subtipo;
 
-  // Table
-  const hasClear = movFilter.tipo !== 'all' || movFilter.cat || movFilter.subtipo;
+  if (meta) meta.textContent = isFiltered
+    ? `${filtered.length} de ${allRows.length} movimientos`
+    : `${allRows.length} movimientos`;
+
+  // Table rows
   const tableRows = filtered.length === 0
     ? `<tr><td colspan="6" style="text-align:center;color:#999;padding:20px">Sin movimientos para este filtro</td></tr>`
     : filtered.map(r => {
-        const stCls = r.subtipo === 'Fijo' ? 'tag-blue' : r.subtipo === 'Variable' ? 'tag-amber' : r.subtipo === 'Capital' ? 'tag-purple' : 'tag-gray';
+        const stCls = r.subtipo === 'Fijo' ? 'tag-blue'
+                    : r.subtipo === 'Variable' ? 'tag-amber'
+                    : r.subtipo === 'Capital' ? 'tag-purple'
+                    : r.subtipo === 'No Clasificados' ? 'tag-gray'
+                    : 'tag-gray';
         return `<tr>
           <td>${fmtDate(r.fecha)}</td>
           <td><span class="tag ${r.tipo === 'I' ? 'tag-green' : 'tag-red'}">${r.tipo === 'I' ? 'Ingreso' : 'Gasto'}</span></td>
@@ -990,16 +1069,19 @@ function renderMovimientos() {
           <td style="color:#999;font-size:12px;max-width:160px">${r.nota}</td>
           <td class="right mono ${r.monto >= 0 ? 'positive' : 'negative'}">${fmtFull(r.monto)}</td>
         </tr>`;
-      }).join('')
-    + `<tr class="sum-row">
-        <td colspan="4"></td>
-        <td class="right" style="font-size:11px;color:#999">I / G / Neto</td>
-        <td class="right mono">
-          <span class="positive">${fmtFull(totalI)}</span> /
-          <span class="negative">${fmtFull(-totalG)}</span> /
-          <span class="${signClass(totalI - totalG)}">${fmtFull(totalI - totalG)}</span>
-        </td>
-      </tr>`;
+      }).join('');
+
+  // Subtotal row — always shows filtered totals; label changes when filtered
+  const subtotalRow = `<tr class="sum-row">
+    <td colspan="4"></td>
+    <td class="right" style="font-size:11px;color:#999">${isFiltered ? 'Subtotal filtrado' : 'Total período'}</td>
+    <td class="right mono">
+      ${filtI > 0 ? `<span class="positive">${fmtFull(filtI)}</span>` : ''}
+      ${filtI > 0 && filtG > 0 ? ' / ' : ''}
+      ${filtG > 0 ? `<span class="negative">${fmtFull(-filtG)}</span>` : ''}
+      ${(filtI > 0 || filtG > 0) ? ` / <span class="${signClass(filtNet)}">${fmtFull(filtNet)}</span>` : fmtFull(filtNet)}
+    </td>
+  </tr>`;
 
   document.getElementById('contenidoMovimientos').innerHTML = `
     <div class="kpi-grid" style="margin-bottom:14px">
@@ -1027,17 +1109,18 @@ function renderMovimientos() {
         <button class="filter-btn ${movFilter.tipo==='G'?'active':''}" onclick="setMovFilter('tipo','G')">Gastos</button>
       </div>
       <select class="filter-select" onchange="setMovFilter('subtipo',this.value)">
-        <option value="" ${movFilter.subtipo===''?'selected':''}>Fijos + Variables</option>
+        <option value="" ${movFilter.subtipo===''?'selected':''}>Todos los subtipos</option>
         <option value="Fijo" ${movFilter.subtipo==='Fijo'?'selected':''}>Solo Fijos</option>
         <option value="Variable" ${movFilter.subtipo==='Variable'?'selected':''}>Solo Variables</option>
         <option value="Capital" ${movFilter.subtipo==='Capital'?'selected':''}>Solo Capital</option>
         <option value="Operativo" ${movFilter.subtipo==='Operativo'?'selected':''}>Solo Operativo</option>
+        <option value="No Clasificados" ${movFilter.subtipo==='No Clasificados'?'selected':''}>No Clasificados</option>
       </select>
       <select class="filter-select" onchange="setMovFilter('cat',this.value)">
         <option value="">Todas las categorías</option>
         ${catOptions}
       </select>
-      ${hasClear ? '<button class="filter-btn" onclick="clearMovFilters()" style="border:1px solid #e57373;color:#c62828;border-radius:5px">✕ Limpiar</button>' : ''}
+      ${isFiltered ? '<button class="filter-btn" onclick="clearMovFilters()" style="border:1px solid #e57373;color:#c62828;border-radius:5px">✕ Limpiar</button>' : ''}
     </div>
 
     <div class="table-wrap">
@@ -1045,7 +1128,7 @@ function renderMovimientos() {
         <thead><tr>
           <th>Fecha</th><th>Tipo</th><th>Subtipo</th><th>Concepto</th><th>Nota</th><th class="right">Monto</th>
         </tr></thead>
-        <tbody>${tableRows}</tbody>
+        <tbody>${tableRows}${subtotalRow}</tbody>
       </table>
     </div>`;
 }
@@ -1275,15 +1358,39 @@ function renderComercial() {
 
 // ─── PRODUCCIÓN ───────────────────────────────────────────────────────────────
 function renderProduccion() {
+  // Render filter toolbar
+  const estadoOpts = ['', ...KANBAN_STATES.map(s => s.key)]
+    .map(k => {
+      const st = KANBAN_STATES.find(s => s.key === k);
+      return `<option value="${k}" ${prodEstadoFilter === k ? 'selected' : ''}>${k ? (st ? st.label : k) : 'Todos los estados'}</option>`;
+    }).join('');
+  const tb = document.getElementById('prodToolbar');
+  if (tb) tb.innerHTML = `
+    <input type="text" class="prod-search" placeholder="🔍 Buscar variante o cliente..." value="${prodSearch.replace(/"/g,'&quot;')}"
+      oninput="prodSearch=this.value;renderProduccion()" />
+    <select class="filter-select" onchange="prodEstadoFilter=this.value;renderProduccion()">${estadoOpts}</select>
+    <button class="btn-nav no-print" onclick="printFichas()" style="margin-left:auto">⎙ Imprimir fichas</button>
+  `;
   const meta = document.getElementById('prodMeta');
   const today = new Date(); today.setHours(0,0,0,0);
 
   // Only show records with a real client (non-empty, not "Mosca Taller")
+  const q = prodSearch.toLowerCase().trim();
   const prods = allData.produccion.filter(r => {
     const clientes = Array.isArray(r.fields.cliente) ? r.fields.cliente : [r.fields.cliente || ''];
     const hasClient = clientes.some(c => c && c.trim());
     const isMosca   = clientes.some(c => /mosca\s*taller/i.test(c || ''));
-    return hasClient && !isMosca;
+    if (!hasClient || isMosca) return false;
+    // Search filter
+    if (q) {
+      const varIds  = Array.isArray(r.fields.variante) ? r.fields.variante : [];
+      const varName = varIds.map(id => allData.variantes_map[id] || '').join(' ').toLowerCase();
+      const cliStr  = clientes.join(' ').toLowerCase();
+      if (!varName.includes(q) && !cliStr.includes(q)) return false;
+    }
+    // Estado filter
+    if (prodEstadoFilter && getKanbanBucket(r.fields.estado) !== prodEstadoFilter) return false;
+    return true;
   });
 
   const activos    = prods.filter(r => getKanbanBucket(r.fields.estado) !== 'entregado');
@@ -1352,6 +1459,109 @@ function renderProduccion() {
   }).join('');
 
   document.getElementById('contenidoProduccion').innerHTML = `<div class="kanban-board">${cols}</div>`;
+}
+
+// ─── FICHAS DE TALLER ────────────────────────────────────────────────────────
+function printFichas() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const fechaImp = new Date().toLocaleDateString('es-AR', {day:'2-digit',month:'2-digit',year:'numeric'});
+  const q = prodSearch.toLowerCase().trim();
+
+  // Get currently visible prods (same filter as kanban)
+  const prods = allData.produccion.filter(r => {
+    const clientes = Array.isArray(r.fields.cliente) ? r.fields.cliente : [r.fields.cliente || ''];
+    const hasClient = clientes.some(c => c && c.trim());
+    const isMosca   = clientes.some(c => /mosca\s*taller/i.test(c || ''));
+    if (!hasClient || isMosca) return false;
+    if (q) {
+      const varIds  = Array.isArray(r.fields.variante) ? r.fields.variante : [];
+      const varName = varIds.map(id => allData.variantes_map[id] || '').join(' ').toLowerCase();
+      const cliStr  = clientes.join(' ').toLowerCase();
+      if (!varName.includes(q) && !cliStr.includes(q)) return false;
+    }
+    if (prodEstadoFilter && getKanbanBucket(r.fields.estado) !== prodEstadoFilter) return false;
+    return true;
+  });
+
+  if (prods.length === 0) { alert('No hay fichas para imprimir con el filtro actual.'); return; }
+
+  const fichas = prods.map(r => {
+    const f = r.fields;
+    const clientes  = Array.isArray(f.cliente) ? f.cliente : [f.cliente || '—'];
+    const cliente   = clientes.filter(Boolean).join(', ') || '—';
+    const varIds    = Array.isArray(f.variante) ? f.variante : [];
+    const varName   = varIds.map(id => allData.variantes_map[id] || '').filter(Boolean).join(', ')
+                   || (Array.isArray(f.notas_variante) ? f.notas_variante.filter(Boolean).join(', ') : '(sin variante)');
+    const fechaRaw  = Array.isArray(f.fecha_comprometida) ? f.fecha_comprometida[0] : f.fecha_comprometida;
+    const daysLeft  = fechaRaw ? Math.round((new Date(fechaRaw) - today) / 86400000) : null;
+    const diasLabel = daysLeft !== null
+      ? (daysLeft < 0 ? `${Math.abs(daysLeft)}d vencido` : `${daysLeft}d restantes`)
+      : '—';
+    const estadoSt  = KANBAN_STATES.find(s => s.key === getKanbanBucket(f.estado));
+    const estadoLabel = estadoSt ? estadoSt.label : (f.estado || 'Sin estado');
+    const notas     = Array.isArray(f.notas_variante)
+      ? f.notas_variante.filter(Boolean).join('\n')
+      : (f.notas_variante || '');
+    const problema  = f.problemas || '';
+
+    return `<div class="ficha-card">
+      <div class="ficha-header">
+        <div>
+          <div class="ficha-brand">MOSCA TALLER</div>
+          <div style="font-size:11px;color:#888;margin-top:2px">Ficha de Producción</div>
+        </div>
+        <div class="ficha-meta">
+          Impreso: ${fechaImp}<br>
+          Estado: <strong>${estadoLabel}</strong>
+        </div>
+      </div>
+
+      <div class="ficha-title">${varName}</div>
+
+      <div class="ficha-row">
+        <div class="ficha-field">
+          <div class="ficha-field-label">Cliente</div>
+          <div class="ficha-field-value">${cliente}</div>
+        </div>
+        <div class="ficha-field">
+          <div class="ficha-field-label">Entrega comprometida</div>
+          <div class="ficha-field-value">${fechaRaw ? fmtDate(fechaRaw) : '—'}</div>
+        </div>
+        <div class="ficha-field">
+          <div class="ficha-field-label">Días</div>
+          <div class="ficha-field-value" style="color:${daysLeft !== null && daysLeft < 0 ? '#c62828' : daysLeft !== null && daysLeft <= 7 ? '#e65100' : '#2e7d32'}">${diasLabel}</div>
+        </div>
+      </div>
+
+      ${problema ? `<div class="ficha-problema">⚠ Problema: ${problema}</div>` : ''}
+
+      <div class="ficha-box" style="flex:1;min-height:50mm">
+        <div class="ficha-box-label">Especificaciones</div>
+        <div class="ficha-box-content" style="white-space:pre-wrap">${notas || 'Sin especificaciones registradas'}</div>
+      </div>
+
+      <div class="ficha-photo">
+        [ Foto / Referencia ]
+      </div>
+
+      <div class="ficha-checklist">
+        <div class="ficha-check"><div class="ficha-check-box"></div> Estructura</div>
+        <div class="ficha-check"><div class="ficha-check-box"></div> Terminación</div>
+        <div class="ficha-check"><div class="ficha-check-box"></div> Tapizado / Pintura</div>
+        <div class="ficha-check"><div class="ficha-check-box"></div> Control calidad</div>
+        <div class="ficha-check"><div class="ficha-check-box"></div> Listo para entregar</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('fichasInner').innerHTML = fichas;
+  document.getElementById('fichasContainer').style.display = 'block';
+  document.getElementById('fichasContainer').scrollIntoView({ behavior: 'smooth' });
+}
+
+function closeFichas() {
+  document.getElementById('fichasContainer').style.display = 'none';
+  document.getElementById('fichasInner').innerHTML = '';
 }
 
 // ─── POR COBRAR ───────────────────────────────────────────────────────────────
@@ -1575,11 +1785,12 @@ function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('page-' + name)?.classList.add('active');
-  document.querySelectorAll('.nav-tab').forEach(t => {
-    if (t.textContent.toLowerCase().includes(name === 'reporte' ? 'reporte' : 'edgar'))
-      t.classList.add('active');
+  document.querySelectorAll('.nav-tab[data-page]').forEach(t => {
+    if (t.dataset.page === name) t.classList.add('active');
   });
-  document.getElementById('toolbar').style.display = name === 'reporte' ? '' : 'none';
+  // Toolbar only on pages with period filter
+  document.getElementById('toolbar').style.display =
+    (name === 'reporte' || name === 'comercial') ? '' : 'none';
 }
 
 function setStatus(msg) { document.getElementById('statusMsg').textContent = msg; }
