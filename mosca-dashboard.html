@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mosca Taller — Dashboard v1.0</title>
+  <title>Mosca Taller — Dashboard v1.1</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     :root {
@@ -363,7 +363,7 @@
 
 <!-- NAV -->
 <nav class="nav no-print">
-  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v1.0</span></span>
+  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v1.1</span></span>
   <div class="nav-tabs">
     <button class="nav-tab active" data-page="reporte" onclick="showPage('reporte')">Financiero</button>
     <button class="nav-tab" data-page="comercial" onclick="showPage('comercial')">Comercial</button>
@@ -466,6 +466,7 @@
         <span class="section-title">Pedidos</span>
         <span class="section-meta" id="comercialMeta"></span>
       </div>
+      <div id="comToolbar" class="prod-toolbar no-print" style="margin-bottom:12px"></div>
       <div id="contenidoComercial"><div class="loading"><span class="spinner"></span>Cargando...</div></div>
     </div>
     <div class="section" id="secPorCobrar">
@@ -560,6 +561,7 @@ let allData = { resultados: [], ingresos: [], gastos: [], pedidos: [], produccio
 let movFilter = { tipo: 'all', cat: '', subtipo: '' };
 let prodSearch = '';
 let prodEstadoFilter = '';
+let pedFilter = { estado: '', mostrarSinCliente: false };
 let selectedMonth = '';
 let chartEvol = null;
 
@@ -743,7 +745,7 @@ function renderKPIs() {
     { label: 'Cobros del mes',     value: f.Cobros,                                    format: fmtFull, sub: 'Ingresos netos' },
     { label: 'Gastos',             value: -(f.Gastos || 0),                            format: fmtFull, forceClass: 'negative' },
     { label: 'Resultado caja',     value: resFinanciero,                               format: fmtFull, sub: 'Cobros − Gastos' },
-    { label: 'Resultado económico',value: resEconomico,                                format: fmtFull, sub: 'Ventas − Gastos' },
+    { label: 'Res. Económico',    value: resEconomico,                                format: fmtFull, sub: 'Ventas − Gastos' },
     { label: 'Por cobrar',         value: f.PorCobrar,                                 format: fmt,     sub: 'Saldos pendientes' },
     { label: 'Ticket promedio',    value: isSpecial(f.Ticket) ? null : f.Ticket,       format: fmt },
   ];
@@ -1309,35 +1311,65 @@ function renderComercial() {
   const meta = document.getElementById('comercialMeta');
   let pedidos = allData.pedidos;
 
+  // 1. Filtro por mes: usar fecha de seña (campo seña es la fecha real del pedido)
   if (selectedMonth) {
     pedidos = pedidos.filter(r => {
-      const mp = r.fields.mes_pedido || r.fields.seña || '';
-      return mp.startsWith(selectedMonth);
+      const senaDate = (r.fields.seña || '').slice(0, 7); // "YYYY-MM"
+      return senaDate === selectedMonth;
     });
     if (meta) meta.textContent = mesLabel(selectedMonth);
   } else {
     if (meta) meta.textContent = 'Histórico';
   }
 
-  // Filter out cancelled
-  const activos = pedidos.filter(r => {
-    const est = r.fields.estado || '';
-    return est !== 'Cancelado';
-  });
+  // 2. Quitar cancelados
+  pedidos = pedidos.filter(r => (r.fields.estado || '') !== 'Cancelado');
 
+  // 3. Obtener estados únicos para el dropdown
+  const estados = [...new Set(pedidos.map(r => r.fields.estado || 'Sin estado'))].sort();
+  const estadoOpts = ['', ...estados]
+    .map(e => `<option value="${e}" ${pedFilter.estado === e ? 'selected' : ''}>${e || 'Todos los estados'}</option>`)
+    .join('');
+
+  // 4. Renderizar toolbar de filtros
+  const comTb = document.getElementById('comToolbar');
+  if (comTb) comTb.innerHTML = `
+    <select class="filter-select" onchange="pedFilter.estado=this.value;renderComercial()">
+      ${estadoOpts}
+    </select>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer">
+      <input type="checkbox" ${pedFilter.mostrarSinCliente ? 'checked' : ''}
+        onchange="pedFilter.mostrarSinCliente=this.checked;renderComercial()">
+      Mostrar sin cliente / Mosca Taller
+    </label>
+  `;
+
+  // 5. Aplicar filtros
+  let activos = pedidos;
+
+  // Default: ocultar sin cliente y Mosca Taller
+  if (!pedFilter.mostrarSinCliente) {
+    activos = activos.filter(r => {
+      const cs = Array.isArray(r.fields.cliente) ? r.fields.cliente : [r.fields.cliente || ''];
+      const hasClient = cs.some(c => c && c.trim());
+      const isMosca   = cs.some(c => /mosca\s*taller/i.test(c || ''));
+      return hasClient && !isMosca;
+    });
+  }
+  if (pedFilter.estado) {
+    activos = activos.filter(r => (r.fields.estado || 'Sin estado') === pedFilter.estado);
+  }
+
+  // 6. KPIs
   const totalVentas = activos.reduce((s,r) => s + (r.fields.monto_total_pactado||r.fields.precio_pactado||0), 0);
   const cantMuebles = activos.reduce((s,r) => s + (r.fields.cant_muebles||0), 0);
   const cantPedidos = activos.length;
   const ticket = cantPedidos > 0 ? totalVentas / cantPedidos : 0;
 
-  // Group by estado
+  // 7. Tags de estado
   const byEstado = {};
-  activos.forEach(r => {
-    const e = r.fields.estado || 'Sin estado';
-    byEstado[e] = (byEstado[e] || 0) + 1;
-  });
-
-  const estadoTags = Object.entries(byEstado).map(([e, n]) => {
+  activos.forEach(r => { const e = r.fields.estado || 'Sin estado'; byEstado[e] = (byEstado[e]||0) + 1; });
+  const estadoTags = Object.entries(byEstado).map(([e,n]) => {
     let cls = 'tag-gray';
     if (e.includes('Entregado')) cls = 'tag-green';
     else if (e.includes('producción') || e.includes('Produccion')) cls = 'tag-amber';
@@ -1345,7 +1377,7 @@ function renderComercial() {
     return `<span class="tag ${cls}" style="margin-right:6px">${e} (${n})</span>`;
   }).join('');
 
-  // Pedidos table
+  // 8. Filas de tabla
   const pedidosRows = activos
     .sort((a,b) => (b.fields.seña||'').localeCompare(a.fields.seña||''))
     .map(r => {
@@ -1357,18 +1389,17 @@ function renderComercial() {
       else if (est.includes('producción') || est.includes('Produccion')) tagCls = 'tag-amber';
       else if (est.includes('Listo')) tagCls = 'tag-blue';
       else if (est === 'Seña') tagCls = 'tag-purple';
-      // Resolve variante IDs via variantes_map
       const varIds = Array.isArray(f.variante) ? f.variante : (Array.isArray(f.variantes) ? f.variantes : []);
       const variante = varIds.map(id => allData.variantes_map[id] || '').filter(Boolean).join(', ') || '—';
       const saldo = f.saldo || 0;
-      // Highlight: entregado pero con saldo pendiente positivo (debe plata) o negativo (overpaid)
       const entregadoConSaldo = est.includes('Entregado') && saldo !== 0;
       const rowStyle = entregadoConSaldo
         ? (saldo > 0 ? 'style="background:#fff8e1"' : 'style="background:#fce4ec"')
         : '';
-      const pedIdShort = r.id ? r.id.replace('rec','').slice(0,8) : '';
+      // Usar campo ID numérico de Airtable (autonumber), fallback a record id truncado
+      const numId = f.ID || f.id_pedido || f.numero || f.Numero || (r.id ? r.id.replace('rec','').slice(0,8) : '');
       return `<tr ${rowStyle}>
-        <td style="font-size:10px;color:#aaa;font-family:monospace">#${pedIdShort}</td>
+        <td style="font-size:11px;color:#555;font-weight:600">${numId}</td>
         <td>${fmtDate(f.seña)}</td>
         <td>${cliente}</td>
         <td style="font-size:12px;color:#555;max-width:200px">${variante}</td>
@@ -1391,11 +1422,11 @@ function renderComercial() {
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th style="width:70px">ID</th><th>Fecha seña</th><th>Cliente</th><th>Variante</th><th>Estado</th>
+          <th style="width:55px">Nro.</th><th>Fecha seña</th><th>Cliente</th><th>Variante</th><th>Estado</th>
           <th class="right">Muebles</th><th class="right">Total</th>
           <th class="right">Pagado</th><th class="right">Saldo</th>
         </tr></thead>
-        <tbody>${pedidosRows || '<tr><td colspan="8" style="text-align:center;color:#999;padding:20px">Sin pedidos</td></tr>'}</tbody>
+        <tbody>${pedidosRows || '<tr><td colspan="9" style="text-align:center;color:#999;padding:20px">Sin pedidos</td></tr>'}</tbody>
       </table>
     </div>`;
 }
@@ -1484,21 +1515,33 @@ function renderProduccion() {
         else                   daysBadge = `<div class="days-badge days-ok">${daysLeft}d</div>`;
       }
 
-      const shortId = r.id ? r.id.replace('rec','').slice(0,8) : '';
+      const prodNumId = f.ID || f.id_produccion || f.numero || f.Numero || (r.id ? r.id.replace('rec','').slice(0,8) : '');
+      // Encode record for print (JSON safe)
+      const rEncoded = encodeURIComponent(JSON.stringify({id: r.id, fields: f}));
       return `<div class="kanban-card">
-        <div class="kanban-card-title">${varName || '(sin variante)'}</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px">
+          <div class="kanban-card-title" style="flex:1">${varName || '(sin variante)'}</div>
+          <button title="Imprimir ficha" onclick="event.stopPropagation();openFichaWindow([JSON.parse(decodeURIComponent('${rEncoded}'))])"
+            style="background:none;border:none;cursor:pointer;font-size:14px;padding:0;line-height:1;color:#888;flex-shrink:0">🖨</button>
+        </div>
         <div class="kanban-card-meta">${cliente}</div>
         ${fechaRaw ? `<div class="kanban-card-meta">${fmtDate(fechaRaw)}</div>` : ''}
         ${daysBadge}
         ${f.problemas ? `<div class="kanban-card-problema">⚠ ${f.problemas}</div>` : ''}
-        <div class="kanban-card-id">#${shortId}</div>
+        <div class="kanban-card-id">Nro. ${prodNumId}</div>
       </div>`;
     }).join('');
 
+    // Encode all records in this bucket for column-level print
+    const colEncoded = encodeURIComponent(JSON.stringify(buckets[st.key].map(r2 => ({id: r2.id, fields: r2.fields}))));
     return `<div class="kanban-col">
       <div class="kanban-col-header" style="background:${st.color}">
         <span>${st.label}</span>
-        <span class="kanban-count">${buckets[st.key].length}</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="kanban-count">${buckets[st.key].length}</span>
+          ${buckets[st.key].length > 0 ? `<button title="Imprimir fichas de ${st.label}" onclick="openFichaWindow(JSON.parse(decodeURIComponent('${colEncoded}')))"
+            style="background:rgba(255,255,255,0.2);border:none;cursor:pointer;font-size:12px;padding:1px 5px;border-radius:3px;color:white;line-height:1.4">🖨</button>` : ''}
+        </div>
       </div>
       <div class="kanban-cards">${cards || '<div style="padding:8px;font-size:11px;color:#bbb;text-align:center">—</div>'}</div>
     </div>`;
@@ -1508,12 +1551,138 @@ function renderProduccion() {
 }
 
 // ─── FICHAS DE TALLER ────────────────────────────────────────────────────────
-function printFichas() {
-  const today = new Date(); today.setHours(0,0,0,0);
-  const fechaImp = new Date().toLocaleDateString('es-AR', {day:'2-digit',month:'2-digit',year:'numeric'});
-  const q = prodSearch.toLowerCase().trim();
+// CSS embebido para la ventana popup de fichas
+function fichaWindowCSS() {
+  return `
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #666; font-family: 'Segoe UI', Arial, sans-serif; }
+    .controls { background: #444; padding: 12px 20px; text-align: center; position: sticky; top: 0; z-index: 10; display: flex; gap: 10px; justify-content: center; align-items: center; }
+    .btn { padding: 8px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; }
+    .btn-print { background: #0a465a; color: white; }
+    .btn-close { background: #c62828; color: white; }
+    .ficha2-page { background: white; width: 210mm; min-height: 297mm; margin: 16px auto; padding: 14mm 14mm 10mm; box-sizing: border-box; font-size: 11pt; display: flex; flex-direction: column; }
+    .ficha2-topbar { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 6px; }
+    .ficha2-num { font-size: 28pt; font-weight: 900; color: #111; line-height: 1; }
+    .ficha2-bee { font-size: 22pt; margin-right: 6px; }
+    .ficha2-numblock { display: flex; align-items: center; }
+    .ficha2-entrega { text-align: center; }
+    .ficha2-entrega-label { font-size: 10pt; color: #555; }
+    .ficha2-entrega-date { font-size: 20pt; font-weight: 700; color: #111; }
+    .ficha2-brand { text-align: right; font-size: 22pt; font-weight: 900; letter-spacing: -1px; line-height: 1.05; color: #111; }
+    .ficha2-clientbar { display: flex; gap: 20px; background: #f4f4f4; border-radius: 3px; padding: 5px 10px; font-size: 9.5pt; margin-bottom: 8px; color: #333; }
+    .ficha2-productbar { display: flex; justify-content: space-between; align-items: flex-start; border-top: 2px solid #111; border-bottom: 1px solid #ccc; padding: 6px 0; margin-bottom: 10px; }
+    .ficha2-product-name { font-size: 16pt; font-weight: 700; color: #111; flex: 1; line-height: 1.2; }
+    .ficha2-dims { text-align: right; font-size: 9.5pt; color: #444; line-height: 1.8; flex-shrink: 0; min-width: 90px; }
+    .ficha2-dims b { font-size: 11pt; }
+    .ficha2-body { display: flex; gap: 14px; flex: 1; margin-bottom: 10px; min-height: 80mm; }
+    .ficha2-photo { flex: 0 0 55%; border: 1px solid #ccc; border-radius: 3px; display: flex; align-items: center; justify-content: center; color: #bbb; font-size: 10pt; background: #fafafa; }
+    .ficha2-specs { flex: 1; display: flex; flex-direction: column; }
+    .ficha2-spec-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #eee; font-size: 10pt; }
+    .ficha2-spec-label { color: #555; }
+    .ficha2-spec-value { font-weight: 600; color: #111; text-align: right; max-width: 55%; }
+    .ficha2-section-title { font-size: 11pt; font-weight: 700; margin: 10px 0 4px; color: #111; }
+    .ficha2-table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+    .ficha2-table th { background: #eee; border: 1px solid #ccc; padding: 4px 8px; text-align: left; font-weight: 600; }
+    .ficha2-table td { border: 1px solid #ccc; padding: 4px 8px; height: 24px; }
+    .ficha2-checklist { display: flex; gap: 18px; flex-wrap: wrap; border-top: 2px solid #111; padding-top: 8px; margin-top: 10px; }
+    .ficha2-check { display: flex; align-items: center; gap: 6px; font-size: 10pt; }
+    .ficha2-check-box { width: 14px; height: 14px; border: 1.5px solid #333; border-radius: 2px; flex-shrink: 0; display: inline-block; }
+    .ficha2-problema { background: #fff3e0; border: 1px solid #ffb74d; border-radius: 3px; padding: 6px 10px; margin-bottom: 8px; font-size: 10pt; color: #e65100; }
+    @media print {
+      .controls { display: none; }
+      body { background: white; }
+      .ficha2-page { margin: 0; page-break-after: always; }
+      .ficha2-page:last-child { page-break-after: avoid; }
+    }
+  `;
+}
 
-  // Get currently visible prods (same filter as kanban)
+function buildFichaHTML(r, variantesMap, fechaImp) {
+  const f = r.fields || r;
+  const clientes = Array.isArray(f.cliente) ? f.cliente : [f.cliente || '—'];
+  const cliente  = clientes.filter(Boolean).join(', ') || '—';
+  const varIds   = Array.isArray(f.variante) ? f.variante : [];
+  const varName  = varIds.map(id => (variantesMap || {})[id] || '').filter(Boolean).join(', ')
+                || (Array.isArray(f.notas_variante) ? f.notas_variante.filter(Boolean).join(', ') : '(sin variante)');
+  const fechaRaw = Array.isArray(f.fecha_comprometida) ? f.fecha_comprometida[0] : f.fecha_comprometida;
+  const fechaDisplay = fechaRaw
+    ? new Date(fechaRaw + 'T12:00:00').toLocaleDateString('es-AR', {day:'numeric',month:'numeric',year:'numeric'})
+    : '—';
+  const estadoKey = typeof getKanbanBucket === 'function' ? getKanbanBucket(f.estado) : '';
+  const estadoSt  = (typeof KANBAN_STATES !== 'undefined' ? KANBAN_STATES : []).find(s => s.key === estadoKey);
+  const estadoLabel = estadoSt ? estadoSt.label : (f.estado || 'Sin estado');
+  const problema = f.problemas || '';
+  const numId    = f.ID || f.id_produccion || f.numero || f.Numero || (r.id ? String(r.id).replace('rec','').slice(0,10) : '—');
+
+  // Parse notas_variante as key:value spec rows
+  const notasRaw = Array.isArray(f.notas_variante)
+    ? f.notas_variante.filter(Boolean).join('\n')
+    : (f.notas_variante || '');
+  const specRows = notasRaw.split('\n').filter(l => l.trim()).map(line => {
+    const idx = line.indexOf(':');
+    if (idx > 0) {
+      return `<div class="ficha2-spec-row"><span class="ficha2-spec-label">${line.slice(0,idx).trim()}</span><span class="ficha2-spec-value">${line.slice(idx+1).trim()}</span></div>`;
+    }
+    return `<div class="ficha2-spec-row"><span class="ficha2-spec-label">${line}</span><span class="ficha2-spec-value"></span></div>`;
+  }).join('');
+
+  // Extract dimensions from varName
+  let dimsHtml = '';
+  const dimMatch = varName.match(/(\d+)[xX\u00d7](\d+)(?:[xX\u00d7](\d+))?/);
+  if (dimMatch) {
+    const [, d1, d2, d3] = dimMatch;
+    dimsHtml = `<div class="ficha2-dims">Ancho: <b>${d1}</b><br>Alto: <b>${d2}</b>${d3 ? `<br>Prof.: <b>${d3}</b>` : ''}</div>`;
+  }
+
+  return `<div class="ficha2-page">
+    <div class="ficha2-topbar">
+      <div class="ficha2-numblock"><span class="ficha2-bee">&#x1F41D;</span><div><div class="ficha2-num">${numId}</div></div></div>
+      <div class="ficha2-entrega"><div class="ficha2-entrega-label">Entrega</div><div class="ficha2-entrega-date">${fechaDisplay}</div></div>
+      <div class="ficha2-brand">MOSCA<br>TALLER</div>
+    </div>
+    <div class="ficha2-clientbar">
+      <span>${cliente}</span>
+      <span style="margin-left:auto;font-size:9pt;color:#888">Estado: ${estadoLabel} &middot; Impreso: ${fechaImp}</span>
+    </div>
+    <div class="ficha2-productbar">
+      <div class="ficha2-product-name">${varName}</div>
+      ${dimsHtml}
+    </div>
+    ${problema ? `<div class="ficha2-problema">&#x26A0; Problema: ${problema}</div>` : ''}
+    <div class="ficha2-body">
+      <div class="ficha2-photo">[ Foto / Referencia ]</div>
+      <div class="ficha2-specs">${specRows || '<div style="color:#bbb;font-size:9pt;padding:8px 0">Sin especificaciones detalladas</div>'}</div>
+    </div>
+    <div class="ficha2-section-title">Materiales</div>
+    <table class="ficha2-table">
+      <thead><tr><th>Material</th><th>Cantidad</th><th>% Desperdicio aprox</th></tr></thead>
+      <tbody><tr><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td></tr></tbody>
+    </table>
+    <div class="ficha2-checklist">
+      <div class="ficha2-check"><div class="ficha2-check-box"></div> Estructura</div>
+      <div class="ficha2-check"><div class="ficha2-check-box"></div> Terminaci&oacute;n</div>
+      <div class="ficha2-check"><div class="ficha2-check-box"></div> Tapizado / Pintura</div>
+      <div class="ficha2-check"><div class="ficha2-check-box"></div> Control calidad</div>
+      <div class="ficha2-check"><div class="ficha2-check-box"></div> Listo para entregar</div>
+    </div>
+  </div>`;
+}
+
+function openFichaWindow(prods) {
+  if (!prods || prods.length === 0) { alert('No hay fichas para mostrar.'); return; }
+  const fechaImp = new Date().toLocaleDateString('es-AR', {day:'2-digit',month:'2-digit',year:'numeric'});
+  const vm = allData.variantes_map || {};
+  const fichasHTML = prods.map(r => buildFichaHTML(r, vm, fechaImp)).join('');
+  const title = prods.length === 1 ? 'Ficha de Taller' : `Fichas de Taller (${prods.length})`;
+  const w = window.open('', '_blank', 'width=960,height=800,scrollbars=yes,resizable=yes');
+  if (!w) { alert('El navegador bloqueó la ventana emergente. Permitila para este sitio.'); return; }
+  w.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${title} — MOSCA TALLER</title><style>${fichaWindowCSS()}</style></head><body><div class="controls"><button class="btn btn-print" onclick="window.print()">&#x2399; Imprimir / Guardar PDF</button><button class="btn btn-close" onclick="window.close()">&#x2715; Cerrar</button><span style="color:#ccc;font-size:12px">${prods.length} ficha${prods.length !== 1 ? 's' : ''}</span></div>${fichasHTML}</body></html>`);
+  w.document.close();
+}
+
+// Mantener botón "Imprimir fichas" del toolbar que imprime los filtrados actualmente
+function printFichas() {
+  const q = prodSearch.toLowerCase().trim();
   const prods = allData.produccion.filter(r => {
     const clientes = Array.isArray(r.fields.cliente) ? r.fields.cliente : [r.fields.cliente || ''];
     const hasClient = clientes.some(c => c && c.trim());
@@ -1528,127 +1697,7 @@ function printFichas() {
     if (prodEstadoFilter && getKanbanBucket(r.fields.estado) !== prodEstadoFilter) return false;
     return true;
   });
-
-  if (prods.length === 0) { alert('No hay fichas para imprimir con el filtro actual.'); return; }
-
-  const fichas = prods.map(r => {
-    const f = r.fields;
-    const clientes  = Array.isArray(f.cliente) ? f.cliente : [f.cliente || '—'];
-    const cliente   = clientes.filter(Boolean).join(', ') || '—';
-    const varIds    = Array.isArray(f.variante) ? f.variante : [];
-    const varName   = varIds.map(id => allData.variantes_map[id] || '').filter(Boolean).join(', ')
-                   || (Array.isArray(f.notas_variante) ? f.notas_variante.filter(Boolean).join(', ') : '(sin variante)');
-    const fechaRaw  = Array.isArray(f.fecha_comprometida) ? f.fecha_comprometida[0] : f.fecha_comprometida;
-    const daysLeft  = fechaRaw ? Math.round((new Date(fechaRaw) - today) / 86400000) : null;
-    const estadoSt  = KANBAN_STATES.find(s => s.key === getKanbanBucket(f.estado));
-    const estadoLabel = estadoSt ? estadoSt.label : (f.estado || 'Sin estado');
-    const problema  = f.problemas || '';
-    const recId     = r.id || '';
-    const shortId   = recId.replace('rec','').slice(0,10);
-
-    // Parse notas_variante: try to split into key:value pairs for specs table
-    const notasRaw  = Array.isArray(f.notas_variante)
-      ? f.notas_variante.filter(Boolean).join('\n')
-      : (f.notas_variante || '');
-    const specLines = notasRaw.split('\n').filter(l => l.trim());
-    const specRows  = specLines.map(line => {
-      const idx = line.indexOf(':');
-      if (idx > 0) {
-        const lbl = line.slice(0, idx).trim();
-        const val = line.slice(idx+1).trim();
-        return `<div class="ficha2-spec-row"><span class="ficha2-spec-label">${lbl}</span><span class="ficha2-spec-value">${val}</span></div>`;
-      }
-      return `<div class="ficha2-spec-row"><span class="ficha2-spec-label">${line}</span><span class="ficha2-spec-value"></span></div>`;
-    }).join('');
-
-    // Try to extract dimensions from varName: pattern NNNxNNN or NNNxNNNxNNN
-    let dimsHtml = '';
-    const dimMatch = varName.match(/(\d+)[xX×](\d+)(?:[xX×](\d+))?/);
-    if (dimMatch) {
-      const [, d1, d2, d3] = dimMatch;
-      dimsHtml = `
-        <div class="ficha2-dims">
-          Ancho: <b>${d1}</b><br>
-          Alto: <b>${d2}</b>${d3 ? `<br>Prof.: <b>${d3}</b>` : ''}
-        </div>`;
-    }
-
-    // Formatted delivery date
-    const fechaDisplay = fechaRaw
-      ? new Date(fechaRaw + 'T12:00:00').toLocaleDateString('es-AR', {day:'numeric',month:'numeric',year:'numeric'})
-      : '—';
-
-    return `<div class="ficha2-page">
-
-      <!-- TOP BAR -->
-      <div class="ficha2-topbar">
-        <div class="ficha2-numblock">
-          <span class="ficha2-bee">🐝</span>
-          <div>
-            <div class="ficha2-num">${shortId}</div>
-            <div class="ficha2-id">${recId}</div>
-          </div>
-        </div>
-        <div class="ficha2-entrega">
-          <div class="ficha2-entrega-label">Entrega</div>
-          <div class="ficha2-entrega-date">${fechaDisplay}</div>
-        </div>
-        <div class="ficha2-brand">MOSCA<br>TALLER</div>
-      </div>
-
-      <!-- CLIENT BAR -->
-      <div class="ficha2-clientbar">
-        <span>${cliente}</span>
-        <span style="margin-left:auto;font-size:9pt;color:#888">Estado: ${estadoLabel} · Impreso: ${fechaImp}</span>
-      </div>
-
-      <!-- PRODUCT TITLE + DIMS -->
-      <div class="ficha2-productbar">
-        <div class="ficha2-product-name">${varName}</div>
-        ${dimsHtml}
-      </div>
-
-      ${problema ? `<div class="ficha2-problema">⚠ Problema: ${problema}</div>` : ''}
-
-      <!-- BODY: PHOTO + SPECS -->
-      <div class="ficha2-body">
-        <div class="ficha2-photo">[ Foto / Referencia ]</div>
-        <div class="ficha2-specs">
-          ${specRows || '<div style="color:#bbb;font-size:9pt;padding:8px 0">Sin especificaciones detalladas</div>'}
-        </div>
-      </div>
-
-      <!-- MATERIALS TABLE -->
-      <div class="ficha2-section-title">Materiales</div>
-      <table class="ficha2-table">
-        <thead><tr><th>Material</th><th>Cantidad</th><th>% Desperdicio aprox</th></tr></thead>
-        <tbody>
-          <tr><td></td><td></td><td></td></tr>
-          <tr><td></td><td></td><td></td></tr>
-          <tr><td></td><td></td><td></td></tr>
-        </tbody>
-      </table>
-
-      <!-- CHECKLIST -->
-      <div class="ficha2-checklist">
-        <div class="ficha2-check"><div class="ficha2-check-box"></div> Estructura</div>
-        <div class="ficha2-check"><div class="ficha2-check-box"></div> Terminación</div>
-        <div class="ficha2-check"><div class="ficha2-check-box"></div> Tapizado / Pintura</div>
-        <div class="ficha2-check"><div class="ficha2-check-box"></div> Control calidad</div>
-        <div class="ficha2-check"><div class="ficha2-check-box"></div> Listo para entregar</div>
-      </div>
-
-    </div>`;
-  }).join('');
-
-  document.getElementById('fichasInner').innerHTML = fichas;
-  document.getElementById('fichasContainer').style.display = 'block';
-  document.getElementById('fichasContainer').scrollIntoView({ behavior: 'smooth' });
-}
-
-function closeFichas() {
-  document.getElementById('fichasContainer').style.display = 'none';
-  document.getElementById('fichasInner').innerHTML = '';
+  openFichaWindow(prods);
 }
 
 // ─── POR COBRAR ───────────────────────────────────────────────────────────────
@@ -1706,9 +1755,9 @@ function renderPorCobrar() {
     else if (listoProd.length > 0) prodStatus = `<span class="tag tag-blue">Listo (${listoProd.length})</span>`;
     else                           prodStatus = '<span class="tag tag-green">Entregado</span>';
 
-    const pcIdShort = r.id ? r.id.replace('rec','').slice(0,8) : '';
+    const pcNumId = f.ID || f.id_pedido || f.numero || f.Numero || (r.id ? r.id.replace('rec','').slice(0,8) : '');
     return `<tr>
-      <td style="font-size:10px;color:#aaa;font-family:monospace">#${pcIdShort}</td>
+      <td style="font-size:11px;color:#555;font-weight:600">${pcNumId}</td>
       <td>${cliente}</td>
       <td style="font-size:11px;color:#555;max-width:180px">${varName}</td>
       <td>${fmtDate(fechaEnt)}</td>
