@@ -202,6 +202,23 @@
     .kanban-card-title { font-weight: 600; font-size: 12px; margin-bottom: 3px; color: var(--text); }
     .kanban-card-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
     .kanban-card-problema { font-size: 10px; color: var(--negative); margin-top: 3px; }
+    /* MOVIMIENTOS ANALYSIS */
+    .mov-filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+    .filter-group { display: flex; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; }
+    .filter-btn { padding: 5px 12px; font-size: 12px; font-weight: 500; border: none; background: white; color: var(--muted); cursor: pointer; transition: background .15s; }
+    .filter-btn:hover { background: var(--bg); }
+    .filter-btn.active { background: var(--accent); color: white; }
+    .filter-select { font-size: 12px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 5px; background: white; color: var(--text); cursor: pointer; }
+    .mov-analysis { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .mov-analysis-col { background: var(--bg); border-radius: 6px; padding: 12px 14px; border: 1px solid var(--border); }
+    .mov-analysis-title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--muted); letter-spacing: 0.5px; margin-bottom: 10px; }
+    .cat-row { display: grid; grid-template-columns: 1fr auto 60px auto; gap: 6px; align-items: center; margin-bottom: 6px; font-size: 12px; }
+    .cat-label { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cat-bar-wrap { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .cat-bar { height: 100%; border-radius: 3px; transition: width .3s; }
+    .cat-amount { text-align: right; font-weight: 600; font-size: 12px; white-space: nowrap; }
+    .cat-pct { text-align: right; color: var(--muted); font-size: 11px; }
+    .subtipo-badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; }
     .days-badge {
       display: inline-block; padding: 1px 6px; border-radius: 8px; font-size: 10px;
       font-weight: 600; margin-top: 4px;
@@ -329,18 +346,7 @@
         <span class="section-title">Movimientos</span>
         <span class="section-meta" id="movMeta"></span>
       </div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr>
-            <th>Fecha</th>
-            <th>Tipo</th>
-            <th>Concepto</th>
-            <th>Nota</th>
-            <th class="right">Monto</th>
-          </tr></thead>
-          <tbody id="bodyMovimientos"><tr><td colspan="5" class="loading"><span class="spinner"></span>Cargando...</td></tr></tbody>
-        </table>
-      </div>
+      <div id="contenidoMovimientos"><div class="loading"><span class="spinner"></span>Cargando...</div></div>
     </div>
 
     <!-- SOCIOS -->
@@ -449,6 +455,7 @@ function getKanbanBucket(estado) {
 
 // ─── STATE ──────────────────────────────────────────────────────────────────
 let allData = { resultados: [], ingresos: [], gastos: [], pedidos: [], produccion: [], variantes_map: {} };
+let movFilter = { tipo: 'all', cat: '', subtipo: '' };
 let selectedMonth = '';
 let chartEvol = null;
 
@@ -869,24 +876,24 @@ function toggleYearGroup(cls) {
 // ─── MOVIMIENTOS ─────────────────────────────────────────────────────────────
 function renderMovimientos() {
   const meta = document.getElementById('movMeta');
-  let ings = allData.ingresos;
+  let ings  = allData.ingresos;
   let gasts = allData.gastos;
 
   if (selectedMonth) {
-    ings = ings.filter(r => r.fields['mes-a'] === selectedMonth);
+    ings  = ings.filter(r  => r.fields['mes-a'] === selectedMonth);
     gasts = gasts.filter(r => r.fields['mes-a'] === selectedMonth);
   }
 
-  // Combine and sort by date descending
-  // Ingresos: concepto = tipo ingreso (singleSelect), nota = Nota text
-  // Gastos:   concepto = proveedor lookup,            nota = concepto text (descripción)
-  const rows = [
+  // Build unified row dataset
+  const allRows = [
     ...ings.map(r => ({
       fecha:   r.fields.fecha || '',
       tipo:    'I',
       concepto: r.fields.concepto || r.fields.tipo_flujo || '—',
       nota:    r.fields.Nota || '',
-      monto:   r.fields.monto || 0
+      monto:   r.fields.monto || 0,
+      cat:     r.fields.concepto || r.fields.tipo_flujo || '—',
+      subtipo: r.fields.tipo_flujo || 'Operativo'
     })),
     ...gasts.map(r => ({
       fecha:   r.fields.fecha || '',
@@ -895,39 +902,162 @@ function renderMovimientos() {
         ? r.fields['proveedor (de Proveedores)'].join(', ')
         : (r.fields['proveedor (de Proveedores)'] || r.fields.categoria || '—'),
       nota:    r.fields.concepto || '',
-      monto:   -(r.fields.monto || 0)
+      monto:   -(r.fields.monto || 0),
+      cat:     r.fields.categoria || '—',
+      subtipo: r.fields.tipo || '—'
     }))
-  ].sort((a,b) => (b.fecha||'').localeCompare(a.fecha||'')); // decreciente
+  ].sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
 
-  if (meta) meta.textContent = `${rows.length} movimientos`;
+  // Totals
+  const totalI     = ings.reduce((s,r)  => s + (r.fields.monto||0), 0);
+  const totalG     = gasts.reduce((s,r) => s + (r.fields.monto||0), 0);
+  const gastFijos  = gasts.filter(r => r.fields.tipo === 'Fijo').reduce((s,r) => s + (r.fields.monto||0), 0);
+  const gastVars   = gasts.filter(r => r.fields.tipo === 'Variable').reduce((s,r) => s + (r.fields.monto||0), 0);
+  const gastSinTipo = totalG - gastFijos - gastVars;
 
-  const totalI = ings.reduce((s,r) => s + (r.fields.monto||0), 0);
-  const totalG = gasts.reduce((s,r) => s + (r.fields.monto||0), 0);
-  const neto = totalI - totalG;
+  // Category breakdowns
+  const gastByCat = {};
+  gasts.forEach(r => {
+    const c = r.fields.categoria || '(sin categoría)';
+    if (!gastByCat[c]) gastByCat[c] = { total: 0, subtipo: r.fields.tipo || '—' };
+    gastByCat[c].total += r.fields.monto || 0;
+  });
+  const ingByCat = {};
+  ings.forEach(r => {
+    const c = r.fields.concepto || r.fields.tipo_flujo || '(sin tipo)';
+    ingByCat[c] = (ingByCat[c] || 0) + (r.fields.monto || 0);
+  });
 
-  if (rows.length === 0) {
-    document.getElementById('bodyMovimientos').innerHTML =
-      `<tr><td colspan="5" style="text-align:center;color:#999;padding:20px">Sin movimientos para este período</td></tr>`;
-    return;
-  }
+  // Unique cats for dropdown
+  const allCats = [...new Set(allRows.map(r => r.cat).filter(Boolean))].sort();
+  const catOptions = allCats.map(c =>
+    `<option value="${c}" ${movFilter.cat === c ? 'selected' : ''}>${c}</option>`
+  ).join('');
 
-  document.getElementById('bodyMovimientos').innerHTML =
-    rows.map(r => `<tr>
-      <td>${fmtDate(r.fecha)}</td>
-      <td><span class="tag ${r.tipo === 'I' ? 'tag-green' : 'tag-red'}">${r.tipo === 'I' ? 'Ingreso' : 'Gasto'}</span></td>
-      <td>${r.concepto}</td>
-      <td style="color:#999;font-size:12px">${r.nota}</td>
-      <td class="right mono ${r.monto >= 0 ? 'positive' : 'negative'}">${fmtFull(r.monto)}</td>
-    </tr>`).join('')
+  // Analysis: gastos por categoría
+  const maxG = Math.max(...Object.values(gastByCat).map(v => v.total), 1);
+  const gastCatHTML = Object.entries(gastByCat)
+    .sort((a,b) => b[1].total - a[1].total)
+    .map(([c, v]) => {
+      const pct  = totalG > 0 ? Math.round(v.total / totalG * 100) : 0;
+      const isF  = v.subtipo === 'Fijo';
+      const barC = isF ? '#1565c0' : v.subtipo === 'Variable' ? '#f57f17' : '#9e9e9e';
+      const tagC = isF ? 'tag-blue' : v.subtipo === 'Variable' ? 'tag-amber' : 'tag-gray';
+      return `<div class="cat-row">
+        <span class="cat-label" title="${c}">${c}</span>
+        <span class="tag ${tagC} subtipo-badge">${v.subtipo}</span>
+        <div class="cat-bar-wrap"><div class="cat-bar" style="width:${Math.round(v.total/maxG*100)}%;background:${barC}"></div></div>
+        <span class="cat-amount negative">${fmtFull(v.total)}</span>
+        <span class="cat-pct">${pct}%</span>
+      </div>`;
+    }).join('') || '<div style="color:#bbb;font-size:12px;padding:4px 0">Sin datos</div>';
+
+  // Analysis: ingresos por tipo
+  const maxI = Math.max(...Object.values(ingByCat), 1);
+  const ingCatHTML = Object.entries(ingByCat)
+    .sort((a,b) => b[1] - a[1])
+    .map(([c, v]) => {
+      const pct = totalI > 0 ? Math.round(v / totalI * 100) : 0;
+      return `<div class="cat-row">
+        <span class="cat-label" title="${c}">${c}</span>
+        <div class="cat-bar-wrap"><div class="cat-bar" style="width:${Math.round(v/maxI*100)}%;background:#2e7d32"></div></div>
+        <span class="cat-amount positive">${fmtFull(v)}</span>
+        <span class="cat-pct">${pct}%</span>
+      </div>`;
+    }).join('') || '<div style="color:#bbb;font-size:12px;padding:4px 0">Sin datos</div>';
+
+  // Apply filters
+  const filtered = allRows.filter(r => {
+    if (movFilter.tipo !== 'all' && r.tipo !== movFilter.tipo) return false;
+    if (movFilter.cat && r.cat !== movFilter.cat) return false;
+    if (movFilter.subtipo && r.subtipo !== movFilter.subtipo) return false;
+    return true;
+  });
+
+  if (meta) meta.textContent = `${filtered.length} de ${allRows.length} movimientos`;
+
+  // Table
+  const hasClear = movFilter.tipo !== 'all' || movFilter.cat || movFilter.subtipo;
+  const tableRows = filtered.length === 0
+    ? `<tr><td colspan="6" style="text-align:center;color:#999;padding:20px">Sin movimientos para este filtro</td></tr>`
+    : filtered.map(r => {
+        const stCls = r.subtipo === 'Fijo' ? 'tag-blue' : r.subtipo === 'Variable' ? 'tag-amber' : r.subtipo === 'Capital' ? 'tag-purple' : 'tag-gray';
+        return `<tr>
+          <td>${fmtDate(r.fecha)}</td>
+          <td><span class="tag ${r.tipo === 'I' ? 'tag-green' : 'tag-red'}">${r.tipo === 'I' ? 'Ingreso' : 'Gasto'}</span></td>
+          <td><span class="tag ${stCls}" style="font-size:10px">${r.subtipo}</span></td>
+          <td>${r.concepto}</td>
+          <td style="color:#999;font-size:12px;max-width:160px">${r.nota}</td>
+          <td class="right mono ${r.monto >= 0 ? 'positive' : 'negative'}">${fmtFull(r.monto)}</td>
+        </tr>`;
+      }).join('')
     + `<tr class="sum-row">
-      <td colspan="3"></td>
-      <td class="right" style="font-size:12px;color:#999">Cobros / Gastos / Neto</td>
-      <td class="right mono">
-        <span class="positive">${fmtFull(totalI)}</span> /
-        <span class="negative">${fmtFull(-totalG)}</span> /
-        <span class="${signClass(neto)}">${fmtFull(neto)}</span>
-      </td>
-    </tr>`;
+        <td colspan="4"></td>
+        <td class="right" style="font-size:11px;color:#999">I / G / Neto</td>
+        <td class="right mono">
+          <span class="positive">${fmtFull(totalI)}</span> /
+          <span class="negative">${fmtFull(-totalG)}</span> /
+          <span class="${signClass(totalI - totalG)}">${fmtFull(totalI - totalG)}</span>
+        </td>
+      </tr>`;
+
+  document.getElementById('contenidoMovimientos').innerHTML = `
+    <div class="kpi-grid" style="margin-bottom:14px">
+      <div class="kpi"><div class="kpi-label">Ingresos</div><div class="kpi-value positive">${fmt(totalI)}</div></div>
+      <div class="kpi"><div class="kpi-label">G. Fijos</div><div class="kpi-value negative">${fmt(gastFijos)}</div><div class="kpi-sub">${totalG>0?Math.round(gastFijos/totalG*100):0}% del total</div></div>
+      <div class="kpi"><div class="kpi-label">G. Variables</div><div class="kpi-value negative">${fmt(gastVars)}</div><div class="kpi-sub">${totalG>0?Math.round(gastVars/totalG*100):0}% del total</div></div>
+      <div class="kpi"><div class="kpi-label">Neto</div><div class="kpi-value ${signClass(totalI-totalG)}">${fmt(totalI-totalG)}</div></div>
+    </div>
+
+    <div class="mov-analysis">
+      <div class="mov-analysis-col">
+        <div class="mov-analysis-title">Gastos por categoría</div>
+        ${gastCatHTML}
+      </div>
+      <div class="mov-analysis-col">
+        <div class="mov-analysis-title">Ingresos por tipo</div>
+        ${ingCatHTML}
+      </div>
+    </div>
+
+    <div class="mov-filters">
+      <div class="filter-group">
+        <button class="filter-btn ${movFilter.tipo==='all'?'active':''}" onclick="setMovFilter('tipo','all')">Todos</button>
+        <button class="filter-btn ${movFilter.tipo==='I'?'active':''}" onclick="setMovFilter('tipo','I')">Ingresos</button>
+        <button class="filter-btn ${movFilter.tipo==='G'?'active':''}" onclick="setMovFilter('tipo','G')">Gastos</button>
+      </div>
+      <select class="filter-select" onchange="setMovFilter('subtipo',this.value)">
+        <option value="" ${movFilter.subtipo===''?'selected':''}>Fijos + Variables</option>
+        <option value="Fijo" ${movFilter.subtipo==='Fijo'?'selected':''}>Solo Fijos</option>
+        <option value="Variable" ${movFilter.subtipo==='Variable'?'selected':''}>Solo Variables</option>
+        <option value="Capital" ${movFilter.subtipo==='Capital'?'selected':''}>Solo Capital</option>
+        <option value="Operativo" ${movFilter.subtipo==='Operativo'?'selected':''}>Solo Operativo</option>
+      </select>
+      <select class="filter-select" onchange="setMovFilter('cat',this.value)">
+        <option value="">Todas las categorías</option>
+        ${catOptions}
+      </select>
+      ${hasClear ? '<button class="filter-btn" onclick="clearMovFilters()" style="border:1px solid #e57373;color:#c62828;border-radius:5px">✕ Limpiar</button>' : ''}
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Fecha</th><th>Tipo</th><th>Subtipo</th><th>Concepto</th><th>Nota</th><th class="right">Monto</th>
+        </tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>`;
+}
+
+function setMovFilter(key, val) {
+  movFilter[key] = val;
+  renderMovimientos();
+}
+
+function clearMovFilters() {
+  movFilter = { tipo: 'all', cat: '', subtipo: '' };
+  renderMovimientos();
 }
 
 // ─── SOCIOS ──────────────────────────────────────────────────────────────────
