@@ -436,7 +436,9 @@
         body: JSON.stringify(payload)
       });
 
-      const data = await res.json().catch(() => ({}));
+      const raw = await res.json().catch(() => ({}));
+      // n8n puede devolver array [{}] o objeto {} según el modo
+      const data = Array.isArray(raw) ? (raw[0] || {}) : raw;
 
       if (res.ok && data.ok !== false) {
         const pedidoId  = data.pedido_id  || '—';
