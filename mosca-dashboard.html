@@ -1441,6 +1441,26 @@ function toggleEdgarMes(cls) {
 }
 
 // ─── UI HELPERS ────────────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name)?.classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach(t => {
+    if (t.textContent.toLowerCase().includes(name === 'reporte' ? 'reporte' : 'edgar'))
+      t.classList.add('active');
+  });
+  document.getElementById('toolbar').style.display = name === 'reporte' ? '' : 'none';
+}
+
+function setStatus(msg) { document.getElementById('statusMsg').textContent = msg; }
+function showError(msg) {
+  const el = document.getElementById('errorBanner');
+  if (!el) return;
+  el.style.display = msg ? 'block' : 'none';
+  el.textContent = msg;
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => loadData());
 </script>
 </body>
