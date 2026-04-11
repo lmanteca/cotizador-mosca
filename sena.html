@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mosca Taller — Registrar Seña</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f0f;
+      --surface: #1a1a1a;
+      --border: #2e2e2e;
+      --accent: #22c55e;
+      --accent-dim: #16a34a;
+      --text: #e5e5e5;
+      --muted: #737373;
+      --danger: #ef4444;
+      --input-bg: #111111;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo span { color: var(--accent); }
+    .subtitle { color: var(--muted); font-size: 13px; }
+    .version { margin-left: auto; color: var(--muted); font-size: 12px; }
+
+    main {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 24px 16px 60px;
+    }
+
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+
+    .row { display: grid; gap: 12px; }
+    .row.two { grid-template-columns: 1fr 1fr; }
+    .row + .row { margin-top: 12px; }
+
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    label { font-size: 13px; color: var(--muted); }
+    label .req { color: var(--accent); margin-left: 2px; }
+
+    input, select, textarea {
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 14px;
+      padding: 9px 11px;
+      transition: border-color 0.15s;
+      width: 100%;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+      outline: none;
+    }
+    input::placeholder, textarea::placeholder { color: var(--muted); }
+    textarea { resize: vertical; min-height: 72px; }
+
+    select option { background: #1a1a1a; }
+
+    .hint { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    .saldo-display {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 9px 11px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .saldo-display.positive { color: var(--accent); }
+
+    .submit-btn {
+      width: 100%;
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      color: #000;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      padding: 14px;
+      transition: background 0.15s, opacity 0.15s;
+      margin-top: 8px;
+    }
+    .submit-btn:hover:not(:disabled) { background: #16a34a; }
+    .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .status {
+      border-radius: 8px;
+      display: none;
+      font-size: 14px;
+      margin-top: 12px;
+      padding: 14px 16px;
+      line-height: 1.5;
+    }
+    .status.loading { display: block; background: #1a2e1a; border: 1px solid #2d4a2d; color: var(--accent); }
+    .status.ok     { display: block; background: #0a2010; border: 1px solid var(--accent); color: var(--accent); }
+    .status.error  { display: block; background: #2a1010; border: 1px solid var(--danger); color: var(--danger); }
+
+    .result-detail { margin-top: 8px; font-size: 12px; color: var(--muted); line-height: 1.7; }
+
+    @media (max-width: 480px) {
+      .row.two { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">Mosca <span>Taller</span></div>
+    <div class="subtitle">Registrar Seña</div>
+  </div>
+  <div class="version">v1.0</div>
+</header>
+
+<main>
+  <form id="form">
+
+    <!-- CLIENTE -->
+    <div class="section">
+      <div class="section-title">Cliente</div>
+      <div class="row two">
+        <div class="field">
+          <label>Nombre<span class="req">*</span></label>
+          <input type="text" id="nombre" placeholder="Nombre completo" required>
+        </div>
+        <div class="field">
+          <label>Teléfono<span class="req">*</span></label>
+          <input type="tel" id="telefono" placeholder="11 xxxx xxxx" required>
+          <span class="hint">Se usa para buscar o crear el cliente</span>
+        </div>
+      </div>
+      <div class="row two" style="margin-top:12px">
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="email" placeholder="opcional">
+        </div>
+        <div class="field">
+          <label>Dirección</label>
+          <input type="text" id="direccion" placeholder="opcional">
+        </div>
+      </div>
+    </div>
+
+    <!-- PEDIDO -->
+    <div class="section">
+      <div class="section-title">Pedido</div>
+      <div class="row">
+        <div class="field">
+          <label>Descripción del mueble<span class="req">*</span></label>
+          <textarea id="notas" placeholder="Ej: Comedor extensible 1.60 x 0.90, madera alamo, patas hierro negro..." required></textarea>
+        </div>
+      </div>
+      <div class="row two" style="margin-top:12px">
+        <div class="field">
+          <label>Precio total pactado<span class="req">*</span></label>
+          <input type="number" id="precio_total" placeholder="0" min="0" required>
+        </div>
+        <div class="field">
+          <label>Monto de seña<span class="req">*</span></label>
+          <input type="number" id="monto_sena" placeholder="0" min="0" required>
+        </div>
+      </div>
+      <div class="row two" style="margin-top:12px">
+        <div class="field">
+          <label>Saldo pendiente</label>
+          <div class="saldo-display" id="saldo_display">—</div>
+        </div>
+        <div class="field">
+          <label>Método de cobro de la seña<span class="req">*</span></label>
+          <select id="metodo_cobro" required>
+            <option value="">Seleccionar</option>
+            <option value="efectivo">Efectivo</option>
+            <option value="transferencia">Transferencia</option>
+            <option value="tarjeta de credito">Tarjeta de crédito</option>
+            <option value="tarjeta de debito">Tarjeta de débito</option>
+            <option value="qr">QR</option>
+            <option value="Pago a cuenta">Pago a cuenta</option>
+          </select>
+        </div>
+      </div>
+      <div class="row two" style="margin-top:12px">
+        <div class="field">
+          <label>Fecha de la seña<span class="req">*</span></label>
+          <input type="date" id="fecha_sena" required>
+        </div>
+        <div class="field">
+          <label>Días adicionales de producción</label>
+          <input type="number" id="dias_adicionales" value="0" min="0" placeholder="0">
+          <span class="hint">Se suman a los 20 días base para la entrega</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MATERIALES -->
+    <div class="section">
+      <div class="section-title">Materiales y acabados — opcional</div>
+      <div class="row two">
+        <div class="field">
+          <label>Tipo de madera</label>
+          <select id="tipo_madera">
+            <option value="">Sin especificar</option>
+            <option>Alamo</option>
+            <option>Guayubira</option>
+            <option>Paraiso</option>
+            <option>Guatambú</option>
+            <option>Cedro</option>
+            <option>Enchapado</option>
+            <option>MDF</option>
+            <option>Lapacho</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Tono de madera</label>
+          <select id="tono_madera">
+            <option value="">Sin especificar</option>
+            <option>0 - Natural</option>
+            <option>1 - Claro </option>
+            <option>2 - Medio</option>
+            <option>3 - Oscuro</option>
+            <option>4 - Custom</option>
+          </select>
+        </div>
+      </div>
+      <div class="row two" style="margin-top:12px">
+        <div class="field">
+          <label>Terminación</label>
+          <select id="terminacion">
+            <option value="">Sin especificar</option>
+            <option>Liso</option>
+            <option>Grateado</option>
+            <option>Cierre</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Acabado</label>
+          <select id="acabado">
+            <option value="">Sin especificar</option>
+            <option>Mate</option>
+            <option>Brillo</option>
+            <option>Laca</option>
+            <option>Semimate</option>
+          </select>
+        </div>
+      </div>
+      <div class="row two" style="margin-top:12px">
+        <div class="field">
+          <label>Tono de hierro</label>
+          <select id="tono_hierro">
+            <option value="">Sin especificar</option>
+            <option>Natural</option>
+            <option>Negro</option>
+            <option>Blanco</option>
+            <option>Gris</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Estructura</label>
+          <select id="macizo">
+            <option value="">Sin especificar</option>
+            <option>Hueco</option>
+            <option>100% Macizo</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- SISTEMA -->
+    <div class="section">
+      <div class="section-title">Sistema</div>
+      <div class="row two">
+        <div class="field">
+          <label>Mes de resultado<span class="req">*</span></label>
+          <select id="resultado_mes" required>
+            <option value="">Seleccionar</option>
+            <option value="recSGsJ9XqevRu6W8">2025-06</option>
+            <option value="rec4ULpO8fjVOqslH">2025-07</option>
+            <option value="recKRPJeoRryi2arM">2025-08</option>
+            <option value="recPjy9WaNiXoU5ab">2025-09</option>
+            <option value="recvm9DYN4Sv8SlFK">2025-10</option>
+            <option value="reclsseegv3tNIyBg">2025-11</option>
+            <option value="recUN0OOyDVq9uvFV">2025-12</option>
+            <option value="recwj34SQfPRe8DL3">2026-01</option>
+            <option value="recbSFYh8zxXFKcAS">2026-02</option>
+            <option value="recKBBiL0oU1lFB6W">2026-03</option>
+            <option value="reclR6BJFbQP0yTpP">2026-04</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Nota del ingreso</label>
+          <input type="text" id="nota_ingreso" placeholder="opcional">
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="submit-btn" id="submitBtn">Registrar seña</button>
+    <div class="status" id="status"></div>
+
+  </form>
+</main>
+
+<script>
+  const WEBHOOK = 'https://n8n.groumachine.com.ar/webhook/mosca-sena';
+
+  // Auto-set today's date and current month's resultado
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  document.getElementById('fecha_sena').value = `${yyyy}-${mm}-${dd}`;
+
+  const mesActual = `${yyyy}-${mm}`;
+  const selMes = document.getElementById('resultado_mes');
+  for (const opt of selMes.options) {
+    if (opt.text === mesActual) { opt.selected = true; break; }
+  }
+
+  // Saldo en vivo
+  function actualizarSaldo() {
+    const total = parseFloat(document.getElementById('precio_total').value) || 0;
+    const sena  = parseFloat(document.getElementById('monto_sena').value) || 0;
+    const saldo = total - sena;
+    const el = document.getElementById('saldo_display');
+    if (total > 0) {
+      el.textContent = '$' + saldo.toLocaleString('es-AR');
+      el.classList.toggle('positive', saldo > 0);
+    } else {
+      el.textContent = '—';
+      el.classList.remove('positive');
+    }
+  }
+  document.getElementById('precio_total').addEventListener('input', actualizarSaldo);
+  document.getElementById('monto_sena').addEventListener('input', actualizarSaldo);
+
+  // Submit
+  document.getElementById('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const btn    = document.getElementById('submitBtn');
+    const status = document.getElementById('status');
+
+    const val = (id) => document.getElementById(id).value.trim();
+    const num = (id) => parseFloat(document.getElementById(id).value) || 0;
+    const opt = (id) => { const v = val(id); return v || null; };
+
+    const payload = {
+      nombre:           val('nombre'),
+      telefono:         val('telefono'),
+      email:            val('email'),
+      direccion:        val('direccion'),
+      notas:            val('notas'),
+      precio_total:     num('precio_total'),
+      monto_sena:       num('monto_sena'),
+      metodo_cobro:     val('metodo_cobro'),
+      fecha_sena:       val('fecha_sena'),
+      dias_adicionales: parseInt(val('dias_adicionales')) || 0,
+      tipo_madera:      opt('tipo_madera'),
+      tono_madera:      opt('tono_madera'),
+      terminacion:      opt('terminacion'),
+      acabado:          opt('acabado'),
+      tono_hierro:      opt('tono_hierro'),
+      macizo:           opt('macizo'),
+      resultado_id:     val('resultado_mes'),
+      nota_ingreso:     val('nota_ingreso'),
+    };
+
+    // Validaciones básicas
+    if (!payload.nombre || !payload.telefono) {
+      showStatus('error', 'Nombre y teléfono son obligatorios.');
+      return;
+    }
+    if (!payload.notas) {
+      showStatus('error', 'Describí el mueble antes de continuar.');
+      return;
+    }
+    if (payload.precio_total <= 0 || payload.monto_sena <= 0) {
+      showStatus('error', 'El precio y el monto de seña deben ser mayores a 0.');
+      return;
+    }
+    if (payload.monto_sena > payload.precio_total) {
+      showStatus('error', 'La seña no puede ser mayor al precio total.');
+      return;
+    }
+    if (!payload.metodo_cobro) {
+      showStatus('error', 'Seleccioná el método de cobro.');
+      return;
+    }
+    if (!payload.resultado_id) {
+      showStatus('error', 'Seleccioná el mes de resultado.');
+      return;
+    }
+
+    btn.disabled = true;
+    showStatus('loading', 'Registrando seña...');
+
+    try {
+      const res = await fetch(WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.ok !== false) {
+        const pedidoId  = data.pedido_id  || '—';
+        const ingresoId = data.ingreso_id || '—';
+        showStatus('ok', `Seña registrada correctamente.
+          <div class="result-detail">
+            Cliente: ${payload.nombre} (${payload.telefono})<br>
+            Seña: $${payload.monto_sena.toLocaleString('es-AR')} — ${payload.metodo_cobro}<br>
+            Saldo: $${(payload.precio_total - payload.monto_sena).toLocaleString('es-AR')}<br>
+            Entrega estimada: 20${payload.dias_adicionales > 0 ? '+' + payload.dias_adicionales : ''} días desde ${payload.fecha_sena}<br>
+            Pedido: ${pedidoId} · Ingreso: ${ingresoId}
+          </div>`);
+        document.getElementById('form').reset();
+        // Re-set defaults after reset
+        document.getElementById('fecha_sena').value = `${yyyy}-${mm}-${dd}`;
+        for (const opt of selMes.options) {
+          if (opt.text === mesActual) { opt.selected = true; break; }
+        }
+        document.getElementById('dias_adicionales').value = '0';
+        document.getElementById('saldo_display').textContent = '—';
+        document.getElementById('saldo_display').classList.remove('positive');
+      } else {
+        const msg = data.message || data.error || JSON.stringify(data);
+        showStatus('error', 'Error del servidor: ' + msg);
+        btn.disabled = false;
+      }
+    } catch (err) {
+      showStatus('error', 'No se pudo conectar con n8n. Revisá la conexión.<br><small>' + err.message + '</small>');
+      btn.disabled = false;
+    }
+  });
+
+  function showStatus(type, msg) {
+    const el = document.getElementById('status');
+    el.className = 'status ' + type;
+    el.innerHTML = msg;
+  }
+</script>
+
+</body>
+</html>
