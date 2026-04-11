@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mosca Taller — Dashboard v0.9</title>
+  <title>Mosca Taller — Dashboard v1.0</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     :root {
@@ -312,6 +312,48 @@
     .ficha-box-content { font-size: 12px; color: #333; line-height: 1.5; }
     .ficha-photo { flex: 1; border: 2px dashed #ddd; border-radius: 4px; min-height: 80mm; display: flex; align-items: center; justify-content: center; color: #bbb; font-size: 13px; margin-bottom: 10px; }
     .ficha-checklist { display: flex; gap: 16px; flex-wrap: wrap; border-top: 1px solid #eee; padding-top: 10px; margin-top: auto; }
+
+    /* ── Producción full-screen ── */
+    #page-produccion.page.active { display: flex; flex-direction: column; height: calc(100vh - 96px); overflow: hidden; }
+    #page-produccion .content    { flex: 1; max-width: none; padding: 10px 16px; display: flex; flex-direction: column; min-height: 0; }
+    #page-produccion .section    { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    #page-produccion .section-header { flex-shrink: 0; }
+    #page-produccion .kanban-board   { flex: 1; min-height: 0; align-items: stretch; }
+    #page-produccion .kanban-col     { flex: 1 1 0; min-width: 170px; display: flex; flex-direction: column; }
+    #page-produccion .kanban-cards   { flex: 1; max-height: none; }
+    .kanban-card-id { font-size: 9px; color: #aaa; font-family: monospace; margin-top: 4px; }
+
+    /* ── Ficha A4 rediseñada ── */
+    .ficha2-page { background: white; width: 210mm; min-height: 297mm; margin: 0 auto 20px; padding: 14mm 14mm 10mm; box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; font-size: 11pt; position: relative; display: flex; flex-direction: column; }
+    .ficha2-topbar { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 6px; }
+    .ficha2-num { font-size: 28pt; font-weight: 900; color: #111; line-height: 1; }
+    .ficha2-bee { font-size: 22pt; margin-right: 6px; }
+    .ficha2-numblock { display: flex; align-items: center; }
+    .ficha2-entrega { text-align: center; }
+    .ficha2-entrega-label { font-size: 10pt; color: #555; }
+    .ficha2-entrega-date { font-size: 20pt; font-weight: 700; color: #111; }
+    .ficha2-brand { text-align: right; font-size: 22pt; font-weight: 900; letter-spacing: -1px; line-height: 1.05; color: #111; }
+    .ficha2-clientbar { display: flex; gap: 20px; background: #f4f4f4; border-radius: 3px; padding: 5px 10px; font-size: 9.5pt; margin-bottom: 8px; color: #333; }
+    .ficha2-clientbar span { display: flex; align-items: center; gap: 5px; }
+    .ficha2-productbar { display: flex; justify-content: space-between; align-items: flex-start; border-top: 2px solid #111; border-bottom: 1px solid #ccc; padding: 6px 0; margin-bottom: 10px; }
+    .ficha2-product-name { font-size: 16pt; font-weight: 700; color: #111; flex: 1; line-height: 1.2; }
+    .ficha2-dims { text-align: right; font-size: 9.5pt; color: #444; line-height: 1.8; flex-shrink: 0; min-width: 90px; }
+    .ficha2-dims b { font-size: 11pt; }
+    .ficha2-body { display: flex; gap: 14px; flex: 1; margin-bottom: 10px; }
+    .ficha2-photo { flex: 0 0 55%; border: 1px solid #ccc; border-radius: 3px; display: flex; align-items: center; justify-content: center; color: #bbb; font-size: 10pt; min-height: 80mm; background: #fafafa; }
+    .ficha2-specs { flex: 1; display: flex; flex-direction: column; gap: 0; }
+    .ficha2-spec-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #eee; font-size: 10pt; }
+    .ficha2-spec-label { color: #555; }
+    .ficha2-spec-value { font-weight: 600; color: #111; text-align: right; max-width: 55%; }
+    .ficha2-section-title { font-size: 11pt; font-weight: 700; margin: 10px 0 4px; color: #111; }
+    .ficha2-table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+    .ficha2-table th { background: #eee; border: 1px solid #ccc; padding: 4px 8px; text-align: left; font-weight: 600; }
+    .ficha2-table td { border: 1px solid #ccc; padding: 4px 8px; height: 24px; }
+    .ficha2-checklist { display: flex; gap: 18px; flex-wrap: wrap; border-top: 2px solid #111; padding-top: 8px; margin-top: auto; }
+    .ficha2-check { display: flex; align-items: center; gap: 6px; font-size: 10pt; }
+    .ficha2-check-box { width: 14px; height: 14px; border: 1.5px solid #333; border-radius: 2px; flex-shrink: 0; }
+    .ficha2-problema { background: #fff3e0; border: 1px solid #ffb74d; border-radius: 3px; padding: 6px 10px; margin-bottom: 8px; font-size: 10pt; color: #e65100; }
+    .ficha2-id { font-size: 8pt; color: #aaa; font-family: monospace; margin-top: 3px; }
     .ficha-check { display: flex; align-items: center; gap: 6px; font-size: 12px; }
     .ficha-check-box { width: 16px; height: 16px; border: 2px solid #333; border-radius: 2px; flex-shrink: 0; }
     .ficha-problema { background: #fff3e0; border: 1px solid #ffb74d; border-radius: 4px; padding: 8px 10px; margin-bottom: 10px; font-size: 12px; color: #e65100; }
@@ -321,7 +363,7 @@
 
 <!-- NAV -->
 <nav class="nav no-print">
-  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v0.9</span></span>
+  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v1.0</span></span>
   <div class="nav-tabs">
     <button class="nav-tab active" data-page="reporte" onclick="showPage('reporte')">Financiero</button>
     <button class="nav-tab" data-page="comercial" onclick="showPage('comercial')">Comercial</button>
@@ -1324,7 +1366,9 @@ function renderComercial() {
       const rowStyle = entregadoConSaldo
         ? (saldo > 0 ? 'style="background:#fff8e1"' : 'style="background:#fce4ec"')
         : '';
+      const pedIdShort = r.id ? r.id.replace('rec','').slice(0,8) : '';
       return `<tr ${rowStyle}>
+        <td style="font-size:10px;color:#aaa;font-family:monospace">#${pedIdShort}</td>
         <td>${fmtDate(f.seña)}</td>
         <td>${cliente}</td>
         <td style="font-size:12px;color:#555;max-width:200px">${variante}</td>
@@ -1347,7 +1391,7 @@ function renderComercial() {
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>Fecha seña</th><th>Cliente</th><th>Variante</th><th>Estado</th>
+          <th style="width:70px">ID</th><th>Fecha seña</th><th>Cliente</th><th>Variante</th><th>Estado</th>
           <th class="right">Muebles</th><th class="right">Total</th>
           <th class="right">Pagado</th><th class="right">Saldo</th>
         </tr></thead>
@@ -1440,12 +1484,14 @@ function renderProduccion() {
         else                   daysBadge = `<div class="days-badge days-ok">${daysLeft}d</div>`;
       }
 
+      const shortId = r.id ? r.id.replace('rec','').slice(0,8) : '';
       return `<div class="kanban-card">
         <div class="kanban-card-title">${varName || '(sin variante)'}</div>
         <div class="kanban-card-meta">${cliente}</div>
         ${fechaRaw ? `<div class="kanban-card-meta">${fmtDate(fechaRaw)}</div>` : ''}
         ${daysBadge}
         ${f.problemas ? `<div class="kanban-card-problema">⚠ ${f.problemas}</div>` : ''}
+        <div class="kanban-card-id">#${shortId}</div>
       </div>`;
     }).join('');
 
@@ -1494,63 +1540,104 @@ function printFichas() {
                    || (Array.isArray(f.notas_variante) ? f.notas_variante.filter(Boolean).join(', ') : '(sin variante)');
     const fechaRaw  = Array.isArray(f.fecha_comprometida) ? f.fecha_comprometida[0] : f.fecha_comprometida;
     const daysLeft  = fechaRaw ? Math.round((new Date(fechaRaw) - today) / 86400000) : null;
-    const diasLabel = daysLeft !== null
-      ? (daysLeft < 0 ? `${Math.abs(daysLeft)}d vencido` : `${daysLeft}d restantes`)
-      : '—';
     const estadoSt  = KANBAN_STATES.find(s => s.key === getKanbanBucket(f.estado));
     const estadoLabel = estadoSt ? estadoSt.label : (f.estado || 'Sin estado');
-    const notas     = Array.isArray(f.notas_variante)
+    const problema  = f.problemas || '';
+    const recId     = r.id || '';
+    const shortId   = recId.replace('rec','').slice(0,10);
+
+    // Parse notas_variante: try to split into key:value pairs for specs table
+    const notasRaw  = Array.isArray(f.notas_variante)
       ? f.notas_variante.filter(Boolean).join('\n')
       : (f.notas_variante || '');
-    const problema  = f.problemas || '';
+    const specLines = notasRaw.split('\n').filter(l => l.trim());
+    const specRows  = specLines.map(line => {
+      const idx = line.indexOf(':');
+      if (idx > 0) {
+        const lbl = line.slice(0, idx).trim();
+        const val = line.slice(idx+1).trim();
+        return `<div class="ficha2-spec-row"><span class="ficha2-spec-label">${lbl}</span><span class="ficha2-spec-value">${val}</span></div>`;
+      }
+      return `<div class="ficha2-spec-row"><span class="ficha2-spec-label">${line}</span><span class="ficha2-spec-value"></span></div>`;
+    }).join('');
 
-    return `<div class="ficha-card">
-      <div class="ficha-header">
-        <div>
-          <div class="ficha-brand">MOSCA TALLER</div>
-          <div style="font-size:11px;color:#888;margin-top:2px">Ficha de Producción</div>
+    // Try to extract dimensions from varName: pattern NNNxNNN or NNNxNNNxNNN
+    let dimsHtml = '';
+    const dimMatch = varName.match(/(\d+)[xX×](\d+)(?:[xX×](\d+))?/);
+    if (dimMatch) {
+      const [, d1, d2, d3] = dimMatch;
+      dimsHtml = `
+        <div class="ficha2-dims">
+          Ancho: <b>${d1}</b><br>
+          Alto: <b>${d2}</b>${d3 ? `<br>Prof.: <b>${d3}</b>` : ''}
+        </div>`;
+    }
+
+    // Formatted delivery date
+    const fechaDisplay = fechaRaw
+      ? new Date(fechaRaw + 'T12:00:00').toLocaleDateString('es-AR', {day:'numeric',month:'numeric',year:'numeric'})
+      : '—';
+
+    return `<div class="ficha2-page">
+
+      <!-- TOP BAR -->
+      <div class="ficha2-topbar">
+        <div class="ficha2-numblock">
+          <span class="ficha2-bee">🐝</span>
+          <div>
+            <div class="ficha2-num">${shortId}</div>
+            <div class="ficha2-id">${recId}</div>
+          </div>
         </div>
-        <div class="ficha-meta">
-          Impreso: ${fechaImp}<br>
-          Estado: <strong>${estadoLabel}</strong>
+        <div class="ficha2-entrega">
+          <div class="ficha2-entrega-label">Entrega</div>
+          <div class="ficha2-entrega-date">${fechaDisplay}</div>
+        </div>
+        <div class="ficha2-brand">MOSCA<br>TALLER</div>
+      </div>
+
+      <!-- CLIENT BAR -->
+      <div class="ficha2-clientbar">
+        <span>${cliente}</span>
+        <span style="margin-left:auto;font-size:9pt;color:#888">Estado: ${estadoLabel} · Impreso: ${fechaImp}</span>
+      </div>
+
+      <!-- PRODUCT TITLE + DIMS -->
+      <div class="ficha2-productbar">
+        <div class="ficha2-product-name">${varName}</div>
+        ${dimsHtml}
+      </div>
+
+      ${problema ? `<div class="ficha2-problema">⚠ Problema: ${problema}</div>` : ''}
+
+      <!-- BODY: PHOTO + SPECS -->
+      <div class="ficha2-body">
+        <div class="ficha2-photo">[ Foto / Referencia ]</div>
+        <div class="ficha2-specs">
+          ${specRows || '<div style="color:#bbb;font-size:9pt;padding:8px 0">Sin especificaciones detalladas</div>'}
         </div>
       </div>
 
-      <div class="ficha-title">${varName}</div>
+      <!-- MATERIALS TABLE -->
+      <div class="ficha2-section-title">Materiales</div>
+      <table class="ficha2-table">
+        <thead><tr><th>Material</th><th>Cantidad</th><th>% Desperdicio aprox</th></tr></thead>
+        <tbody>
+          <tr><td></td><td></td><td></td></tr>
+          <tr><td></td><td></td><td></td></tr>
+          <tr><td></td><td></td><td></td></tr>
+        </tbody>
+      </table>
 
-      <div class="ficha-row">
-        <div class="ficha-field">
-          <div class="ficha-field-label">Cliente</div>
-          <div class="ficha-field-value">${cliente}</div>
-        </div>
-        <div class="ficha-field">
-          <div class="ficha-field-label">Entrega comprometida</div>
-          <div class="ficha-field-value">${fechaRaw ? fmtDate(fechaRaw) : '—'}</div>
-        </div>
-        <div class="ficha-field">
-          <div class="ficha-field-label">Días</div>
-          <div class="ficha-field-value" style="color:${daysLeft !== null && daysLeft < 0 ? '#c62828' : daysLeft !== null && daysLeft <= 7 ? '#e65100' : '#2e7d32'}">${diasLabel}</div>
-        </div>
+      <!-- CHECKLIST -->
+      <div class="ficha2-checklist">
+        <div class="ficha2-check"><div class="ficha2-check-box"></div> Estructura</div>
+        <div class="ficha2-check"><div class="ficha2-check-box"></div> Terminación</div>
+        <div class="ficha2-check"><div class="ficha2-check-box"></div> Tapizado / Pintura</div>
+        <div class="ficha2-check"><div class="ficha2-check-box"></div> Control calidad</div>
+        <div class="ficha2-check"><div class="ficha2-check-box"></div> Listo para entregar</div>
       </div>
 
-      ${problema ? `<div class="ficha-problema">⚠ Problema: ${problema}</div>` : ''}
-
-      <div class="ficha-box" style="flex:1;min-height:50mm">
-        <div class="ficha-box-label">Especificaciones</div>
-        <div class="ficha-box-content" style="white-space:pre-wrap">${notas || 'Sin especificaciones registradas'}</div>
-      </div>
-
-      <div class="ficha-photo">
-        [ Foto / Referencia ]
-      </div>
-
-      <div class="ficha-checklist">
-        <div class="ficha-check"><div class="ficha-check-box"></div> Estructura</div>
-        <div class="ficha-check"><div class="ficha-check-box"></div> Terminación</div>
-        <div class="ficha-check"><div class="ficha-check-box"></div> Tapizado / Pintura</div>
-        <div class="ficha-check"><div class="ficha-check-box"></div> Control calidad</div>
-        <div class="ficha-check"><div class="ficha-check-box"></div> Listo para entregar</div>
-      </div>
     </div>`;
   }).join('');
 
@@ -1619,7 +1706,9 @@ function renderPorCobrar() {
     else if (listoProd.length > 0) prodStatus = `<span class="tag tag-blue">Listo (${listoProd.length})</span>`;
     else                           prodStatus = '<span class="tag tag-green">Entregado</span>';
 
+    const pcIdShort = r.id ? r.id.replace('rec','').slice(0,8) : '';
     return `<tr>
+      <td style="font-size:10px;color:#aaa;font-family:monospace">#${pcIdShort}</td>
       <td>${cliente}</td>
       <td style="font-size:11px;color:#555;max-width:180px">${varName}</td>
       <td>${fmtDate(fechaEnt)}</td>
@@ -1637,7 +1726,7 @@ function renderPorCobrar() {
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>Cliente</th><th>Variante</th><th>Fecha entrega</th>
+          <th style="width:70px">ID</th><th>Cliente</th><th>Variante</th><th>Fecha entrega</th>
           <th class="center">Días</th><th class="right">Saldo</th><th>Producción</th>
         </tr></thead>
         <tbody>${rows}</tbody>
@@ -1648,7 +1737,7 @@ function renderPorCobrar() {
 // ─── EDGAR ───────────────────────────────────────────────────────────────────
 // Lógica: Mosca adelanta plata a Edgar (alquiler, adelantos) = Edgar genera deuda con Mosca
 //         Recuperos (trabajo Edgar) y Premio devengado = descontán deuda
-//         Saldo siempre ≤ 0 → negativo = Edgar le debe a Mosca
+//         Saldo negativo = Edgar le debe a Mosca; positivo = Mosca le debe a Edgar (antes de liquidar exceso)
 function renderEdgar() {
   // Adelantos / pagos a Edgar → generan deuda de Edgar con Mosca
   const gastEdgar = allData.gastos.filter(r => {
@@ -1750,8 +1839,9 @@ function renderEdgar() {
     </tr>`;
     mesMovs.forEach(m => {
       const balance = balMap.get(m);
+      const esPago = m.tipo === 'adelanto' && /pago|exceso/i.test(m.concepto || '');
       const tipTag = m.tipo === 'adelanto'
-        ? '<span class="tag tag-red">Adelanto</span>'
+        ? (esPago ? '<span class="tag tag-green">Pago</span>' : '<span class="tag tag-red">Adelanto</span>')
         : m.tipo === 'recupero'
           ? '<span class="tag tag-green">Recupero</span>'
           : '<span class="tag tag-amber">Premio</span>';
