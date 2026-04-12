@@ -513,6 +513,9 @@
       </div>
       <div id="kpiEdgar" class="kpi-grid" style="margin-bottom:16px"></div>
       <div class="divider"></div>
+      <div style="margin:14px 0 8px;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.6px;text-transform:uppercase">Posición capital — Javier</div>
+      <div id="kpiJavier" class="kpi-grid" style="margin-bottom:16px"></div>
+      <div class="divider"></div>
       <div class="table-wrap" style="margin-top:14px">
         <table>
           <thead><tr>
@@ -999,7 +1002,14 @@ function renderMovimientos() {
     return (p.includes('edgar') || (r.fields.concepto||'').toLowerCase().includes('edgar'))
         && (r.fields.categoria || '') !== 'Mano de Obra';
   };
-  const gastsOp = gasts.filter(r => !isEdgarCobertura(r));
+  // Alquiler Taller pagado a Javier (gasto de capital, no operativo — corresponde a Cap. Javier en especies)
+  const isAlquilerJavier = r => {
+    const p = (Array.isArray(r.fields['proveedor (de Proveedores)'])
+      ? r.fields['proveedor (de Proveedores)'].join(' ')
+      : (r.fields['proveedor (de Proveedores)'] || '')).toLowerCase();
+    return p.includes('javier') && (r.fields.categoria || '') === 'Alquiler';
+  };
+  const gastsOp = gasts.filter(r => !isEdgarCobertura(r) && !isAlquilerJavier(r));
 
   // Build unified row dataset — unclassified → 'No Clasificados'
   const allRows = [
@@ -1809,9 +1819,14 @@ function renderEdgar() {
   const isEdgarProv = r => getProv(r).includes('edgar')
     || (r.fields.concepto||'').toLowerCase().includes('edgar');
 
-  // DEBE: cobertura Mosca — alquiler depto + servicios (proveedor=Edgar, NO Mano de Obra)
+  // DEBE: cobertura Mosca — solo alquiler depto + servicios (cat=Alquiler o Servicios)
   const gastoCobertura = allData.gastos.filter(r =>
-    isEdgarProv(r) && (r.fields.categoria || '') !== 'Mano de Obra'
+    isEdgarProv(r) && ['Alquiler', 'Servicios'].includes(r.fields.categoria || '')
+  );
+
+  // DEBE: préstamos de Mosca a Edgar (cat=Otros, proveedor=Edgar)
+  const gastosPrestamos = allData.gastos.filter(r =>
+    isEdgarProv(r) && (r.fields.categoria || '') === 'Otros'
   );
 
   // DEBE: capitalización Javier en especies (taller + Edgar) — filtro por nota y monto
@@ -1826,24 +1841,46 @@ function renderEdgar() {
     isEdgarProv(r) && (r.fields.categoria || '') === 'Mano de Obra'
   );
 
-  // HABER: recuperos históricos registrados como ingreso Recupero Edgar
+  // HABER: recuperos registrados como ingreso Recupero Edgar (trabajo valorizado)
   const ingEdgar = allData.ingresos.filter(r =>
     (r.fields.concepto || '') === 'Recupero Edgar'
   );
 
+  // HABER: devoluciones de préstamos de Edgar a Mosca (ingreso Préstamos con nota Edgar)
+  const ingPrestamos = allData.ingresos.filter(r =>
+    r.fields.concepto === 'Préstamos' && /edgar/i.test(r.fields.Nota || '')
+  );
+
   // Totales
-  const totalCobertura = gastoCobertura.reduce((s,r) => s + (r.fields.monto||0), 0);
-  const totalCapJavier = capJavierEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
-  const totalDeuda     = totalCobertura + totalCapJavier;
-  const totalMdo       = gastosMdoEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
-  const totalRecupero  = ingEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
-  const totalHaber     = totalMdo + totalRecupero;
-  const totalPremio    = allData.pedidos
+  const totalCobertura     = gastoCobertura.reduce((s,r) => s + (r.fields.monto||0), 0);
+  const totalPrestamosDebe = gastosPrestamos.reduce((s,r) => s + (r.fields.monto||0), 0);
+  const totalCapJavier     = capJavierEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
+  const totalDeuda         = totalCobertura + totalPrestamosDebe + totalCapJavier;
+  const totalMdo           = gastosMdoEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
+  const totalRecupero      = ingEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
+  const totalPrestamosHaber = ingPrestamos.reduce((s,r) => s + (r.fields.monto||0), 0);
+  const totalHaber         = totalMdo + totalRecupero + totalPrestamosHaber;
+  const totalPremio        = allData.pedidos
     .filter(r => r.fields.estado !== 'Cancelado')
     .reduce((s,r) => s + (r.fields.premio_edgar||0), 0);
 
   // Saldo: positivo = Edgar debe a Mosca | negativo = Mosca debe a Edgar
   const saldo = totalHaber + totalPremio - totalDeuda;
+
+  // Posición Javier: retiro efectivo = labor Edgar por mes, tope cap Javier ese mes
+  const capByMes = {}, laborByMes = {};
+  capJavierEdgar.forEach(r => {
+    const m = (r.fields.fecha||'').slice(0,7);
+    capByMes[m] = (capByMes[m]||0) + (r.fields.monto||0);
+  });
+  [...gastosMdoEdgar, ...ingEdgar].forEach(r => {
+    const m = (r.fields.fecha||'').slice(0,7);
+    laborByMes[m] = (laborByMes[m]||0) + (r.fields.monto||0);
+  });
+  const retiroEfectivo = Object.keys(capByMes).reduce((s, m) => {
+    return s + Math.min(capByMes[m]||0, laborByMes[m]||0);
+  }, 0);
+  const javierCapNeta = totalCapJavier - retiroEfectivo;
 
   document.getElementById('kpiEdgar').innerHTML = `
     <div class="kpi">
@@ -1856,9 +1893,15 @@ function renderEdgar() {
       <div class="kpi-value negative">${fmtFull(-totalCobertura)}</div>
       <div class="kpi-sub">Depto + servicios · debe Edgar</div>
     </div>
+    ${totalPrestamosDebe > 0 ? `
+    <div class="kpi">
+      <div class="kpi-label">Préstamos a Edgar</div>
+      <div class="kpi-value negative">${fmtFull(-(totalPrestamosDebe - totalPrestamosHaber))}</div>
+      <div class="kpi-sub">Neto pendiente · debe Edgar</div>
+    </div>` : ''}
     <div class="kpi">
       <div class="kpi-label">Trabajo registrado</div>
-      <div class="kpi-value positive">${fmtFull(totalHaber)}</div>
+      <div class="kpi-value positive">${fmtFull(totalMdo + totalRecupero)}</div>
       <div class="kpi-sub">Mano de obra por mueble</div>
     </div>
     ${totalPremio > 0 ? `
@@ -1871,6 +1914,25 @@ function renderEdgar() {
       <div class="kpi-label">${saldo >= 0 ? 'Edgar debe a Mosca' : 'Mosca debe a Edgar'}</div>
       <div class="kpi-value ${saldo >= 0 ? 'negative' : 'positive'}">${fmtFull(Math.abs(saldo))}</div>
       <div class="kpi-sub">${saldo > 0 ? 'Trabajo pendiente' : saldo === 0 ? 'Al día' : 'A favor de Edgar'}</div>
+    </div>
+  `;
+
+  // Posición capital Javier
+  document.getElementById('kpiJavier').innerHTML = `
+    <div class="kpi">
+      <div class="kpi-label">Capitalización bruta</div>
+      <div class="kpi-value blue">${fmtFull(totalCapJavier)}</div>
+      <div class="kpi-sub">Total aportado en especies</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Retiro efectivo</div>
+      <div class="kpi-value positive">${fmtFull(retiroEfectivo)}</div>
+      <div class="kpi-sub">Labor Edgar consumida · tope/mes</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Posición neta Javier</div>
+      <div class="kpi-value ${javierCapNeta > 0 ? 'blue' : 'positive'}">${fmtFull(javierCapNeta)}</div>
+      <div class="kpi-sub">${javierCapNeta > 0 ? 'Capital pendiente de retiro' : 'Posición cerrada'}</div>
     </div>
   `;
 
@@ -1888,6 +1950,12 @@ function renderEdgar() {
       concepto: r.fields.concepto || 'Cobertura Mosca',
       impacto: -(r.fields.monto||0)
     })),
+    ...gastosPrestamos.map(r => ({
+      fecha: r.fields.fecha || '',
+      tipo: 'prestamo_out',
+      concepto: r.fields.concepto || 'Préstamo a Edgar',
+      impacto: -(r.fields.monto||0)
+    })),
     ...gastosMdoEdgar.map(r => ({
       fecha: r.fields.fecha || '',
       tipo: 'mano_obra',
@@ -1898,6 +1966,12 @@ function renderEdgar() {
       fecha: r.fields.fecha || '',
       tipo: 'recupero',
       concepto: r.fields.Nota || 'Recupero',
+      impacto: r.fields.monto||0
+    })),
+    ...ingPrestamos.map(r => ({
+      fecha: r.fields.fecha || '',
+      tipo: 'prestamo_in',
+      concepto: r.fields.Nota || 'Devolución préstamo',
       impacto: r.fields.monto||0
     })),
     ...allData.pedidos
@@ -1940,11 +2014,13 @@ function renderEdgar() {
     mesMovs.forEach(m => {
       const balance = balMap.get(m);
       const tipTag =
-        m.tipo === 'cap_javier' ? '<span class="tag tag-blue">Cap. Javier</span>'
-        : m.tipo === 'cobertura' ? '<span class="tag tag-red">Cobertura</span>'
-        : m.tipo === 'mano_obra' ? '<span class="tag tag-green">Mano de Obra</span>'
-        : m.tipo === 'recupero'  ? '<span class="tag tag-green">Recupero</span>'
-        :                          '<span class="tag tag-amber">Premio</span>';
+        m.tipo === 'cap_javier'    ? '<span class="tag tag-blue">Cap. Javier</span>'
+        : m.tipo === 'cobertura'   ? '<span class="tag tag-red">Cobertura</span>'
+        : m.tipo === 'mano_obra'   ? '<span class="tag tag-green">Mano de Obra</span>'
+        : m.tipo === 'recupero'    ? '<span class="tag tag-green">Recupero</span>'
+        : m.tipo === 'prestamo_out'? '<span class="tag tag-purple">Préstamo ↓</span>'
+        : m.tipo === 'prestamo_in' ? '<span class="tag tag-purple">Devolución</span>'
+        :                            '<span class="tag tag-amber">Premio</span>';
       const esNeg = m.impacto < 0;
       tableHtml += `<tr class="em-${mes.replace('-','_')}">
         <td>${fmtDate(m.fecha)}</td>
