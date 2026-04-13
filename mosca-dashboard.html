@@ -1832,7 +1832,7 @@ function renderEdgar() {
   // DEBE: capitalización Javier en especies (taller + Edgar) — filtro por nota y monto
   const capJavierEdgar = allData.ingresos.filter(r =>
     r.fields.concepto === 'Capitalizacion - Javier' &&
-    /alquiler|taller|especies/i.test(r.fields.Nota || '') &&
+    /taller/i.test(r.fields.Nota || '') &&
     (r.fields.monto || 0) >= 1000000
   );
 
