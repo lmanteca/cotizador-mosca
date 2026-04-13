@@ -994,22 +994,17 @@ function renderMovimientos() {
     gasts = gasts.filter(r => r.fields['mes-a'] === selectedMonth);
   }
 
-  // Gastos Edgar cobertura (alquiler depto + servicios depto) → solo van a cuenta Edgar, NO al P&L operativo
+  // Gastos Edgar cat=Prestamos → solo van a cuenta corriente Edgar, NO al P&L operativo
+  // (depto, luz, adelantos — Mano de Obra siempre va al P&L)
   const isEdgarCobertura = r => {
     const p = (Array.isArray(r.fields['proveedor (de Proveedores)'])
       ? r.fields['proveedor (de Proveedores)'].join(' ')
       : (r.fields['proveedor (de Proveedores)'] || '')).toLowerCase();
     return (p.includes('edgar') || (r.fields.concepto||'').toLowerCase().includes('edgar'))
-        && (r.fields.categoria || '') !== 'Mano de Obra';
+        && (r.fields.categoria || '') === 'Prestamos';
   };
-  // Alquiler Taller pagado a Javier (gasto de capital, no operativo — corresponde a Cap. Javier en especies)
-  const isAlquilerJavier = r => {
-    const p = (Array.isArray(r.fields['proveedor (de Proveedores)'])
-      ? r.fields['proveedor (de Proveedores)'].join(' ')
-      : (r.fields['proveedor (de Proveedores)'] || '')).toLowerCase();
-    return p.includes('javier') && (r.fields.categoria || '') === 'Alquiler';
-  };
-  const gastsOp = gasts.filter(r => !isEdgarCobertura(r) && !isAlquilerJavier(r));
+  // Nota: Alquiler Showroom (proveedor=Javier) es costo operativo de Mosca → incluido en P&L
+  const gastsOp = gasts.filter(r => !isEdgarCobertura(r));
 
   // Build unified row dataset — unclassified → 'No Clasificados'
   const allRows = [
@@ -1819,14 +1814,9 @@ function renderEdgar() {
   const isEdgarProv = r => getProv(r).includes('edgar')
     || (r.fields.concepto||'').toLowerCase().includes('edgar');
 
-  // DEBE: cobertura Mosca — solo alquiler depto + servicios (cat=Alquiler o Servicios)
-  const gastoCobertura = allData.gastos.filter(r =>
-    isEdgarProv(r) && ['Alquiler', 'Servicios'].includes(r.fields.categoria || '')
-  );
-
-  // DEBE: préstamos de Mosca a Edgar (cat=Otros, proveedor=Edgar)
-  const gastosPrestamos = allData.gastos.filter(r =>
-    isEdgarProv(r) && (r.fields.categoria || '') === 'Otros'
+  // DEBE: todos los financiamientos de Mosca a Edgar (depto, luz, adelantos, préstamos — cat=Prestamos)
+  const gastosEdgarDebe = allData.gastos.filter(r =>
+    isEdgarProv(r) && (r.fields.categoria || '') === 'Prestamos'
   );
 
   // DEBE: capitalización Javier en especies (taller + Edgar) — filtro por nota y monto
@@ -1852,10 +1842,9 @@ function renderEdgar() {
   );
 
   // Totales
-  const totalCobertura     = gastoCobertura.reduce((s,r) => s + (r.fields.monto||0), 0);
-  const totalPrestamosDebe = gastosPrestamos.reduce((s,r) => s + (r.fields.monto||0), 0);
-  const totalCapJavier     = capJavierEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
-  const totalDeuda         = totalCobertura + totalPrestamosDebe + totalCapJavier;
+  const totalFinanciamiento = gastosEdgarDebe.reduce((s,r) => s + (r.fields.monto||0), 0);
+  const totalCapJavier      = capJavierEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
+  const totalDeuda          = totalFinanciamiento + totalCapJavier;
   const totalMdo           = gastosMdoEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
   const totalRecupero      = ingEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
   const totalPrestamosHaber = ingPrestamos.reduce((s,r) => s + (r.fields.monto||0), 0);
@@ -1884,21 +1873,15 @@ function renderEdgar() {
 
   document.getElementById('kpiEdgar').innerHTML = `
     <div class="kpi">
-      <div class="kpi-label">Cap. Javier (en especies)</div>
+      <div class="kpi-label">Taller (Javier · especie)</div>
       <div class="kpi-value negative">${fmtFull(-totalCapJavier)}</div>
-      <div class="kpi-sub">Taller + Edgar · debe Edgar</div>
+      <div class="kpi-sub">Alquiler taller · debe Edgar</div>
     </div>
     <div class="kpi">
-      <div class="kpi-label">Cobertura Mosca</div>
-      <div class="kpi-value negative">${fmtFull(-totalCobertura)}</div>
-      <div class="kpi-sub">Depto + servicios · debe Edgar</div>
+      <div class="kpi-label">Financiamiento Mosca</div>
+      <div class="kpi-value negative">${fmtFull(-(totalFinanciamiento - totalPrestamosHaber))}</div>
+      <div class="kpi-sub">Depto + luz + adelantos (neto) · debe Edgar</div>
     </div>
-    ${totalPrestamosDebe > 0 ? `
-    <div class="kpi">
-      <div class="kpi-label">Préstamos a Edgar</div>
-      <div class="kpi-value negative">${fmtFull(-(totalPrestamosDebe - totalPrestamosHaber))}</div>
-      <div class="kpi-sub">Neto pendiente · debe Edgar</div>
-    </div>` : ''}
     <div class="kpi">
       <div class="kpi-label">Trabajo registrado</div>
       <div class="kpi-value positive">${fmtFull(totalMdo + totalRecupero)}</div>
@@ -1941,25 +1924,19 @@ function renderEdgar() {
     ...capJavierEdgar.map(r => ({
       fecha: r.fields.fecha || '',
       tipo: 'cap_javier',
-      concepto: r.fields.Nota || 'Capitalización en especies',
+      concepto: r.fields.Nota || 'Taller · Javier (especie)',
       impacto: -(r.fields.monto||0)
     })),
-    ...gastoCobertura.map(r => ({
-      fecha: r.fields.fecha || '',
-      tipo: 'cobertura',
-      concepto: r.fields.concepto || 'Cobertura Mosca',
-      impacto: -(r.fields.monto||0)
-    })),
-    ...gastosPrestamos.map(r => ({
+    ...gastosEdgarDebe.map(r => ({
       fecha: r.fields.fecha || '',
       tipo: 'prestamo_out',
-      concepto: r.fields.concepto || 'Préstamo a Edgar',
+      concepto: r.fields.concepto || 'Financiamiento Mosca',
       impacto: -(r.fields.monto||0)
     })),
     ...gastosMdoEdgar.map(r => ({
       fecha: r.fields.fecha || '',
       tipo: 'mano_obra',
-      concepto: r.fields.concepto || 'Trabajo',
+      concepto: `${r.fields.concepto || 'Trabajo'} · ${(r.fields.metodo_pago||'').toLowerCase().includes('cancela') ? 'cancela deuda' : 'cash'}`,
       impacto: r.fields.monto||0
     })),
     ...ingEdgar.map(r => ({
@@ -2014,11 +1991,10 @@ function renderEdgar() {
     mesMovs.forEach(m => {
       const balance = balMap.get(m);
       const tipTag =
-        m.tipo === 'cap_javier'    ? '<span class="tag tag-blue">Cap. Javier</span>'
-        : m.tipo === 'cobertura'   ? '<span class="tag tag-red">Cobertura</span>'
+        m.tipo === 'cap_javier'    ? '<span class="tag tag-blue">Taller Javier</span>'
         : m.tipo === 'mano_obra'   ? '<span class="tag tag-green">Mano de Obra</span>'
         : m.tipo === 'recupero'    ? '<span class="tag tag-green">Recupero</span>'
-        : m.tipo === 'prestamo_out'? '<span class="tag tag-purple">Préstamo ↓</span>'
+        : m.tipo === 'prestamo_out'? '<span class="tag tag-red">Financiamiento ↓</span>'
         : m.tipo === 'prestamo_in' ? '<span class="tag tag-purple">Devolución</span>'
         :                            '<span class="tag tag-amber">Premio</span>';
       const esNeg = m.impacto < 0;
