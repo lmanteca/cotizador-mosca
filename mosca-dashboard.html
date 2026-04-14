@@ -509,11 +509,18 @@
     <div class="section">
       <div class="section-header">
         <span class="section-title">Cuenta corriente — Edgar</span>
-        <span class="section-meta">Histórico completo</span>
+        <span id="edgarPeriodoLabel" class="section-meta">Histórico completo</span>
+      </div>
+      <!-- Filtro de mes -->
+      <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <label style="font-size:12px;color:var(--muted)">Período:</label>
+        <select id="edgarMesSel" onchange="edgarMesFilter=this.value;renderEdgar()" style="font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:4px;background:#fff">
+          <option value="">Histórico completo</option>
+        </select>
       </div>
       <div id="kpiEdgar" class="kpi-grid" style="margin-bottom:16px"></div>
       <div class="divider"></div>
-      <div class="chart-wrap" style="height:240px;margin:16px 0 4px" id="chartEdgarWrap">
+      <div class="chart-wrap" style="height:260px;margin:16px 0 4px" id="chartEdgarWrap">
         <canvas id="chartEdgar"></canvas>
       </div>
       <div class="divider"></div>
@@ -523,8 +530,8 @@
             <th>Fecha</th>
             <th>Tipo</th>
             <th>Concepto</th>
-            <th class="right">Adelanto (deuda)</th>
-            <th class="right">Recupero / Premio</th>
+            <th class="right">DEBE (deuda)</th>
+            <th class="right">HABER (MdO / Dev.)</th>
             <th class="right">Saldo acum.</th>
           </tr></thead>
           <tbody id="bodyEdgar"><tr><td colspan="6" class="loading"><span class="spinner"></span>Cargando...</td></tr></tbody>
@@ -568,6 +575,7 @@ let prodEstadoFilter = '';
 let pedFilter = { estado: '', mostrarSinCliente: false };
 let selectedMonth = '';
 let chartEvol = null;
+let edgarMesFilter = '';
 
 // ─── UTILITIES ──────────────────────────────────────────────────────────────
 const fmt = n => {
@@ -1807,7 +1815,7 @@ function renderPorCobrar() {
 //   HABER Edgar (Edgar pone):
 //     - Gastos Mano de Obra con proveedor=Edgar (trabajo por mueble → también costo P&L operativo)
 //     - Recupero Edgar en Ingresos (histórico)
-//   Saldo positivo = Edgar debe a Mosca | negativo = Mosca debe a Edgar
+//   Saldo positivo = Edgar debe a Mosca (trabajo pendiente) | negativo = Mosca debe cash a Edgar
 function renderEdgar() {
   const getProv = r => (Array.isArray(r.fields['proveedor (de Proveedores)'])
     ? r.fields['proveedor (de Proveedores)'].join(' ')
@@ -1815,63 +1823,56 @@ function renderEdgar() {
   const isEdgarProv = r => getProv(r).includes('edgar')
     || (r.fields.concepto||'').toLowerCase().includes('edgar');
 
-  // DEBE: todos los financiamientos de Mosca a Edgar (depto, luz, adelantos, préstamos — cat=Prestamos)
-  const gastosEdgarDebe = allData.gastos.filter(r =>
+  // ── Datasets HISTÓRICOS COMPLETOS (para gráfico y balance running) ──────────
+  const gastosEdgarDebeAll = allData.gastos.filter(r =>
     isEdgarProv(r) && (r.fields.categoria || '') === 'Prestamos'
   );
-
-  // DEBE: alquiler taller Javier (especie) — subset de gastosEdgarDebe con concepto "taller"
-  const capJavierEdgar = gastosEdgarDebe.filter(r =>
-    /taller/i.test(r.fields.concepto || '')
-  );
-
-  // HABER: mano de obra registrada como gasto con proveedor=Edgar (trabajo por mueble)
-  const gastosMdoEdgar = allData.gastos.filter(r =>
+  const gastosMdoEdgarAll = allData.gastos.filter(r =>
     isEdgarProv(r) && (r.fields.categoria || '') === 'Mano de Obra'
   );
-
-  // HABER: recuperos registrados como ingreso Recupero Edgar (trabajo valorizado)
-  const ingEdgar = allData.ingresos.filter(r =>
+  const ingEdgarAll = allData.ingresos.filter(r =>
     (r.fields.concepto || '') === 'Recupero Edgar'
   );
-
-  // HABER: devoluciones de préstamos de Edgar a Mosca (ingreso Préstamos con nota Edgar)
-  const ingPrestamos = allData.ingresos.filter(r =>
+  const ingPrestamosAll = allData.ingresos.filter(r =>
     r.fields.concepto === 'Préstamos' && /edgar/i.test(r.fields.Nota || '')
   );
+  const premiosAll = allData.pedidos.filter(r => (r.fields.premio_edgar||0) > 0 && r.fields.estado !== 'Cancelado');
 
-  // Totales
-  const totalFinanciamiento = gastosEdgarDebe.reduce((s,r) => s + (r.fields.monto||0), 0);
-  const totalCapJavier      = capJavierEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
-  // totalDeuda = totalFinanciamiento (taller ya incluido, no sumar capJavier de nuevo)
-  const totalDeuda          = totalFinanciamiento;
-  const totalMdo           = gastosMdoEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
-  const totalRecupero      = ingEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
+  // ── Datasets FILTRADOS POR MES (para KPIs y tabla) ──────────────────────────
+  const filtrarMes = arr => edgarMesFilter
+    ? arr.filter(r => (r.fields.fecha||r.fields.seña||'').slice(0,7) === edgarMesFilter)
+    : arr;
+  const gastosEdgarDebe = filtrarMes(gastosEdgarDebeAll);
+  const gastosMdoEdgar  = filtrarMes(gastosMdoEdgarAll);
+  const ingEdgar        = filtrarMes(ingEdgarAll);
+  const ingPrestamos    = filtrarMes(ingPrestamosAll);
+  const premiosFilt     = filtrarMes(premiosAll);
+
+  // ── Saldo histórico completo (running balance para la tabla) ─────────────────
+  // Calcula el saldo acumulado usando montos reales de cada record (sin flatMap)
+  const allMovsBalance = [
+    ...gastosEdgarDebeAll.map(r => ({ fecha: r.fields.fecha||'', id: r.id, impacto: -(r.fields.monto||0) })),
+    ...gastosMdoEdgarAll.map(r  => ({ fecha: r.fields.fecha||'', id: r.id, impacto:  (r.fields.monto||0) })),
+    ...ingEdgarAll.map(r        => ({ fecha: r.fields.fecha||'', id: r.id, impacto:  (r.fields.monto||0) })),
+    ...ingPrestamosAll.map(r    => ({ fecha: r.fields.fecha||'', id: r.id, impacto:  (r.fields.monto||0) })),
+    ...premiosAll.map(r         => ({ fecha: r.fields.seña||'',  id: r.id, impacto:  (r.fields.premio_edgar||0) }))
+  ].sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
+
+  let runBal = 0;
+  const idBalMap = new Map(); // id → saldo acumulado DESPUÉS de ese record
+  allMovsBalance.forEach(m => { runBal += m.impacto; idBalMap.set(m.id, runBal); });
+  const saldoFinal = runBal; // saldo histórico total
+
+  // ── Totales del período (filtrado) ───────────────────────────────────────────
+  const totalDeuda          = gastosEdgarDebe.reduce((s,r) => s + (r.fields.monto||0), 0);
+  const totalMdo            = gastosMdoEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
+  const totalRecupero       = ingEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
   const totalPrestamosHaber = ingPrestamos.reduce((s,r) => s + (r.fields.monto||0), 0);
-  const totalHaber         = totalMdo + totalRecupero + totalPrestamosHaber;
-  const totalPremio        = allData.pedidos
-    .filter(r => r.fields.estado !== 'Cancelado')
-    .reduce((s,r) => s + (r.fields.premio_edgar||0), 0);
+  const totalPremio         = premiosFilt.reduce((s,r) => s + (r.fields.premio_edgar||0), 0);
+  const totalHaber          = totalMdo + totalRecupero + totalPrestamosHaber + totalPremio;
+  const resultadoMes        = totalHaber - totalDeuda;
 
-  // Saldo: positivo = Edgar debe a Mosca | negativo = Mosca debe a Edgar
-  const saldo = totalHaber + totalPremio - totalDeuda;
-
-  // Posición Javier: retiro efectivo = labor Edgar por mes, tope cap Javier ese mes
-  const capByMes = {}, laborByMes = {};
-  capJavierEdgar.forEach(r => {
-    const m = (r.fields.fecha||'').slice(0,7);
-    capByMes[m] = (capByMes[m]||0) + (r.fields.monto||0);
-  });
-  [...gastosMdoEdgar, ...ingEdgar].forEach(r => {
-    const m = (r.fields.fecha||'').slice(0,7);
-    laborByMes[m] = (laborByMes[m]||0) + (r.fields.monto||0);
-  });
-  const retiroEfectivo = Object.keys(capByMes).reduce((s, m) => {
-    return s + Math.min(capByMes[m]||0, laborByMes[m]||0);
-  }, 0);
-  const javierCapNeta = totalCapJavier - retiroEfectivo;
-
-  // Contar muebles producidos (unidades por ítem, separados por |)
+  // ── Muebles (del período) ────────────────────────────────────────────────────
   let totalMuebles = 0;
   const contarItems = (texto) => {
     (texto||'').split(/\s*\|\s*/).filter(s => s.trim()).forEach(item => {
@@ -1882,21 +1883,52 @@ function renderEdgar() {
   ingEdgar.forEach(r => contarItems(r.fields.Nota || r.fields.concepto || ''));
   gastosMdoEdgar.forEach(r => contarItems(r.fields.concepto || ''));
 
+  // ── Poblar select de meses ───────────────────────────────────────────────────
+  const mesesDisp = [...new Set([
+    ...gastosEdgarDebeAll, ...gastosMdoEdgarAll, ...ingEdgarAll, ...ingPrestamosAll
+  ].map(r => (r.fields.fecha||'').slice(0,7)).filter(m => m))].sort().reverse();
+  const sel = document.getElementById('edgarMesSel');
+  if (sel) {
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">Histórico completo</option>'
+      + mesesDisp.map(m => `<option value="${m}" ${edgarMesFilter===m?'selected':''}>${mesLabel(m)}</option>`).join('');
+    if (!edgarMesFilter && prev) sel.value = '';
+  }
+
+  const periodoLabel = edgarMesFilter ? mesLabel(edgarMesFilter) : 'Histórico completo';
+  const elPeriodo = document.getElementById('edgarPeriodoLabel');
+  if (elPeriodo) elPeriodo.textContent = periodoLabel;
+
+  // ── KPIs ─────────────────────────────────────────────────────────────────────
+  const saldoKpi = edgarMesFilter ? resultadoMes : saldoFinal;
+  const labelSaldoKpi = edgarMesFilter
+    ? (resultadoMes >= 0 ? 'HABER > DEBE — Edgar cancela más de lo que recibe' : 'DEBE > HABER — Mosca financió más de lo que recuperó')
+    : (saldoFinal > 0 ? 'Debe a Mosca · trabajo pendiente' : saldoFinal === 0 ? 'Al día' : 'A favor — Mosca debe cash');
+
   document.getElementById('kpiEdgar').innerHTML = `
     <div class="kpi">
-      <div class="kpi-label">Estado cuenta corriente</div>
-      <div class="kpi-value ${saldo >= 0 ? 'negative' : 'positive'}">${fmtFull(Math.abs(saldo))}</div>
-      <div class="kpi-sub">${saldo > 0 ? 'Debe a Mosca · trabajo pendiente' : saldo === 0 ? 'Al día' : 'A favor — Mosca debe cash'}</div>
+      <div class="kpi-label">Saldo ${edgarMesFilter ? 'del mes' : 'cuenta corriente'}</div>
+      <div class="kpi-value ${saldoKpi >= 0 ? 'positive' : 'negative'}">${saldoKpi >= 0 ? '+' : ''}${fmtFull(saldoKpi)}</div>
+      <div class="kpi-sub">${labelSaldoKpi}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Costos (DEBE)</div>
+      <div class="kpi-value negative">${fmtFull(totalDeuda)}</div>
+      <div class="kpi-sub">Depto · luz · adelantos · taller</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Producción (HABER)</div>
+      <div class="kpi-value positive">${fmtFull(totalHaber)}</div>
+      <div class="kpi-sub">MdO · devoluciones · premios</div>
     </div>
     <div class="kpi">
       <div class="kpi-label">Muebles producidos</div>
-      <div class="kpi-value blue">${totalMuebles}</div>
-      <div class="kpi-sub">Unidades entregadas · histórico</div>
+      <div class="kpi-value blue">${totalMuebles || '—'}</div>
+      <div class="kpi-sub">${edgarMesFilter ? 'Unidades · ' + periodoLabel : 'Unidades · histórico'}</div>
     </div>
   `;
 
-  // Lista de movimientos combinada
-  // Helper: parsear precio de texto como "$350k", "$350.000", "3u × $350k"
+  // ── Movimientos para la tabla (filtrado, con detalle por ítem en MdO) ─────────
   const parsePrecioItem = (texto) => {
     const uM = texto.match(/(\d+)\s*u\s*[×x]\s*\$([\d.,]+)(k)?/i);
     if (uM) { const v = parseFloat(uM[2].replace(/[.,]/g,'')); return parseInt(uM[1]) * (uM[3] ? v*1000 : v); }
@@ -1907,58 +1939,46 @@ function renderEdgar() {
     return null;
   };
 
-  const movs = [
-    ...gastosEdgarDebe.map(r => ({
-      fecha: r.fields.fecha || '',
-      tipo: 'prestamo_out',
+  // ingEdgar se expande por ítem para mostrar detalle; el saldo solo se muestra en el último ítem del record
+  const movsTabla = [
+    ...gastosEdgarDebe.map(r => [{
+      fecha: r.fields.fecha||'', tipo: 'prestamo_out', id: r.id,
       concepto: r.fields.concepto || 'Financiamiento',
-      impacto: -(r.fields.monto||0)
-    })),
-    ...gastosMdoEdgar.map(r => ({
-      fecha: r.fields.fecha || '',
-      tipo: 'mano_obra',
-      concepto: `${r.fields.concepto || 'Trabajo'} · ${(r.fields.metodo_pago||'').toLowerCase().includes('cancela') ? 'cancela deuda' : 'cash'}`,
-      impacto: r.fields.monto||0
-    })),
-    ...ingEdgar.flatMap(r => {
-      const nota = r.fields.Nota || r.fields.concepto || 'Recupero';
+      impacto: -(r.fields.monto||0), showBal: true
+    }]),
+    ...gastosMdoEdgar.map(r => [{
+      fecha: r.fields.fecha||'', tipo: 'mano_obra', id: r.id,
+      concepto: `${r.fields.concepto||'Trabajo'} · ${(r.fields.metodo_pago||'').toLowerCase().includes('cancela') ? 'cancela deuda' : 'cash'}`,
+      impacto: r.fields.monto||0, showBal: true
+    }]),
+    ...ingEdgar.map(r => {
+      const nota = r.fields.Nota || r.fields.concepto || 'Mano de Obra';
       const items = nota.split(/\s*\|\s*/).filter(s => s.trim());
-      if (items.length <= 1) return [{ fecha: r.fields.fecha||'', tipo: 'recupero', concepto: nota, impacto: r.fields.monto||0 }];
+      if (items.length <= 1) return [{ fecha: r.fields.fecha||'', tipo: 'mano_obra', id: r.id, concepto: nota, impacto: r.fields.monto||0, showBal: true }];
       const precios = items.map(t => parsePrecioItem(t));
-      const totalParsed = precios.reduce((s, p) => s + (p||0), 0);
-      const total = r.fields.monto||0;
       return items.map((item, i) => ({
-        fecha: r.fields.fecha || '',
-        tipo: 'recupero',
+        fecha: r.fields.fecha||'', tipo: 'mano_obra', id: r.id,
         concepto: item.trim(),
-        impacto: precios[i] !== null ? precios[i] : (totalParsed > 0 ? 0 : total / items.length)
+        impacto: i===0 ? (r.fields.monto||0) : 0, // balance solo en primer ítem, resto informativo
+        showBal: i === items.length - 1,           // saldo acum solo en el último
+        displayMonto: precios[i]                   // monto visual del ítem (puede ser null)
       }));
     }),
-    ...ingPrestamos.map(r => ({
-      fecha: r.fields.fecha || '',
-      tipo: 'prestamo_in',
+    ...ingPrestamos.map(r => [{
+      fecha: r.fields.fecha||'', tipo: 'prestamo_in', id: r.id,
       concepto: r.fields.Nota || 'Devolución préstamo',
-      impacto: r.fields.monto||0
-    })),
-    ...allData.pedidos
-      .filter(r => (r.fields.premio_edgar||0) > 0 && r.fields.estado !== 'Cancelado')
-      .map(r => ({
-        fecha: r.fields.seña || '',
-        tipo: 'premio',
-        concepto: `Premio · ${Array.isArray(r.fields.cliente) ? r.fields.cliente[0] : (r.fields.cliente||'—')}`,
-        impacto: r.fields.premio_edgar||0
-      }))
-  ];
+      impacto: r.fields.monto||0, showBal: true
+    }]),
+    ...premiosFilt.map(r => [{
+      fecha: r.fields.seña||'', tipo: 'premio', id: r.id,
+      concepto: `Premio · ${Array.isArray(r.fields.cliente) ? r.fields.cliente[0] : (r.fields.cliente||'—')}`,
+      impacto: r.fields.premio_edgar||0, showBal: true
+    }])
+  ].flat();
 
-  // Saldo acumulado cronológico
-  const movsAsc = [...movs].sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
-  let bal = 0;
-  const balMap = new Map();
-  movsAsc.forEach(m => { bal += m.impacto; balMap.set(m, bal); });
-
-  // Agrupar por mes, mostrar decreciente
+  // Agrupar por mes
   const movsByMonth = {};
-  movs.forEach(m => {
+  movsTabla.forEach(m => {
     const mes = (m.fecha||'').slice(0,7) || '?';
     if (!movsByMonth[mes]) movsByMonth[mes] = [];
     movsByMonth[mes].push(m);
@@ -1969,31 +1989,38 @@ function renderEdgar() {
 
   monthsSorted.forEach(mes => {
     const mesMovs = [...movsByMonth[mes]].sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
-    const mesTotal = mesMovs.reduce((s,m) => s + m.impacto, 0);
+    // Delta del mes: suma de impactos reales del mes (sin duplicar ítems expandidos)
+    const mesDelta = gastosMdoEdgar.filter(r => (r.fields.fecha||'').slice(0,7)===mes).reduce((s,r)=>s+(r.fields.monto||0),0)
+      + ingEdgar.filter(r => (r.fields.fecha||'').slice(0,7)===mes).reduce((s,r)=>s+(r.fields.monto||0),0)
+      + ingPrestamos.filter(r => (r.fields.fecha||'').slice(0,7)===mes).reduce((s,r)=>s+(r.fields.monto||0),0)
+      + premiosFilt.filter(r => (r.fields.seña||'').slice(0,7)===mes).reduce((s,r)=>s+(r.fields.premio_edgar||0),0)
+      - gastosEdgarDebe.filter(r => (r.fields.fecha||'').slice(0,7)===mes).reduce((s,r)=>s+(r.fields.monto||0),0);
     const mesLabel_ = mes !== '?' ? mesLabel(mes) : 'Sin fecha';
-    tableHtml += `<tr style="cursor:pointer;background:var(--bg)" onclick="toggleEdgarMes('em-${mes.replace('-','_')}')">
+    const mesKey = mes.replace('-','_');
+    tableHtml += `<tr style="cursor:pointer;background:var(--bg)" onclick="toggleEdgarMes('em-${mesKey}')">
       <td colspan="6" style="padding:8px 10px;font-size:12px;font-weight:600;color:var(--accent)">
-        <span id="em-arrow-${mes.replace('-','_')}">▼</span> ${mesLabel_}
-        <span style="font-weight:400;color:var(--muted);margin-left:8px">${mesMovs.length} mov. · ${mesTotal >= 0 ? '+' : ''}${fmtFull(mesTotal)}</span>
+        <span id="em-arrow-${mesKey}">▼</span> ${mesLabel_}
+        <span style="font-weight:400;color:var(--muted);margin-left:8px">${mesMovs.length} mov. · ${mesDelta >= 0 ? '+' : ''}${fmtFull(mesDelta)}</span>
       </td>
     </tr>`;
     mesMovs.forEach(m => {
-      const balance = balMap.get(m);
+      const balance = idBalMap.get(m.id);
       const tipTag =
-        m.tipo === 'cap_javier'    ? '<span class="tag tag-blue">Taller Javier</span>'
-        : m.tipo === 'mano_obra'   ? '<span class="tag tag-green">Mano de Obra</span>'
-        : m.tipo === 'recupero'    ? '<span class="tag tag-green">Recupero</span>'
-        : m.tipo === 'prestamo_out'? '<span class="tag tag-red">Financiamiento ↓</span>'
-        : m.tipo === 'prestamo_in' ? '<span class="tag tag-purple">Devolución</span>'
-        :                            '<span class="tag tag-amber">Premio</span>';
+          m.tipo === 'mano_obra'    ? '<span class="tag tag-green">Mano de Obra</span>'
+        : m.tipo === 'prestamo_out' ? '<span class="tag tag-red">Financiamiento</span>'
+        : m.tipo === 'prestamo_in'  ? '<span class="tag tag-purple">Devolución</span>'
+        :                             '<span class="tag tag-amber">Premio</span>';
       const esNeg = m.impacto < 0;
-      tableHtml += `<tr class="em-${mes.replace('-','_')}">
+      const montoDisplay = m.displayMonto !== undefined
+        ? (m.displayMonto !== null ? fmtFull(m.displayMonto) : '—')
+        : (m.impacto !== 0 ? fmtFull(Math.abs(m.impacto)) : '—');
+      tableHtml += `<tr class="em-${mesKey}">
         <td>${fmtDate(m.fecha)}</td>
         <td>${tipTag}</td>
         <td style="font-size:12px">${m.concepto}</td>
         <td class="right mono">${esNeg ? `<span class="negative">${fmtFull(m.impacto)}</span>` : '—'}</td>
-        <td class="right mono">${!esNeg ? `<span class="positive">+${fmtFull(m.impacto)}</span>` : '—'}</td>
-        <td class="right mono ${balance < 0 ? 'negative' : 'neutral'}">${fmtFull(balance)}</td>
+        <td class="right mono">${!esNeg && m.impacto !== 0 ? `<span class="positive">+${montoDisplay}</span>` : (m.displayMonto !== null && m.displayMonto !== undefined && !esNeg ? `<span style="color:#aaa;font-size:11px">${fmtFull(m.displayMonto)}</span>` : '—')}</td>
+        <td class="right mono ${!m.showBal ? 'style="color:#ccc"' : (balance < 0 ? 'negative' : 'neutral')}">${m.showBal && balance !== undefined ? fmtFull(balance) : ''}</td>
       </tr>`;
     });
   });
@@ -2001,32 +2028,33 @@ function renderEdgar() {
   document.getElementById('bodyEdgar').innerHTML = tableHtml ||
     '<tr><td colspan="6" style="text-align:center;color:#999;padding:20px">Sin movimientos registrados para Edgar</td></tr>';
 
-  // ── Gráfico evolución mensual ─────────────────────────────────────────────
+  // ── Gráfico: stacked bars por componente + línea saldo acumulado ──────────────
   const mesesSet = new Set([
-    ...gastosEdgarDebe.map(r => (r.fields.fecha||'').slice(0,7)),
-    ...gastosMdoEdgar.map(r => (r.fields.fecha||'').slice(0,7)),
-    ...ingEdgar.map(r => (r.fields.fecha||'').slice(0,7)),
-    ...ingPrestamos.map(r => (r.fields.fecha||'').slice(0,7))
-  ].filter(m => m));
+    ...gastosEdgarDebeAll, ...gastosMdoEdgarAll, ...ingEdgarAll, ...ingPrestamosAll
+  ].map(r => (r.fields.fecha||'').slice(0,7)).filter(m => m));
   const mesesChart = [...mesesSet].sort();
 
-  const finByMes = {}, prodByMes = {};
-  gastosEdgarDebe.forEach(r => {
-    const m = (r.fields.fecha||'').slice(0,7);
-    if (m) finByMes[m] = (finByMes[m]||0) + (r.fields.monto||0);
+  const deptoByMes={}, tallerByMes={}, otroFinByMes={}, mdoByMes={}, devByMes={};
+  gastosEdgarDebeAll.forEach(r => {
+    const m = (r.fields.fecha||'').slice(0,7); if (!m) return;
+    const c = (r.fields.concepto||'').toLowerCase();
+    if (c.includes('taller')) tallerByMes[m] = (tallerByMes[m]||0) + (r.fields.monto||0);
+    else if (c.includes('depto') || c.includes('alquiler')) deptoByMes[m] = (deptoByMes[m]||0) + (r.fields.monto||0);
+    else otroFinByMes[m] = (otroFinByMes[m]||0) + (r.fields.monto||0);
   });
-  [...gastosMdoEdgar, ...ingEdgar].forEach(r => {
-    const m = (r.fields.fecha||'').slice(0,7);
-    if (m) prodByMes[m] = (prodByMes[m]||0) + (r.fields.monto||0);
+  [...gastosMdoEdgarAll, ...ingEdgarAll].forEach(r => {
+    const m = (r.fields.fecha||'').slice(0,7); if (!m) return;
+    mdoByMes[m] = (mdoByMes[m]||0) + (r.fields.monto||0);
   });
-  ingPrestamos.forEach(r => {
-    const m = (r.fields.fecha||'').slice(0,7);
-    if (m) prodByMes[m] = (prodByMes[m]||0) + (r.fields.monto||0);
+  ingPrestamosAll.forEach(r => {
+    const m = (r.fields.fecha||'').slice(0,7); if (!m) return;
+    devByMes[m] = (devByMes[m]||0) + (r.fields.monto||0);
   });
 
   let runSaldo = 0;
   const saldoAcumChart = mesesChart.map(m => {
-    runSaldo += (prodByMes[m]||0) - (finByMes[m]||0);
+    runSaldo += (mdoByMes[m]||0) + (devByMes[m]||0)
+              - (deptoByMes[m]||0) - (tallerByMes[m]||0) - (otroFinByMes[m]||0);
     return runSaldo;
   });
 
@@ -2037,24 +2065,45 @@ function renderEdgar() {
       data: {
         labels: mesesChart.map(m => mesLabel(m)),
         datasets: [
-          { type:'bar', label:'Financiamiento', data: mesesChart.map(m => -(finByMes[m]||0)),
-            backgroundColor:'rgba(192,57,43,0.7)', yAxisID:'y' },
-          { type:'bar', label:'Producción', data: mesesChart.map(m => prodByMes[m]||0),
-            backgroundColor:'rgba(46,125,50,0.7)', yAxisID:'y' },
-          { type:'line', label:'Saldo neto acum.', data: saldoAcumChart,
-            borderColor:'#1565c0', backgroundColor:'rgba(21,101,192,0.08)',
-            tension:0.3, pointRadius:3, yAxisID:'y' }
+          { type:'bar', label:'Depto / Luz', data: mesesChart.map(m => -(deptoByMes[m]||0)),
+            backgroundColor:'rgba(198,40,40,0.75)', stack:'debe' },
+          { type:'bar', label:'Taller', data: mesesChart.map(m => -(tallerByMes[m]||0)),
+            backgroundColor:'rgba(230,100,30,0.75)', stack:'debe' },
+          { type:'bar', label:'Adelantos / Otros', data: mesesChart.map(m => -(otroFinByMes[m]||0)),
+            backgroundColor:'rgba(198,40,40,0.35)', stack:'debe' },
+          { type:'bar', label:'Mano de Obra', data: mesesChart.map(m => mdoByMes[m]||0),
+            backgroundColor:'rgba(46,125,50,0.8)', stack:'haber' },
+          { type:'bar', label:'Devoluciones', data: mesesChart.map(m => devByMes[m]||0),
+            backgroundColor:'rgba(69,39,160,0.7)', stack:'haber' },
+          { type:'line', label:'Saldo acum.', data: saldoAcumChart,
+            borderColor:'#1565c0', backgroundColor:'rgba(21,101,192,0.07)',
+            tension:0.3, pointRadius:4, pointBackgroundColor:'#1565c0',
+            borderWidth:2, fill:true }
         ]
       },
       options: {
         responsive:true, maintainAspectRatio:false,
+        interaction:{ mode:'index', intersect:false },
         plugins: {
-          legend:{ position:'top', labels:{ font:{ size:11 } } },
-          tooltip:{ callbacks:{ label: ctx => `${ctx.dataset.label}: ${fmtFull(ctx.raw)}` } }
+          legend:{ position:'top', labels:{ font:{ size:11 }, boxWidth:12 } },
+          tooltip:{
+            callbacks:{
+              label: ctx => `${ctx.dataset.label}: ${fmtFull(ctx.raw)}`,
+              afterBody: (items) => {
+                const m = mesesChart[items[0].dataIndex];
+                const neto = (mdoByMes[m]||0)+(devByMes[m]||0)-(deptoByMes[m]||0)-(tallerByMes[m]||0)-(otroFinByMes[m]||0);
+                return [`── Neto mes: ${neto >= 0 ? '+' : ''}${fmtFull(neto)}`];
+              }
+            }
+          }
         },
         scales: {
-          y:{ ticks:{ callback: v => fmtFull(v), font:{ size:10 } } },
-          x:{ ticks:{ font:{ size:10 } } }
+          y:{
+            stacked: false,
+            ticks:{ callback: v => { const a=Math.abs(v); return a>=1000000 ? (v/1000000).toFixed(1)+'M' : a>=1000 ? (v/1000).toFixed(0)+'k' : v; }, font:{size:10} },
+            grid:{ color:'rgba(0,0,0,0.05)' }
+          },
+          x:{ ticks:{ font:{size:10} } }
         }
       }
     });
