@@ -1819,11 +1819,9 @@ function renderEdgar() {
     isEdgarProv(r) && (r.fields.categoria || '') === 'Prestamos'
   );
 
-  // DEBE: capitalización Javier en especies (taller + Edgar) — filtro por nota y monto
-  const capJavierEdgar = allData.ingresos.filter(r =>
-    r.fields.concepto === 'Capitalizacion - Javier' &&
-    /taller/i.test(r.fields.Nota || '') &&
-    (r.fields.monto || 0) >= 1000000
+  // DEBE: alquiler taller Javier (especie) — subset de gastosEdgarDebe con concepto "taller"
+  const capJavierEdgar = gastosEdgarDebe.filter(r =>
+    /taller/i.test(r.fields.concepto || '')
   );
 
   // HABER: mano de obra registrada como gasto con proveedor=Edgar (trabajo por mueble)
@@ -1844,7 +1842,8 @@ function renderEdgar() {
   // Totales
   const totalFinanciamiento = gastosEdgarDebe.reduce((s,r) => s + (r.fields.monto||0), 0);
   const totalCapJavier      = capJavierEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
-  const totalDeuda          = totalFinanciamiento + totalCapJavier;
+  // totalDeuda = totalFinanciamiento (taller ya incluido, no sumar capJavier de nuevo)
+  const totalDeuda          = totalFinanciamiento;
   const totalMdo           = gastosMdoEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
   const totalRecupero      = ingEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
   const totalPrestamosHaber = ingPrestamos.reduce((s,r) => s + (r.fields.monto||0), 0);
