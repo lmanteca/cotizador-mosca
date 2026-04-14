@@ -513,8 +513,9 @@
       </div>
       <div id="kpiEdgar" class="kpi-grid" style="margin-bottom:16px"></div>
       <div class="divider"></div>
-      <div style="margin:14px 0 8px;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.6px;text-transform:uppercase">Posición capital — Javier</div>
-      <div id="kpiJavier" class="kpi-grid" style="margin-bottom:16px"></div>
+      <div class="chart-wrap" style="height:240px;margin:16px 0 4px" id="chartEdgarWrap">
+        <canvas id="chartEdgar"></canvas>
+      </div>
       <div class="divider"></div>
       <div class="table-wrap" style="margin-top:14px">
         <table>
@@ -1870,66 +1871,47 @@ function renderEdgar() {
   }, 0);
   const javierCapNeta = totalCapJavier - retiroEfectivo;
 
+  // Contar muebles producidos (unidades por ítem, separados por |)
+  let totalMuebles = 0;
+  const contarItems = (texto) => {
+    (texto||'').split(/\s*\|\s*/).filter(s => s.trim()).forEach(item => {
+      const u = item.match(/(\d+)\s*u\s*[×x]/i);
+      totalMuebles += u ? parseInt(u[1]) : 1;
+    });
+  };
+  ingEdgar.forEach(r => contarItems(r.fields.Nota || r.fields.concepto || ''));
+  gastosMdoEdgar.forEach(r => contarItems(r.fields.concepto || ''));
+
   document.getElementById('kpiEdgar').innerHTML = `
     <div class="kpi">
-      <div class="kpi-label">Taller (Javier · especie)</div>
-      <div class="kpi-value negative">${fmtFull(-totalCapJavier)}</div>
-      <div class="kpi-sub">Alquiler taller · debe Edgar</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Financiamiento Mosca</div>
-      <div class="kpi-value negative">${fmtFull(-(totalFinanciamiento - totalPrestamosHaber))}</div>
-      <div class="kpi-sub">Depto + luz + adelantos (neto) · debe Edgar</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Trabajo registrado</div>
-      <div class="kpi-value positive">${fmtFull(totalMdo + totalRecupero)}</div>
-      <div class="kpi-sub">Mano de obra por mueble</div>
-    </div>
-    ${totalPremio > 0 ? `
-    <div class="kpi">
-      <div class="kpi-label">Premio devengado</div>
-      <div class="kpi-value positive">${fmtFull(totalPremio)}</div>
-      <div class="kpi-sub">Por ventas cerradas</div>
-    </div>` : ''}
-    <div class="kpi">
-      <div class="kpi-label">${saldo >= 0 ? 'Edgar debe a Mosca' : 'Mosca debe a Edgar'}</div>
+      <div class="kpi-label">Estado cuenta corriente</div>
       <div class="kpi-value ${saldo >= 0 ? 'negative' : 'positive'}">${fmtFull(Math.abs(saldo))}</div>
-      <div class="kpi-sub">${saldo > 0 ? 'Trabajo pendiente' : saldo === 0 ? 'Al día' : 'A favor de Edgar'}</div>
-    </div>
-  `;
-
-  // Posición capital Javier
-  document.getElementById('kpiJavier').innerHTML = `
-    <div class="kpi">
-      <div class="kpi-label">Capitalización bruta</div>
-      <div class="kpi-value blue">${fmtFull(totalCapJavier)}</div>
-      <div class="kpi-sub">Total aportado en especies</div>
+      <div class="kpi-sub">${saldo > 0 ? 'Debe a Mosca · trabajo pendiente' : saldo === 0 ? 'Al día' : 'A favor — Mosca debe cash'}</div>
     </div>
     <div class="kpi">
-      <div class="kpi-label">Retiro efectivo</div>
-      <div class="kpi-value positive">${fmtFull(retiroEfectivo)}</div>
-      <div class="kpi-sub">Labor Edgar consumida · tope/mes</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Posición neta Javier</div>
-      <div class="kpi-value ${javierCapNeta > 0 ? 'blue' : 'positive'}">${fmtFull(javierCapNeta)}</div>
-      <div class="kpi-sub">${javierCapNeta > 0 ? 'Capital pendiente de retiro' : 'Posición cerrada'}</div>
+      <div class="kpi-label">Muebles producidos</div>
+      <div class="kpi-value blue">${totalMuebles}</div>
+      <div class="kpi-sub">Unidades entregadas · histórico</div>
     </div>
   `;
 
   // Lista de movimientos combinada
+  // Helper: parsear precio de texto como "$350k", "$350.000", "3u × $350k"
+  const parsePrecioItem = (texto) => {
+    const uM = texto.match(/(\d+)\s*u\s*[×x]\s*\$([\d.,]+)(k)?/i);
+    if (uM) { const v = parseFloat(uM[2].replace(/[.,]/g,'')); return parseInt(uM[1]) * (uM[3] ? v*1000 : v); }
+    const kM = texto.match(/\$([\d.,]+)k\b/i);
+    if (kM) return parseFloat(kM[1].replace(/[.,]/g,'')) * 1000;
+    const pM = texto.match(/\$([\d.]+)/);
+    if (pM) return parseFloat(pM[1].replace(/\./g,''));
+    return null;
+  };
+
   const movs = [
-    ...capJavierEdgar.map(r => ({
-      fecha: r.fields.fecha || '',
-      tipo: 'cap_javier',
-      concepto: r.fields.Nota || 'Taller · Javier (especie)',
-      impacto: -(r.fields.monto||0)
-    })),
     ...gastosEdgarDebe.map(r => ({
       fecha: r.fields.fecha || '',
       tipo: 'prestamo_out',
-      concepto: r.fields.concepto || 'Financiamiento Mosca',
+      concepto: r.fields.concepto || 'Financiamiento',
       impacto: -(r.fields.monto||0)
     })),
     ...gastosMdoEdgar.map(r => ({
@@ -1938,12 +1920,20 @@ function renderEdgar() {
       concepto: `${r.fields.concepto || 'Trabajo'} · ${(r.fields.metodo_pago||'').toLowerCase().includes('cancela') ? 'cancela deuda' : 'cash'}`,
       impacto: r.fields.monto||0
     })),
-    ...ingEdgar.map(r => ({
-      fecha: r.fields.fecha || '',
-      tipo: 'recupero',
-      concepto: r.fields.Nota || 'Recupero',
-      impacto: r.fields.monto||0
-    })),
+    ...ingEdgar.flatMap(r => {
+      const nota = r.fields.Nota || r.fields.concepto || 'Recupero';
+      const items = nota.split(/\s*\|\s*/).filter(s => s.trim());
+      if (items.length <= 1) return [{ fecha: r.fields.fecha||'', tipo: 'recupero', concepto: nota, impacto: r.fields.monto||0 }];
+      const precios = items.map(t => parsePrecioItem(t));
+      const totalParsed = precios.reduce((s, p) => s + (p||0), 0);
+      const total = r.fields.monto||0;
+      return items.map((item, i) => ({
+        fecha: r.fields.fecha || '',
+        tipo: 'recupero',
+        concepto: item.trim(),
+        impacto: precios[i] !== null ? precios[i] : (totalParsed > 0 ? 0 : total / items.length)
+      }));
+    }),
     ...ingPrestamos.map(r => ({
       fecha: r.fields.fecha || '',
       tipo: 'prestamo_in',
@@ -2010,6 +2000,65 @@ function renderEdgar() {
 
   document.getElementById('bodyEdgar').innerHTML = tableHtml ||
     '<tr><td colspan="6" style="text-align:center;color:#999;padding:20px">Sin movimientos registrados para Edgar</td></tr>';
+
+  // ── Gráfico evolución mensual ─────────────────────────────────────────────
+  const mesesSet = new Set([
+    ...gastosEdgarDebe.map(r => (r.fields.fecha||'').slice(0,7)),
+    ...gastosMdoEdgar.map(r => (r.fields.fecha||'').slice(0,7)),
+    ...ingEdgar.map(r => (r.fields.fecha||'').slice(0,7)),
+    ...ingPrestamos.map(r => (r.fields.fecha||'').slice(0,7))
+  ].filter(m => m));
+  const mesesChart = [...mesesSet].sort();
+
+  const finByMes = {}, prodByMes = {};
+  gastosEdgarDebe.forEach(r => {
+    const m = (r.fields.fecha||'').slice(0,7);
+    if (m) finByMes[m] = (finByMes[m]||0) + (r.fields.monto||0);
+  });
+  [...gastosMdoEdgar, ...ingEdgar].forEach(r => {
+    const m = (r.fields.fecha||'').slice(0,7);
+    if (m) prodByMes[m] = (prodByMes[m]||0) + (r.fields.monto||0);
+  });
+  ingPrestamos.forEach(r => {
+    const m = (r.fields.fecha||'').slice(0,7);
+    if (m) prodByMes[m] = (prodByMes[m]||0) + (r.fields.monto||0);
+  });
+
+  let runSaldo = 0;
+  const saldoAcumChart = mesesChart.map(m => {
+    runSaldo += (prodByMes[m]||0) - (finByMes[m]||0);
+    return runSaldo;
+  });
+
+  const ctxEdgar = document.getElementById('chartEdgar');
+  if (ctxEdgar) {
+    if (window._chartEdgar) window._chartEdgar.destroy();
+    window._chartEdgar = new Chart(ctxEdgar.getContext('2d'), {
+      data: {
+        labels: mesesChart.map(m => mesLabel(m)),
+        datasets: [
+          { type:'bar', label:'Financiamiento', data: mesesChart.map(m => -(finByMes[m]||0)),
+            backgroundColor:'rgba(192,57,43,0.7)', yAxisID:'y' },
+          { type:'bar', label:'Producción', data: mesesChart.map(m => prodByMes[m]||0),
+            backgroundColor:'rgba(46,125,50,0.7)', yAxisID:'y' },
+          { type:'line', label:'Saldo neto acum.', data: saldoAcumChart,
+            borderColor:'#1565c0', backgroundColor:'rgba(21,101,192,0.08)',
+            tension:0.3, pointRadius:3, yAxisID:'y' }
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins: {
+          legend:{ position:'top', labels:{ font:{ size:11 } } },
+          tooltip:{ callbacks:{ label: ctx => `${ctx.dataset.label}: ${fmtFull(ctx.raw)}` } }
+        },
+        scales: {
+          y:{ ticks:{ callback: v => fmtFull(v), font:{ size:10 } } },
+          x:{ ticks:{ font:{ size:10 } } }
+        }
+      }
+    });
+  }
 }
 
 function toggleEdgarMes(cls) {
