@@ -1864,13 +1864,29 @@ function renderEdgar() {
   const saldoFinal = runBal; // saldo histórico total
 
   // ── Totales del período (filtrado) ───────────────────────────────────────────
-  const totalDeuda          = gastosEdgarDebe.reduce((s,r) => s + (r.fields.monto||0), 0);
-  const totalMdo            = gastosMdoEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
-  const totalRecupero       = ingEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
-  const totalPrestamosHaber = ingPrestamos.reduce((s,r) => s + (r.fields.monto||0), 0);
-  const totalPremio         = premiosFilt.reduce((s,r) => s + (r.fields.premio_edgar||0), 0);
-  const totalHaber          = totalMdo + totalRecupero + totalPrestamosHaber + totalPremio;
-  const resultadoMes        = totalHaber - totalDeuda;
+  // Cobertura = servicios operativos (depto, luz, taller) — SIN adelantos cash
+  // Adelantos = préstamos en efectivo a Edgar — afectan saldo CC pero NO los KPIs operativos
+  const isCobertura = r => /depto|alquiler|luz|taller/i.test(r.fields.concepto||'');
+  const gastosCobertura = gastosEdgarDebe.filter(isCobertura);
+  const gastosAdelanto  = gastosEdgarDebe.filter(r => !isCobertura(r));
+
+  const totalCobertura  = gastosCobertura.reduce((s,r) => s + (r.fields.monto||0), 0);
+  const totalAdelanto   = gastosAdelanto.reduce((s,r) => s + (r.fields.monto||0), 0);
+
+  // MdO = trabajo de Edgar (registrado como gasto MdO o como ingreso Recupero Edgar)
+  // Devoluciones = cash devuelto por Edgar — afectan saldo CC pero NO los KPIs operativos
+  const totalMdo        = gastosMdoEdgar.reduce((s,r) => s + (r.fields.monto||0), 0)
+                        + ingEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
+  const totalDevolucion = ingPrestamos.reduce((s,r) => s + (r.fields.monto||0), 0);
+  const totalPremio     = premiosFilt.reduce((s,r) => s + (r.fields.premio_edgar||0), 0);
+
+  // KPIs operativos: Costos = cobertura | Ingresos = MdO+premios | Resultado = diferencia
+  const totalCostosKpi   = totalCobertura;  // SIN adelantos
+  const totalIngresosKpi = totalMdo + totalPremio;  // SIN devoluciones
+  const resultadoOp      = totalIngresosKpi - totalCostosKpi;
+
+  // Saldo del período (cuenta corriente): incluye TODO — cobertura + adelantos - MdO - devoluciones
+  const saldoPeriodo = totalMdo + totalPremio + totalDevolucion - totalCobertura - totalAdelanto;
 
   // ── Muebles (del período) ────────────────────────────────────────────────────
   let totalMuebles = 0;
@@ -1889,10 +1905,8 @@ function renderEdgar() {
   ].map(r => (r.fields.fecha||'').slice(0,7)).filter(m => m))].sort().reverse();
   const sel = document.getElementById('edgarMesSel');
   if (sel) {
-    const prev = sel.value;
     sel.innerHTML = '<option value="">Histórico completo</option>'
       + mesesDisp.map(m => `<option value="${m}" ${edgarMesFilter===m?'selected':''}>${mesLabel(m)}</option>`).join('');
-    if (!edgarMesFilter && prev) sel.value = '';
   }
 
   const periodoLabel = edgarMesFilter ? mesLabel(edgarMesFilter) : 'Histórico completo';
@@ -1900,31 +1914,36 @@ function renderEdgar() {
   if (elPeriodo) elPeriodo.textContent = periodoLabel;
 
   // ── KPIs ─────────────────────────────────────────────────────────────────────
-  const saldoKpi = edgarMesFilter ? resultadoMes : saldoFinal;
-  const labelSaldoKpi = edgarMesFilter
-    ? (resultadoMes >= 0 ? 'HABER > DEBE — Edgar cancela más de lo que recibe' : 'DEBE > HABER — Mosca financió más de lo que recuperó')
-    : (saldoFinal > 0 ? 'Debe a Mosca · trabajo pendiente' : saldoFinal === 0 ? 'Al día' : 'A favor — Mosca debe cash');
+  // Saldo CC siempre histórico completo (no se filtra por mes — es el estado de la cuenta)
+  const labelSaldoCC = saldoFinal > 0 ? 'Debe a Mosca · trabajo pendiente'
+                     : saldoFinal === 0 ? 'Al día'
+                     : 'A favor — Mosca debe cash';
 
   document.getElementById('kpiEdgar').innerHTML = `
-    <div class="kpi">
-      <div class="kpi-label">Saldo ${edgarMesFilter ? 'del mes' : 'cuenta corriente'}</div>
-      <div class="kpi-value ${saldoKpi >= 0 ? 'positive' : 'negative'}">${saldoKpi >= 0 ? '+' : ''}${fmtFull(saldoKpi)}</div>
-      <div class="kpi-sub">${labelSaldoKpi}</div>
+    <div class="kpi" style="border-left:3px solid ${saldoFinal >= 0 ? '#c0392b' : '#2e7d32'}">
+      <div class="kpi-label">Saldo cuenta corriente</div>
+      <div class="kpi-value ${saldoFinal >= 0 ? 'negative' : 'positive'}">${saldoFinal >= 0 ? '' : '+'}${fmtFull(Math.abs(saldoFinal))}</div>
+      <div class="kpi-sub">${labelSaldoCC} · histórico</div>
     </div>
     <div class="kpi">
-      <div class="kpi-label">Costos (DEBE)</div>
-      <div class="kpi-value negative">${fmtFull(totalDeuda)}</div>
-      <div class="kpi-sub">Depto · luz · adelantos · taller</div>
+      <div class="kpi-label">Costos · ${periodoLabel}</div>
+      <div class="kpi-value negative">${fmtFull(totalCostosKpi)}</div>
+      <div class="kpi-sub">Depto · luz · taller${totalAdelanto > 0 ? ` <span style="color:#aaa;font-size:10px">(+${fmtFull(totalAdelanto)} adelantos excl.)</span>` : ''}</div>
     </div>
     <div class="kpi">
-      <div class="kpi-label">Producción (HABER)</div>
-      <div class="kpi-value positive">${fmtFull(totalHaber)}</div>
-      <div class="kpi-sub">MdO · devoluciones · premios</div>
+      <div class="kpi-label">Ingresos · ${periodoLabel}</div>
+      <div class="kpi-value positive">${fmtFull(totalIngresosKpi)}</div>
+      <div class="kpi-sub">Mano de Obra${totalPremio > 0 ? ' · premios' : ''}${totalDevolucion > 0 ? ` <span style="color:#aaa;font-size:10px">(+${fmtFull(totalDevolucion)} devol. excl.)</span>` : ''}</div>
     </div>
     <div class="kpi">
-      <div class="kpi-label">Muebles producidos</div>
+      <div class="kpi-label">Resultado · ${periodoLabel}</div>
+      <div class="kpi-value ${resultadoOp >= 0 ? 'positive' : 'negative'}">${resultadoOp >= 0 ? '+' : ''}${fmtFull(resultadoOp)}</div>
+      <div class="kpi-sub">${resultadoOp >= 0 ? 'Edgar produce más de lo que recibe' : 'Mosca financia más de lo que recupera'}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Muebles · ${periodoLabel}</div>
       <div class="kpi-value blue">${totalMuebles || '—'}</div>
-      <div class="kpi-sub">${edgarMesFilter ? 'Unidades · ' + periodoLabel : 'Unidades · histórico'}</div>
+      <div class="kpi-sub">Unidades producidas y entregadas</div>
     </div>
   `;
 
@@ -2034,13 +2053,13 @@ function renderEdgar() {
   ].map(r => (r.fields.fecha||'').slice(0,7)).filter(m => m));
   const mesesChart = [...mesesSet].sort();
 
-  const deptoByMes={}, tallerByMes={}, otroFinByMes={}, mdoByMes={}, devByMes={};
+  const deptoByMes={}, tallerByMes={}, adelantoByMes={}, mdoByMes={}, devByMes={};
   gastosEdgarDebeAll.forEach(r => {
     const m = (r.fields.fecha||'').slice(0,7); if (!m) return;
     const c = (r.fields.concepto||'').toLowerCase();
-    if (c.includes('taller')) tallerByMes[m] = (tallerByMes[m]||0) + (r.fields.monto||0);
-    else if (c.includes('depto') || c.includes('alquiler')) deptoByMes[m] = (deptoByMes[m]||0) + (r.fields.monto||0);
-    else otroFinByMes[m] = (otroFinByMes[m]||0) + (r.fields.monto||0);
+    if (/taller/i.test(c)) tallerByMes[m] = (tallerByMes[m]||0) + (r.fields.monto||0);
+    else if (/depto|alquiler|luz/i.test(c)) deptoByMes[m] = (deptoByMes[m]||0) + (r.fields.monto||0);
+    else adelantoByMes[m] = (adelantoByMes[m]||0) + (r.fields.monto||0);
   });
   [...gastosMdoEdgarAll, ...ingEdgarAll].forEach(r => {
     const m = (r.fields.fecha||'').slice(0,7); if (!m) return;
@@ -2054,7 +2073,7 @@ function renderEdgar() {
   let runSaldo = 0;
   const saldoAcumChart = mesesChart.map(m => {
     runSaldo += (mdoByMes[m]||0) + (devByMes[m]||0)
-              - (deptoByMes[m]||0) - (tallerByMes[m]||0) - (otroFinByMes[m]||0);
+              - (deptoByMes[m]||0) - (tallerByMes[m]||0) - (adelantoByMes[m]||0);
     return runSaldo;
   });
 
@@ -2069,7 +2088,7 @@ function renderEdgar() {
             backgroundColor:'rgba(198,40,40,0.75)', stack:'debe' },
           { type:'bar', label:'Taller', data: mesesChart.map(m => -(tallerByMes[m]||0)),
             backgroundColor:'rgba(230,100,30,0.75)', stack:'debe' },
-          { type:'bar', label:'Adelantos / Otros', data: mesesChart.map(m => -(otroFinByMes[m]||0)),
+          { type:'bar', label:'Adelantos / Cash', data: mesesChart.map(m => -(adelantoByMes[m]||0)),
             backgroundColor:'rgba(198,40,40,0.35)', stack:'debe' },
           { type:'bar', label:'Mano de Obra', data: mesesChart.map(m => mdoByMes[m]||0),
             backgroundColor:'rgba(46,125,50,0.8)', stack:'haber' },
@@ -2091,8 +2110,12 @@ function renderEdgar() {
               label: ctx => `${ctx.dataset.label}: ${fmtFull(ctx.raw)}`,
               afterBody: (items) => {
                 const m = mesesChart[items[0].dataIndex];
-                const neto = (mdoByMes[m]||0)+(devByMes[m]||0)-(deptoByMes[m]||0)-(tallerByMes[m]||0)-(otroFinByMes[m]||0);
-                return [`── Neto mes: ${neto >= 0 ? '+' : ''}${fmtFull(neto)}`];
+                const netoOp = (mdoByMes[m]||0)-(deptoByMes[m]||0)-(tallerByMes[m]||0);
+                const netoCc = netoOp + (devByMes[m]||0) - (adelantoByMes[m]||0);
+                return [
+                  `── Result. operativo: ${netoOp >= 0 ? '+' : ''}${fmtFull(netoOp)}`,
+                  `── Delta CC (total): ${netoCc >= 0 ? '+' : ''}${fmtFull(netoCc)}`
+                ];
               }
             }
           }
