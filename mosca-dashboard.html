@@ -572,6 +572,7 @@ let pedFilter = { estado: '', mostrarSinCliente: false };
 let selectedMonth = '';
 let chartEvol = null;
 let chartGastCat = null;
+let chartGastTipo = null;
 let edgarMesFilter = '';
 
 // ─── UTILITIES ──────────────────────────────────────────────────────────────
@@ -1023,6 +1024,9 @@ function renderMovimientos() {
   };
   const ingsClientes = ings.filter(r => !isIngresoCapital(r));
 
+  // Normalizador de categorías de gastos
+  const normCatG = c => c === 'Alquiler' ? 'Alquileres y Servicios' : c;
+
   // Filas de la tabla — solo movimientos de caja operativos
   const coreRows = [
     ...ingsClientes.map(r => ({
@@ -1035,18 +1039,21 @@ function renderMovimientos() {
       subtipo:  r.fields.tipo_flujo || 'Operativo',
       categoria: r.fields.concepto || '—',
     })),
-    ...gasts.map(r => ({
-      fecha:    r.fields.fecha || '',
-      tipo:     'G',
-      concepto: Array.isArray(r.fields['proveedor (de Proveedores)'])
-        ? r.fields['proveedor (de Proveedores)'].join(', ')
-        : (r.fields['proveedor (de Proveedores)'] || r.fields.categoria || '—'),
-      nota:     r.fields.concepto || '',
-      monto:    -(r.fields.monto || 0),
-      cat:      r.fields.categoria || 'No Clasificados',
-      subtipo:  r.fields.tipo || 'No Clasificados',
-      categoria: r.fields.categoria || 'No Clasificados',
-    }))
+    ...gasts.map(r => {
+      const cat = normCatG(r.fields.categoria || 'No Clasificados');
+      return {
+        fecha:    r.fields.fecha || '',
+        tipo:     'G',
+        concepto: Array.isArray(r.fields['proveedor (de Proveedores)'])
+          ? r.fields['proveedor (de Proveedores)'].join(', ')
+          : (r.fields['proveedor (de Proveedores)'] || r.fields.categoria || '—'),
+        nota:     r.fields.concepto || '',
+        monto:    -(r.fields.monto || 0),
+        cat,
+        subtipo:  r.fields.tipo || 'No Clasificados',
+        categoria: cat,
+      };
+    })
   ].sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
 
   // Totales globales
@@ -1054,38 +1061,57 @@ function renderMovimientos() {
   const totalG    = gastsOp.reduce((s,r) => s + (r.fields.monto||0), 0);
   const gastFijos = gastsOp.filter(r => r.fields.tipo === 'Fijo').reduce((s,r) => s + (r.fields.monto||0), 0);
   const gastVars  = gastsOp.filter(r => r.fields.tipo === 'Variable').reduce((s,r) => s + (r.fields.monto||0), 0);
+  const gastSinTipo = Math.max(totalG - gastFijos - gastVars, 0);
 
-  // Gastos por categoría: Alquiler → Servicios, MdO neteada con Recupero Edgar
+  // Gastos por categoría: Alquiler → Alquileres y Servicios, MdO bruto (sin netting)
   const gastByCat = {};
   gastsOp.forEach(r => {
-    let c = r.fields.categoria || 'No Clasificados';
-    if (c === 'Alquiler') c = 'Servicios';
+    const c = normCatG(r.fields.categoria || 'No Clasificados');
     if (!gastByCat[c]) gastByCat[c] = { total: 0, subtipo: r.fields.tipo || 'No Clasificados' };
     gastByCat[c].total += r.fields.monto || 0;
   });
-  const recuperoEdgarTotal = ings
-    .filter(r => (r.fields.concepto||'') === 'Recupero Edgar')
-    .reduce((s, r) => s + (r.fields.monto||0), 0);
-  if (recuperoEdgarTotal > 0) {
-    if (!gastByCat['Mano de Obra']) gastByCat['Mano de Obra'] = { total: 0, subtipo: 'Variable' };
-    gastByCat['Mano de Obra'].total -= recuperoEdgarTotal;
-    if (gastByCat['Mano de Obra'].total <= 0) delete gastByCat['Mano de Obra'];
-  }
 
-  // Donut chart data
+  // Donuts
   const donutColors = ['#c0392b','#e67e22','#f39c12','#27ae60','#2980b9','#8e44ad','#7f8c8d','#16a085'];
   const donutEntries = Object.entries(gastByCat).filter(([,v]) => v.total > 0).sort((a,b) => b[1].total - a[1].total);
 
-  // Panel cobrabilidad
-  const pedidosUnicos = new Set(
-    ingsClientes.map(r => Array.isArray(r.fields.Resultados) ? r.fields.Resultados[0] : null).filter(Boolean)
-  );
-  const pedCount   = pedidosUnicos.size || ingsClientes.length || 1;
-  const ticketProm = pedCount > 0 ? totalI / pedCount : 0;
-  const resDelMes  = selectedMonth ? allData.resultados.find(r => r.fields.Mes === selectedMonth) : null;
-  const ventasDelMes = resDelMes ? (resDelMes.fields.Ventas || 0) : 0;
-  const cobrabilidadPct = ventasDelMes > 0 ? Math.round(totalI / ventasDelMes * 100) : null;
+  const tipoEntries = [
+    gastFijos   > 0 ? ['Fijo',      gastFijos,   '#1565c0'] : null,
+    gastVars    > 0 ? ['Variable',   gastVars,    '#f57f17'] : null,
+    gastSinTipo > 0 ? ['Sin tipo',   gastSinTipo, '#9e9e9e'] : null,
+  ].filter(Boolean);
 
+  // Ticket promedio: Señas como proxy de pedidos (1 Seña = 1 pedido)
+  const señasCount = ingsClientes.filter(r => (r.fields.concepto||'') === 'Seña').length;
+  const pedCount   = señasCount > 0 ? señasCount : Math.max(ingsClientes.length, 1);
+  const ticketProm = totalI / pedCount;
+
+  // Cobrabilidad del mes
+  const resDelMes    = selectedMonth ? allData.resultados.find(r => r.fields.Mes === selectedMonth) : null;
+  const ventasDelMes = resDelMes ? (resDelMes.fields.Ventas || 0) : 0;
+  const cobPct30 = ventasDelMes > 0 ? Math.round(totalI / ventasDelMes * 100) : null;
+
+  // Cobrabilidad a 60/90 días — Saldos de meses M+1 y M+2 (aproximado)
+  let cobPct60 = null, cobPct90 = null;
+  if (selectedMonth && ventasDelMes > 0) {
+    const [yy, mm] = selectedMonth.split('-').map(n => parseInt(n));
+    const nextYM = add => {
+      const nm = mm + add;
+      return `${nm > 12 ? yy + 1 : yy}-${String(nm > 12 ? nm - 12 : nm).padStart(2, '0')}`;
+    };
+    const saldos1 = allData.ingresos
+      .filter(r => r.fields['mes-a'] === nextYM(1) && (r.fields.concepto||'') === 'Saldo')
+      .reduce((s, r) => s + (r.fields.monto||0), 0);
+    const saldos2 = allData.ingresos
+      .filter(r => r.fields['mes-a'] === nextYM(2) && (r.fields.concepto||'') === 'Saldo')
+      .reduce((s, r) => s + (r.fields.monto||0), 0);
+    if (saldos1 + saldos2 > 0) {
+      cobPct60 = Math.min(Math.round((totalI + saldos1) / ventasDelMes * 100), 150);
+      cobPct90 = Math.min(Math.round((totalI + saldos1 + saldos2) / ventasDelMes * 100), 150);
+    }
+  }
+
+  // Composición Seña/Saldo/Venta
   const ingsByConcep = {};
   ingsClientes.forEach(r => {
     const c = r.fields.concepto || 'Otro';
@@ -1093,7 +1119,7 @@ function renderMovimientos() {
   });
   const maxIC = Math.max(...Object.values(ingsByConcep), 1);
   const compHTML = Object.entries(ingsByConcep).sort((a,b)=>b[1]-a[1]).map(([c,v]) => {
-    const pct  = totalI > 0 ? Math.round(v/totalI*100) : 0;
+    const pct = totalI > 0 ? Math.round(v/totalI*100) : 0;
     return `<div class="cat-row">
       <span class="cat-label">${c}</span>
       <div class="cat-bar-wrap"><div class="cat-bar" style="width:${Math.round(v/maxIC*100)}%;background:#2e7d32"></div></div>
@@ -1102,13 +1128,9 @@ function renderMovimientos() {
     </div>`;
   }).join('') || '<div style="color:#bbb;font-size:12px">Sin cobros de clientes</div>';
 
-  // Filtros — categorías de coreRows
-  const gastCatsF = [...new Set(gasts.map(r => {
-    let c = r.fields.categoria || 'No Clasificados';
-    if (c === 'Alquiler') c = 'Servicios';
-    return c;
-  }))].sort();
-  const ingCatsF = [...new Set(ingsClientes.map(r => r.fields.concepto || r.fields.tipo_flujo || 'No Clasificados'))].sort();
+  // Filtros
+  const gastCatsF = [...new Set(gasts.map(r => normCatG(r.fields.categoria || 'No Clasificados')))].sort();
+  const ingCatsF  = [...new Set(ingsClientes.map(r => r.fields.concepto || r.fields.tipo_flujo || 'No Clasificados'))].sort();
   const visibleCats = movFilter.tipo === 'I' ? ingCatsF
                     : movFilter.tipo === 'G' ? gastCatsF
                     : [...new Set([...ingCatsF, ...gastCatsF])].sort();
@@ -1117,7 +1139,7 @@ function renderMovimientos() {
     `<option value="${c}" ${movFilter.cat === c ? 'selected' : ''}>${c}</option>`
   ).join('');
 
-  // Aplicar filtros a la tabla
+  // Tabla
   const filtered = coreRows.filter(r => {
     if (movFilter.tipo !== 'all' && r.tipo !== movFilter.tipo) return false;
     if (movFilter.cat && r.cat !== movFilter.cat) return false;
@@ -1137,9 +1159,7 @@ function renderMovimientos() {
   const tableRows = filtered.length === 0
     ? `<tr><td colspan="7" style="text-align:center;color:#999;padding:20px">Sin movimientos para este filtro</td></tr>`
     : filtered.map(r => {
-        const stCls = r.subtipo === 'Fijo' ? 'tag-blue'
-                    : r.subtipo === 'Variable' ? 'tag-amber'
-                    : 'tag-gray';
+        const stCls = r.subtipo === 'Fijo' ? 'tag-blue' : r.subtipo === 'Variable' ? 'tag-amber' : 'tag-gray';
         return `<tr>
           <td>${fmtDate(r.fecha)}</td>
           <td><span class="tag ${r.tipo === 'I' ? 'tag-green' : 'tag-red'}">${r.tipo === 'I' ? 'Ingreso' : 'Gasto'}</span></td>
@@ -1162,49 +1182,79 @@ function renderMovimientos() {
     </td>
   </tr>`;
 
-  document.getElementById('contenidoMovimientos').innerHTML = `
-    <div class="kpi-grid" style="margin-bottom:14px">
-      <div class="kpi"><div class="kpi-label">Cobros clientes</div><div class="kpi-value positive">${fmt(totalI)}</div></div>
-      <div class="kpi"><div class="kpi-label">G. Fijos</div><div class="kpi-value negative">${fmt(gastFijos)}</div><div class="kpi-sub">${totalG>0?Math.round(gastFijos/totalG*100):0}% del total</div></div>
-      <div class="kpi"><div class="kpi-label">G. Variables</div><div class="kpi-value negative">${fmt(gastVars)}</div><div class="kpi-sub">${totalG>0?Math.round(gastVars/totalG*100):0}% del total</div></div>
-      <div class="kpi"><div class="kpi-label">Neto caja</div><div class="kpi-value ${signClass(totalI-totalG)}">${fmt(totalI-totalG)}</div></div>
-    </div>
+  // Helpers para cobrabilidad
+  const cobColor = pct => pct >= 80 ? '#2e7d32' : pct >= 50 ? '#f57f17' : '#c62828';
 
-    <div class="mov-analysis">
+  document.getElementById('contenidoMovimientos').innerHTML = `
+    <div class="mov-analysis" style="grid-template-columns:1fr 1fr;margin-bottom:16px">
+
+      <!-- GASTOS POR CATEGORÍA + FIJO/VARIABLE -->
       <div class="mov-analysis-col">
         <div class="mov-analysis-title">Gastos por categoría</div>
-        <div style="display:flex;gap:16px;align-items:center">
-          <div style="width:150px;height:150px;flex-shrink:0"><canvas id="chartGastCat"></canvas></div>
+        <div style="display:flex;gap:14px;align-items:center;margin-bottom:14px">
+          <div style="width:140px;height:140px;flex-shrink:0"><canvas id="chartGastCat"></canvas></div>
           <div style="flex:1">
             ${donutEntries.map(([c, v], i) => {
               const pct = totalG > 0 ? Math.round(v.total/totalG*100) : 0;
-              return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
-                <span style="width:10px;height:10px;border-radius:50%;background:${donutColors[i % donutColors.length]};flex-shrink:0"></span>
+              return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                <span style="width:9px;height:9px;border-radius:50%;background:${donutColors[i % donutColors.length]};flex-shrink:0"></span>
                 <span style="font-size:12px;flex:1;color:var(--text)">${c}</span>
                 <span style="font-size:12px;font-weight:600;color:#c0392b">${fmtFull(v.total)}</span>
-                <span style="font-size:11px;color:var(--muted);width:32px;text-align:right">${pct}%</span>
+                <span style="font-size:11px;color:var(--muted);width:30px;text-align:right">${pct}%</span>
               </div>`;
             }).join('') || '<div style="color:#bbb;font-size:12px">Sin datos</div>'}
           </div>
         </div>
+        <div style="border-top:1px solid var(--border);padding-top:10px">
+          <div class="mov-analysis-title" style="margin-bottom:8px">Fijo / Variable</div>
+          <div style="display:flex;gap:12px;align-items:center">
+            <div style="width:100px;height:100px;flex-shrink:0"><canvas id="chartGastTipo"></canvas></div>
+            <div style="flex:1">
+              ${tipoEntries.map(([label, val, col]) => {
+                const pct = totalG > 0 ? Math.round(val/totalG*100) : 0;
+                return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+                  <span style="width:9px;height:9px;border-radius:50%;background:${col};flex-shrink:0"></span>
+                  <span style="font-size:12px;flex:1;color:var(--text)">${label}</span>
+                  <span style="font-size:12px;font-weight:600;color:#c0392b">${fmtFull(val)}</span>
+                  <span style="font-size:11px;color:var(--muted);width:30px;text-align:right">${pct}%</span>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>
+        </div>
       </div>
+
+      <!-- COBRABILIDAD -->
       <div class="mov-analysis-col">
         <div class="mov-analysis-title">Cobrabilidad</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div style="display:grid;grid-template-columns:${cobPct60 !== null ? '1fr 1fr 1fr' : cobPct30 !== null ? '1fr 1fr' : '1fr'};gap:10px;margin-bottom:12px">
           <div>
-            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Ticket promedio</div>
-            <div style="font-size:20px;font-weight:700;color:var(--text)">${fmtFull(ticketProm)}</div>
-            <div style="font-size:11px;color:var(--muted)">${pedidosUnicos.size > 0 ? pedidosUnicos.size : ingsClientes.length} pedido${(pedidosUnicos.size || ingsClientes.length) !== 1 ? 's' : ''}</div>
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Ticket promedio</div>
+            <div style="font-size:19px;font-weight:700;color:var(--text)">${fmtFull(ticketProm)}</div>
+            <div style="font-size:11px;color:var(--muted)">${pedCount} pedido${pedCount !== 1 ? 's' : ''} (señas)</div>
           </div>
-          ${cobrabilidadPct !== null ? `<div>
-            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Cobrabilidad</div>
-            <div style="font-size:20px;font-weight:700;color:${cobrabilidadPct >= 80 ? '#2e7d32' : cobrabilidadPct >= 50 ? '#f57f17' : '#c62828'}">${cobrabilidadPct}%</div>
-            <div style="font-size:11px;color:var(--muted)">de ${fmtFull(ventasDelMes)} vendidos</div>
+          ${cobPct30 !== null ? `<div>
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Cobrado 30d</div>
+            <div style="font-size:19px;font-weight:700;color:${cobColor(cobPct30)}">${cobPct30}%</div>
+            <div style="font-size:11px;color:var(--muted)">de ${fmtFull(ventasDelMes)}</div>
+          </div>` : ''}
+          ${cobPct60 !== null ? `<div>
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Cobrado 60d <span style="font-weight:400;color:#bbb">~</span></div>
+            <div style="font-size:19px;font-weight:700;color:${cobColor(cobPct60)}">${cobPct60}%</div>
+            <div style="font-size:11px;color:var(--muted)">+${fmtFull(cobPct60 > cobPct30 ? ventasDelMes * (cobPct60 - cobPct30) / 100 : 0)}</div>
           </div>` : ''}
         </div>
+        ${cobPct90 !== null ? `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#f9f6f2;border-radius:5px;margin-bottom:10px">
+          <span style="font-size:11px;color:var(--muted)">Cobrado 90d (aprox.)</span>
+          <span style="font-size:14px;font-weight:700;color:${cobColor(cobPct90)};margin-left:auto">${cobPct90}%</span>
+          <span style="font-size:10px;color:#bbb">saldos M+1/M+2</span>
+        </div>` : ''}
         <div style="border-top:1px solid var(--border);padding-top:8px">
           ${compHTML}
         </div>
+        ${ventasDelMes > 0 ? `<div style="margin-top:8px;font-size:11px;color:var(--muted)">
+          Pendiente de cobrar: <strong style="color:${totalI < ventasDelMes ? '#c62828' : '#2e7d32'}">${fmtFull(Math.max(ventasDelMes - totalI, 0))}</strong>
+        </div>` : ''}
       </div>
     </div>
 
@@ -1236,7 +1286,7 @@ function renderMovimientos() {
       </table>
     </div>`;
 
-  // Donut chart (después de setear el innerHTML)
+  // Donut categorías
   if (chartGastCat) { chartGastCat.destroy(); chartGastCat = null; }
   const gCtx = document.getElementById('chartGastCat');
   if (gCtx && donutEntries.length > 0) {
@@ -1244,22 +1294,23 @@ function renderMovimientos() {
       type: 'doughnut',
       data: {
         labels: donutEntries.map(([c]) => c),
-        datasets: [{
-          data: donutEntries.map(([,v]) => v.total),
-          backgroundColor: donutColors.slice(0, donutEntries.length),
-          borderWidth: 2,
-          borderColor: '#f5f1ec'
-        }]
+        datasets: [{ data: donutEntries.map(([,v]) => v.total), backgroundColor: donutColors.slice(0, donutEntries.length), borderWidth: 2, borderColor: '#f5f1ec' }]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        cutout: '62%',
-        plugins: {
-          legend: { display: false },
-          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmtFull(ctx.raw)} (${totalG>0?Math.round(ctx.raw/totalG*100):0}%)` } }
-        }
-      }
+      options: { responsive: true, maintainAspectRatio: true, cutout: '60%', plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmtFull(ctx.raw)} (${totalG>0?Math.round(ctx.raw/totalG*100):0}%)` } } } }
+    });
+  }
+
+  // Donut fijo/variable
+  if (chartGastTipo) { chartGastTipo.destroy(); chartGastTipo = null; }
+  const tCtx = document.getElementById('chartGastTipo');
+  if (tCtx && tipoEntries.length > 0) {
+    chartGastTipo = new Chart(tCtx.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: tipoEntries.map(([l]) => l),
+        datasets: [{ data: tipoEntries.map(([,v]) => v), backgroundColor: tipoEntries.map(([,,c]) => c), borderWidth: 2, borderColor: '#f5f1ec' }]
+      },
+      options: { responsive: true, maintainAspectRatio: true, cutout: '60%', plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmtFull(ctx.raw)} (${totalG>0?Math.round(ctx.raw/totalG*100):0}%)` } } } }
     });
   }
 }
