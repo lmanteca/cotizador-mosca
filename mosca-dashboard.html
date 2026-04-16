@@ -520,10 +520,6 @@
       </div>
       <div id="kpiEdgar" class="kpi-grid" style="margin-bottom:16px"></div>
       <div class="divider"></div>
-      <div class="chart-wrap" style="height:260px;margin:16px 0 4px" id="chartEdgarWrap">
-        <canvas id="chartEdgar"></canvas>
-      </div>
-      <div class="divider"></div>
       <div class="table-wrap" style="margin-top:14px">
         <table>
           <thead><tr>
@@ -1923,27 +1919,22 @@ function renderEdgar() {
     <div class="kpi" style="border-left:3px solid ${saldoFinal < 0 ? '#c0392b' : '#2e7d32'}">
       <div class="kpi-label">Saldo cuenta corriente</div>
       <div class="kpi-value ${saldoFinal < 0 ? 'negative' : 'positive'}">${fmtFull(Math.abs(saldoFinal))}</div>
-      <div class="kpi-sub">${labelSaldoCC} · histórico</div>
     </div>
     <div class="kpi">
       <div class="kpi-label">Costos · ${periodoLabel}</div>
       <div class="kpi-value negative">${fmtFull(totalCostosKpi)}</div>
-      <div class="kpi-sub">Depto · luz · taller${totalAdelanto > 0 ? ` <span style="color:#aaa;font-size:10px">(+${fmtFull(totalAdelanto)} adelantos excl.)</span>` : ''}</div>
     </div>
     <div class="kpi">
       <div class="kpi-label">Ingresos · ${periodoLabel}</div>
       <div class="kpi-value positive">${fmtFull(totalIngresosKpi)}</div>
-      <div class="kpi-sub">Mano de Obra${totalPremio > 0 ? ' · premios' : ''}${totalDevolucion > 0 ? ` <span style="color:#aaa;font-size:10px">(+${fmtFull(totalDevolucion)} devol. excl.)</span>` : ''}</div>
     </div>
     <div class="kpi">
       <div class="kpi-label">Resultado · ${periodoLabel}</div>
       <div class="kpi-value ${resultadoOp >= 0 ? 'positive' : 'negative'}">${resultadoOp >= 0 ? '+' : ''}${fmtFull(resultadoOp)}</div>
-      <div class="kpi-sub">${resultadoOp >= 0 ? 'Edgar produce más de lo que recibe' : 'Mosca financia más de lo que recupera'}</div>
     </div>
     <div class="kpi">
       <div class="kpi-label">Muebles · ${periodoLabel}</div>
       <div class="kpi-value blue">${totalMuebles || '—'}</div>
-      <div class="kpi-sub">Unidades producidas y entregadas</div>
     </div>
   `;
 
@@ -2064,90 +2055,6 @@ function renderEdgar() {
   document.getElementById('bodyEdgar').innerHTML = tableHtml ||
     '<tr><td colspan="6" style="text-align:center;color:#999;padding:20px">Sin movimientos registrados para Edgar</td></tr>';
 
-  // ── Gráfico: stacked bars por componente + línea saldo acumulado ──────────────
-  const mesesSet = new Set([
-    ...gastosEdgarDebeAll, ...gastosMdoEdgarAll, ...ingEdgarAll, ...ingPrestamosAll
-  ].map(r => (r.fields.fecha||'').slice(0,7)).filter(m => m));
-  const mesesChart = [...mesesSet].sort();
-
-  const deptoByMes={}, tallerByMes={}, adelantoByMes={}, mdoByMes={}, devByMes={};
-  gastosEdgarDebeAll.forEach(r => {
-    const m = (r.fields.fecha||'').slice(0,7); if (!m) return;
-    const c = (r.fields.concepto||'').toLowerCase();
-    if (/taller/i.test(c)) tallerByMes[m] = (tallerByMes[m]||0) + (r.fields.monto||0);
-    else if (/depto|alquiler|luz/i.test(c)) deptoByMes[m] = (deptoByMes[m]||0) + (r.fields.monto||0);
-    else adelantoByMes[m] = (adelantoByMes[m]||0) + (r.fields.monto||0);
-  });
-  [...gastosMdoEdgarAll, ...ingEdgarAll].forEach(r => {
-    const m = (r.fields.fecha||'').slice(0,7); if (!m) return;
-    mdoByMes[m] = (mdoByMes[m]||0) + (r.fields.monto||0);
-  });
-  ingPrestamosAll.forEach(r => {
-    const m = (r.fields.fecha||'').slice(0,7); if (!m) return;
-    devByMes[m] = (devByMes[m]||0) + (r.fields.monto||0);
-  });
-
-  let runSaldo = 0;
-  const saldoAcumChart = mesesChart.map(m => {
-    runSaldo += (mdoByMes[m]||0) + (devByMes[m]||0)
-              - (deptoByMes[m]||0) - (tallerByMes[m]||0) - (adelantoByMes[m]||0);
-    return runSaldo;
-  });
-
-  const ctxEdgar = document.getElementById('chartEdgar');
-  if (ctxEdgar) {
-    if (window._chartEdgar) window._chartEdgar.destroy();
-    window._chartEdgar = new Chart(ctxEdgar.getContext('2d'), {
-      data: {
-        labels: mesesChart.map(m => mesLabel(m)),
-        datasets: [
-          { type:'bar', label:'Depto / Luz', data: mesesChart.map(m => -(deptoByMes[m]||0)),
-            backgroundColor:'rgba(198,40,40,0.75)', stack:'debe' },
-          { type:'bar', label:'Taller', data: mesesChart.map(m => -(tallerByMes[m]||0)),
-            backgroundColor:'rgba(230,100,30,0.75)', stack:'debe' },
-          { type:'bar', label:'Adelantos / Cash', data: mesesChart.map(m => -(adelantoByMes[m]||0)),
-            backgroundColor:'rgba(198,40,40,0.35)', stack:'debe' },
-          { type:'bar', label:'Mano de Obra', data: mesesChart.map(m => mdoByMes[m]||0),
-            backgroundColor:'rgba(46,125,50,0.8)', stack:'haber' },
-          { type:'bar', label:'Devoluciones', data: mesesChart.map(m => devByMes[m]||0),
-            backgroundColor:'rgba(69,39,160,0.7)', stack:'haber' },
-          { type:'line', label:'Saldo acum.', data: saldoAcumChart,
-            borderColor:'#1565c0', backgroundColor:'rgba(21,101,192,0.07)',
-            tension:0.3, pointRadius:4, pointBackgroundColor:'#1565c0',
-            borderWidth:2, fill:true }
-        ]
-      },
-      options: {
-        responsive:true, maintainAspectRatio:false,
-        interaction:{ mode:'index', intersect:false },
-        plugins: {
-          legend:{ position:'top', labels:{ font:{ size:11 }, boxWidth:12 } },
-          tooltip:{
-            callbacks:{
-              label: ctx => `${ctx.dataset.label}: ${fmtFull(ctx.raw)}`,
-              afterBody: (items) => {
-                const m = mesesChart[items[0].dataIndex];
-                const netoOp = (mdoByMes[m]||0)-(deptoByMes[m]||0)-(tallerByMes[m]||0);
-                const netoCc = netoOp + (devByMes[m]||0) - (adelantoByMes[m]||0);
-                return [
-                  `── Result. operativo: ${netoOp >= 0 ? '+' : ''}${fmtFull(netoOp)}`,
-                  `── Delta CC (total): ${netoCc >= 0 ? '+' : ''}${fmtFull(netoCc)}`
-                ];
-              }
-            }
-          }
-        },
-        scales: {
-          y:{
-            stacked: false,
-            ticks:{ callback: v => { const a=Math.abs(v); return a>=1000000 ? (v/1000000).toFixed(1)+'M' : a>=1000 ? (v/1000).toFixed(0)+'k' : v; }, font:{size:10} },
-            grid:{ color:'rgba(0,0,0,0.05)' }
-          },
-          x:{ ticks:{ font:{size:10} } }
-        }
-      }
-    });
-  }
 }
 
 function toggleEdgarMes(cls) {
