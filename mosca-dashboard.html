@@ -511,24 +511,22 @@
         <span class="section-title">Cuenta corriente — Edgar</span>
         <span id="edgarPeriodoLabel" class="section-meta">Histórico completo</span>
       </div>
-      <!-- Filtro de mes -->
+      <div id="kpiEdgar" style="margin-bottom:20px"></div>
       <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <label style="font-size:12px;color:var(--muted)">Período:</label>
+        <label style="font-size:12px;color:var(--muted)">Ver detalle por período:</label>
         <select id="edgarMesSel" onchange="edgarMesFilter=this.value;renderEdgar()" style="font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:4px;background:#fff">
           <option value="">Histórico completo</option>
         </select>
       </div>
-      <div id="kpiEdgar" class="kpi-grid" style="margin-bottom:16px"></div>
-      <div class="divider"></div>
-      <div class="table-wrap" style="margin-top:14px">
+      <div class="table-wrap">
         <table>
           <thead><tr>
             <th>Fecha</th>
             <th>Tipo</th>
-            <th>Concepto</th>
-            <th class="right">DEBE (deuda)</th>
-            <th class="right">HABER (MdO / Dev.)</th>
-            <th class="right">Saldo acum.</th>
+            <th>Detalle</th>
+            <th class="right">Mosca puso</th>
+            <th class="right">Edgar aportó</th>
+            <th class="right">Saldo</th>
           </tr></thead>
           <tbody id="bodyEdgar"><tr><td colspan="6" class="loading"><span class="spinner"></span>Cargando...</td></tr></tbody>
         </table>
@@ -2033,26 +2031,21 @@ function renderEdgar() {
                      : saldoFinal === 0 ? 'Al día'
                      : 'A favor de Edgar · Mosca debe cash';
 
+  const saldoTexto = saldoFinal < 0
+    ? `Edgar debe a Mosca`
+    : saldoFinal === 0 ? `Al día — sin deuda`
+    : `Mosca le debe a Edgar`;
+  const saldoSubtexto = saldoFinal < 0
+    ? `trabajo pendiente o efectivo a compensar`
+    : saldoFinal > 0 ? `Mosca tiene que pagarle cash a Edgar`
+    : '';
+
   document.getElementById('kpiEdgar').innerHTML = `
-    <div class="kpi" style="border-left:3px solid ${saldoFinal < 0 ? '#c0392b' : '#2e7d32'}">
-      <div class="kpi-label">Saldo cuenta corriente</div>
-      <div class="kpi-value ${saldoFinal < 0 ? 'negative' : 'positive'}">${fmtFull(Math.abs(saldoFinal))}</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Costos · ${periodoLabel}</div>
-      <div class="kpi-value negative">${fmtFull(totalCostosKpi)}</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Ingresos · ${periodoLabel}</div>
-      <div class="kpi-value positive">${fmtFull(totalIngresosKpi)}</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Resultado · ${periodoLabel}</div>
-      <div class="kpi-value ${resultadoOp >= 0 ? 'positive' : 'negative'}">${resultadoOp >= 0 ? '+' : ''}${fmtFull(resultadoOp)}</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Muebles · ${periodoLabel}</div>
-      <div class="kpi-value blue">${totalMuebles || '—'}</div>
+    <div style="padding:20px 24px;background:var(--bg);border-radius:8px;border:2px solid ${saldoFinal < 0 ? '#c0392b' : '#2e7d32'};display:inline-flex;flex-direction:column;gap:4px;min-width:260px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)">Saldo cuenta corriente</div>
+      <div style="font-size:32px;font-weight:800;color:${saldoFinal < 0 ? '#c0392b' : '#2e7d32'};letter-spacing:-1px">${fmtFull(Math.abs(saldoFinal))}</div>
+      <div style="font-size:13px;font-weight:600;color:${saldoFinal < 0 ? '#c0392b' : '#2e7d32'}">${saldoTexto}</div>
+      ${saldoSubtexto ? `<div style="font-size:11px;color:var(--muted)">${saldoSubtexto}</div>` : ''}
     </div>
   `;
 
