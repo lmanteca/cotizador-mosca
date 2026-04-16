@@ -1915,14 +1915,14 @@ function renderEdgar() {
 
   // ── KPIs ─────────────────────────────────────────────────────────────────────
   // Saldo CC siempre histórico completo (no se filtra por mes — es el estado de la cuenta)
-  const labelSaldoCC = saldoFinal > 0 ? 'Debe a Mosca · trabajo pendiente'
+  const labelSaldoCC = saldoFinal < 0 ? 'A favor de Mosca · Edgar debe trabajo / cash'
                      : saldoFinal === 0 ? 'Al día'
-                     : 'A favor — Mosca debe cash';
+                     : 'A favor de Edgar · Mosca debe cash';
 
   document.getElementById('kpiEdgar').innerHTML = `
-    <div class="kpi" style="border-left:3px solid ${saldoFinal >= 0 ? '#c0392b' : '#2e7d32'}">
+    <div class="kpi" style="border-left:3px solid ${saldoFinal < 0 ? '#c0392b' : '#2e7d32'}">
       <div class="kpi-label">Saldo cuenta corriente</div>
-      <div class="kpi-value ${saldoFinal >= 0 ? 'negative' : 'positive'}">${saldoFinal >= 0 ? '' : '+'}${fmtFull(Math.abs(saldoFinal))}</div>
+      <div class="kpi-value ${saldoFinal < 0 ? 'negative' : 'positive'}">${fmtFull(Math.abs(saldoFinal))}</div>
       <div class="kpi-sub">${labelSaldoCC} · histórico</div>
     </div>
     <div class="kpi">
@@ -2003,11 +2003,13 @@ function renderEdgar() {
     movsByMonth[mes].push(m);
   });
 
-  const monthsSorted = Object.keys(movsByMonth).sort((a,b) => b.localeCompare(a));
+  // Meses en ASC (más viejo primero) → el acumulador crece de arriba hacia abajo
+  const monthsSorted = Object.keys(movsByMonth).sort((a,b) => a.localeCompare(b));
   let tableHtml = '';
 
   monthsSorted.forEach(mes => {
-    const mesMovs = [...movsByMonth[mes]].sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+    // Rows ASC dentro del mes → el saldo acum fluye cronológicamente
+    const mesMovs = [...movsByMonth[mes]].sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
     // Delta del mes: suma de impactos reales del mes (sin duplicar ítems expandidos)
     const mesDelta = gastosMdoEdgar.filter(r => (r.fields.fecha||'').slice(0,7)===mes).reduce((s,r)=>s+(r.fields.monto||0),0)
       + ingEdgar.filter(r => (r.fields.fecha||'').slice(0,7)===mes).reduce((s,r)=>s+(r.fields.monto||0),0)
@@ -2038,10 +2040,25 @@ function renderEdgar() {
         <td>${tipTag}</td>
         <td style="font-size:12px">${m.concepto}</td>
         <td class="right mono">${esNeg ? `<span class="negative">${fmtFull(m.impacto)}</span>` : '—'}</td>
-        <td class="right mono">${!esNeg && m.impacto !== 0 ? `<span class="positive">+${montoDisplay}</span>` : (m.displayMonto !== null && m.displayMonto !== undefined && !esNeg ? `<span style="color:#aaa;font-size:11px">${fmtFull(m.displayMonto)}</span>` : '—')}</td>
-        <td class="right mono ${!m.showBal ? 'style="color:#ccc"' : (balance < 0 ? 'negative' : 'neutral')}">${m.showBal && balance !== undefined ? fmtFull(balance) : ''}</td>
+        <td class="right mono">${
+          m.displayMonto !== undefined && m.displayMonto !== null
+            ? `<span class="positive">+${fmtFull(m.displayMonto)}</span>`
+            : (!esNeg && m.impacto !== 0 ? `<span class="positive">+${montoDisplay}</span>` : '—')
+        }</td>
+        <td class="right mono ${!m.showBal ? '' : (balance < 0 ? 'negative' : 'positive')}">${m.showBal && balance !== undefined ? fmtFull(balance) : ''}</td>
       </tr>`;
     });
+    // Fila cierre del mes: último registro con showBal = true → saldo al cierre
+    const lastWithBal = [...mesMovs].reverse().find(m => m.showBal);
+    if (lastWithBal) {
+      const cierreBal = idBalMap.get(lastWithBal.id);
+      if (cierreBal !== undefined) {
+        tableHtml += `<tr class="em-${mesKey}" style="background:#f5f5f5;border-top:1px solid #e0e0e0">
+          <td colspan="5" style="font-size:11px;color:#999;text-align:right;padding:4px 10px;font-style:italic">cierre del mes</td>
+          <td class="right mono ${cierreBal < 0 ? 'negative' : 'positive'}" style="font-weight:600;padding:4px 10px">${fmtFull(cierreBal)}</td>
+        </tr>`;
+      }
+    }
   });
 
   document.getElementById('bodyEdgar').innerHTML = tableHtml ||
