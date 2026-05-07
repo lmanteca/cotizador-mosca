@@ -363,7 +363,7 @@
 
 <!-- NAV -->
 <nav class="nav no-print">
-  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v1.1</span></span>
+  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v1.2 · 2026-05-07</span></span>
   <div class="nav-tabs">
     <button class="nav-tab active" data-page="reporte" onclick="showPage('reporte')">Financiero</button>
     <button class="nav-tab" data-page="comercial" onclick="showPage('comercial')">Comercial</button>
@@ -1941,7 +1941,7 @@ function renderEdgar() {
 
   // ── Datasets HISTÓRICOS COMPLETOS (para gráfico y balance running) ──────────
   const gastosEdgarDebeAll = allData.gastos.filter(r =>
-    isEdgarProv(r) && (r.fields.categoria || '') === 'Prestamos'
+    isEdgarProv(r) && (r.fields.categoria || '') === 'Prestamos Edgar'
   );
   const gastosMdoEdgarAll = allData.gastos.filter(r =>
     isEdgarProv(r) && (r.fields.categoria || '') === 'Mano de Obra'
