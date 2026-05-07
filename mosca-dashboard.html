@@ -1921,13 +1921,17 @@ function renderPorCobrar() {
 
 // ─── EDGAR ───────────────────────────────────────────────────────────────────
 // Modelo cuenta corriente Edgar:
-//   DEBE Edgar (Mosca pone):
-//     - Capitalización Javier en especies (taller + Edgar mensual)
-//     - Alquiler depto + luz/servicios (Mosca paga en cash, proveedor=Edgar, cat≠MdO)
-//   HABER Edgar (Edgar pone):
-//     - Gastos Mano de Obra con proveedor=Edgar (trabajo por mueble → también costo P&L operativo)
-//     - Recupero Edgar en Ingresos (histórico)
-//   Saldo positivo = Edgar debe a Mosca (trabajo pendiente) | negativo = Mosca debe cash a Edgar
+//   DEBE (Mosca pone de su bolsillo para/por Edgar):
+//     - Gastos cat=Prestamos Edgar: alquiler depto, luz, taller, adelantos cash
+//   HABER (Edgar le da a Mosca):
+//     - Ingresos concepto=Recupero Edgar (trabajo entregado, cancela deuda)
+//     - Ingresos concepto=Préstamos, nota=/devolución/ (Edgar devuelve cash)
+//     - Premios de pedidos (campo premio_edgar)
+//   NOTA: Los Gastos MdO proveedor=Edgar NO van en CC — son costo P&L operativo.
+//         Cuando Edgar entrega trabajo se crean DOS registros: Gasto MdO (P&L) + Recupero Edgar (CC).
+//         Solo el Recupero Edgar cuenta en CC. Incluir ambos duplicaría el monto.
+//   saldoFinal = HABER - DEBE
+//     > 0 → Mosca debe cash a Edgar | < 0 → Edgar debe trabajo/cash a Mosca
 function renderEdgar() {
   const getProv = r => (Array.isArray(r.fields['proveedor (de Proveedores)'])
     ? r.fields['proveedor (de Proveedores)'].join(' ')
@@ -1942,12 +1946,13 @@ function renderEdgar() {
   const gastosMdoEdgarAll = allData.gastos.filter(r =>
     isEdgarProv(r) && (r.fields.categoria || '') === 'Mano de Obra'
   );
+  // Recupero Edgar cubre todo lo que Edgar da a Mosca:
+  //   metodo_cobro = 'laburo'   → trabajo entregado (también costo P&L vía Gasto MdO)
+  //   metodo_cobro = 'efectivo' → cash puesto por Edgar (devolución adelanto o préstamo fresco)
   const ingEdgarAll = allData.ingresos.filter(r =>
     (r.fields.concepto || '') === 'Recupero Edgar'
   );
-  const ingPrestamosAll = allData.ingresos.filter(r =>
-    r.fields.concepto === 'Préstamos' && /edgar/i.test(r.fields.Nota || '')
-  );
+  const isEfectivo = r => (r.fields.metodo_cobro || '') === 'efectivo';
   const premiosAll = allData.pedidos.filter(r => (r.fields.premio_edgar||0) > 0 && r.fields.estado !== 'Cancelado');
 
   // ── Datasets FILTRADOS POR MES (para KPIs y tabla) ──────────────────────────
@@ -1957,16 +1962,15 @@ function renderEdgar() {
   const gastosEdgarDebe = filtrarMes(gastosEdgarDebeAll);
   const gastosMdoEdgar  = filtrarMes(gastosMdoEdgarAll);
   const ingEdgar        = filtrarMes(ingEdgarAll);
-  const ingPrestamos    = filtrarMes(ingPrestamosAll);
   const premiosFilt     = filtrarMes(premiosAll);
 
   // ── Saldo histórico completo (running balance para la tabla) ─────────────────
   // Calcula el saldo acumulado usando montos reales de cada record (sin flatMap)
+  // gastosMdoEdgarAll excluido: el Gasto MdO es costo P&L, no CC.
+  // El trabajo de Edgar en CC se registra via Recupero Edgar (ingEdgarAll).
   const allMovsBalance = [
     ...gastosEdgarDebeAll.map(r => ({ fecha: r.fields.fecha||'', id: r.id, impacto: -(r.fields.monto||0) })),
-    ...gastosMdoEdgarAll.map(r  => ({ fecha: r.fields.fecha||'', id: r.id, impacto:  (r.fields.monto||0) })),
     ...ingEdgarAll.map(r        => ({ fecha: r.fields.fecha||'', id: r.id, impacto:  (r.fields.monto||0) })),
-    ...ingPrestamosAll.map(r    => ({ fecha: r.fields.fecha||'', id: r.id, impacto:  (r.fields.monto||0) })),
     ...premiosAll.map(r         => ({ fecha: r.fields.seña||'',  id: r.id, impacto:  (r.fields.premio_edgar||0) }))
   ].sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
 
@@ -1985,20 +1989,20 @@ function renderEdgar() {
   const totalCobertura  = gastosCobertura.reduce((s,r) => s + (r.fields.monto||0), 0);
   const totalAdelanto   = gastosAdelanto.reduce((s,r) => s + (r.fields.monto||0), 0);
 
-  // MdO = trabajo de Edgar (registrado como gasto MdO o como ingreso Recupero Edgar)
-  // Devoluciones = cash devuelto por Edgar — afectan saldo CC pero NO los KPIs operativos
-  const totalMdo        = gastosMdoEdgar.reduce((s,r) => s + (r.fields.monto||0), 0)
-                        + ingEdgar.reduce((s,r) => s + (r.fields.monto||0), 0);
-  const totalDevolucion = ingPrestamos.reduce((s,r) => s + (r.fields.monto||0), 0);
+  // laburo = trabajo entregado | efectivo = cash que Edgar puso en Mosca
+  const ingEdgarLaburo  = ingEdgar.filter(r => !isEfectivo(r));
+  const ingEdgarEfectivo = ingEdgar.filter(isEfectivo);
+  const totalMdo        = ingEdgarLaburo.reduce((s,r) => s + (r.fields.monto||0), 0);
+  const totalEfectivo   = ingEdgarEfectivo.reduce((s,r) => s + (r.fields.monto||0), 0);
   const totalPremio     = premiosFilt.reduce((s,r) => s + (r.fields.premio_edgar||0), 0);
 
-  // KPIs operativos: Costos = cobertura | Ingresos = MdO+premios | Resultado = diferencia
-  const totalCostosKpi   = totalCobertura;  // SIN adelantos
-  const totalIngresosKpi = totalMdo + totalPremio;  // SIN devoluciones
+  // KPIs operativos: Costos = cobertura | Ingresos = trabajo+premios (sin cash)
+  const totalCostosKpi   = totalCobertura;
+  const totalIngresosKpi = totalMdo + totalPremio;
   const resultadoOp      = totalIngresosKpi - totalCostosKpi;
 
-  // Saldo del período (cuenta corriente): incluye TODO — cobertura + adelantos - MdO - devoluciones
-  const saldoPeriodo = totalMdo + totalPremio + totalDevolucion - totalCobertura - totalAdelanto;
+  // Saldo del período CC: todo el HABER menos todo el DEBE
+  const saldoPeriodo = totalMdo + totalPremio + totalEfectivo - totalCobertura - totalAdelanto;
 
   // ── Muebles (del período) ────────────────────────────────────────────────────
   let totalMuebles = 0;
@@ -2008,12 +2012,12 @@ function renderEdgar() {
       totalMuebles += u ? parseInt(u[1]) : 1;
     });
   };
-  ingEdgar.forEach(r => contarItems(r.fields.Nota || r.fields.concepto || ''));
-  gastosMdoEdgar.forEach(r => contarItems(r.fields.concepto || ''));
+  // Solo laburo — efectivo no tiene muebles, y gastosMdoEdgar mapea los mismos ítems
+  ingEdgarLaburo.forEach(r => contarItems(r.fields.Nota || r.fields.concepto || ''));
 
   // ── Poblar select de meses ───────────────────────────────────────────────────
   const mesesDisp = [...new Set([
-    ...gastosEdgarDebeAll, ...gastosMdoEdgarAll, ...ingEdgarAll, ...ingPrestamosAll
+    ...gastosEdgarDebeAll, ...ingEdgarAll
   ].map(r => (r.fields.fecha||'').slice(0,7)).filter(m => m))].sort().reverse();
   const sel = document.getElementById('edgarMesSel');
   if (sel) {
@@ -2067,12 +2071,13 @@ function renderEdgar() {
       concepto: r.fields.concepto || 'Financiamiento',
       impacto: -(r.fields.monto||0), showBal: true
     }]),
-    ...gastosMdoEdgar.map(r => [{
-      fecha: r.fields.fecha||'', tipo: 'mano_obra', id: r.id,
-      concepto: `${r.fields.concepto||'Trabajo'} · ${(r.fields.metodo_pago||'').toLowerCase().includes('cancela') ? 'cancela deuda' : 'cash'}`,
-      impacto: r.fields.monto||0, showBal: true
-    }]),
+    // Recupero Edgar: laburo → expande ítems | efectivo → fila única
     ...ingEdgar.map(r => {
+      if (isEfectivo(r)) {
+        return [{ fecha: r.fields.fecha||'', tipo: 'prestamo_in', id: r.id,
+          concepto: r.fields.Nota || 'Efectivo Edgar',
+          impacto: r.fields.monto||0, showBal: true }];
+      }
       const nota = r.fields.Nota || r.fields.concepto || 'Mano de Obra';
       const items = nota.split(/\s*\|\s*/).filter(s => s.trim());
       if (items.length <= 1) return [{ fecha: r.fields.fecha||'', tipo: 'mano_obra', id: r.id, concepto: nota, impacto: r.fields.monto||0, showBal: true }];
@@ -2080,16 +2085,11 @@ function renderEdgar() {
       return items.map((item, i) => ({
         fecha: r.fields.fecha||'', tipo: 'mano_obra', id: r.id,
         concepto: item.trim(),
-        impacto: i===0 ? (r.fields.monto||0) : 0, // balance solo en primer ítem, resto informativo
-        showBal: i === items.length - 1,           // saldo acum solo en el último
-        displayMonto: precios[i]                   // monto visual del ítem (puede ser null)
+        impacto: i===0 ? (r.fields.monto||0) : 0,
+        showBal: i === items.length - 1,
+        displayMonto: precios[i]
       }));
     }),
-    ...ingPrestamos.map(r => [{
-      fecha: r.fields.fecha||'', tipo: 'prestamo_in', id: r.id,
-      concepto: r.fields.Nota || 'Devolución préstamo',
-      impacto: r.fields.monto||0, showBal: true
-    }]),
     ...premiosFilt.map(r => [{
       fecha: r.fields.seña||'', tipo: 'premio', id: r.id,
       concepto: `Premio · ${Array.isArray(r.fields.cliente) ? r.fields.cliente[0] : (r.fields.cliente||'—')}`,
@@ -2112,10 +2112,8 @@ function renderEdgar() {
   monthsSorted.forEach(mes => {
     // Rows ASC dentro del mes → el saldo acum fluye cronológicamente
     const mesMovs = [...movsByMonth[mes]].sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
-    // Delta del mes: suma de impactos reales del mes (sin duplicar ítems expandidos)
-    const mesDelta = gastosMdoEdgar.filter(r => (r.fields.fecha||'').slice(0,7)===mes).reduce((s,r)=>s+(r.fields.monto||0),0)
-      + ingEdgar.filter(r => (r.fields.fecha||'').slice(0,7)===mes).reduce((s,r)=>s+(r.fields.monto||0),0)
-      + ingPrestamos.filter(r => (r.fields.fecha||'').slice(0,7)===mes).reduce((s,r)=>s+(r.fields.monto||0),0)
+    // Delta del mes: HABER - DEBE del período (sin gastosMdoEdgar que es P&L)
+    const mesDelta = ingEdgar.filter(r => (r.fields.fecha||'').slice(0,7)===mes).reduce((s,r)=>s+(r.fields.monto||0),0)
       + premiosFilt.filter(r => (r.fields.seña||'').slice(0,7)===mes).reduce((s,r)=>s+(r.fields.premio_edgar||0),0)
       - gastosEdgarDebe.filter(r => (r.fields.fecha||'').slice(0,7)===mes).reduce((s,r)=>s+(r.fields.monto||0),0);
     const mesLabel_ = mes !== '?' ? mesLabel(mes) : 'Sin fecha';
