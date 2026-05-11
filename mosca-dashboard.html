@@ -363,7 +363,7 @@
 
 <!-- NAV -->
 <nav class="nav no-print">
-  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v1.2 · 2026-05-07</span></span>
+  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v1.3 · 2026-05-11</span></span>
   <div class="nav-tabs">
     <button class="nav-tab active" data-page="reporte" onclick="showPage('reporte')">Financiero</button>
     <button class="nav-tab" data-page="comercial" onclick="showPage('comercial')">Comercial</button>
@@ -1011,7 +1011,7 @@ function renderMovimientos() {
       ? r.fields['proveedor (de Proveedores)'].join(' ')
       : (r.fields['proveedor (de Proveedores)'] || '')).toLowerCase();
     return (p.includes('edgar') || (r.fields.concepto||'').toLowerCase().includes('edgar'))
-        && (r.fields.categoria || '') === 'Prestamos';
+        && (r.fields.categoria || '') === 'Prestamos Edgar';
   };
   const gastsOp = gasts.filter(r => !isEdgarCobertura(r));
 
