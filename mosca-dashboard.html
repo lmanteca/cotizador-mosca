@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mosca Taller — Dashboard v1.4</title>
+  <title>Mosca Taller — Dashboard v1.7</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     :root {
@@ -363,7 +363,7 @@
 
 <!-- NAV -->
 <nav class="nav no-print">
-  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v1.4 · 2026-05-13</span></span>
+  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v1.7 · 2026-05-13</span></span>
   <div class="nav-tabs">
     <button class="nav-tab active" data-page="reporte" onclick="showPage('reporte')">Financiero</button>
     <button class="nav-tab" data-page="comercial" onclick="showPage('comercial')">Comercial</button>
@@ -522,8 +522,8 @@
               <td style="padding:10px 12px;color:#444;line-height:1.5">Ingresos de clientes efectivamente cobrados en el período: señas y saldos pagados. No incluye capitalizaciones de socios ni Recuperos Edgar.</td>
             </tr>
             <tr style="border-bottom:1px solid var(--border)">
-              <td style="padding:10px 12px;font-weight:600;vertical-align:top;color:var(--text)">Ventas firmadas</td>
-              <td style="padding:10px 12px;color:#444;line-height:1.5">Monto total de los pedidos cuya seña fue cobrada en el período. Representa el compromiso comercial, independientemente de cuándo se cobre el saldo. Es la base del resultado económico (devengado).</td>
+              <td style="padding:10px 12px;font-weight:600;vertical-align:top;color:var(--text)">Ventas señadas</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5">Suma de <code>monto_total_pactado</code> de los pedidos cuya seña cayó en el período, excluyendo cancelados. Calculado desde los pedidos raw (no desde el rollup de Airtable), mismo criterio que la vista Comercial. Representa el compromiso comercial del período, independientemente de cuándo se cobre el saldo.</td>
             </tr>
             <tr style="border-bottom:1px solid var(--border)">
               <td style="padding:10px 12px;font-weight:600;vertical-align:top;color:var(--text)">Gastos (P&amp;L)</td>
@@ -535,11 +535,11 @@
             </tr>
             <tr style="border-bottom:1px solid var(--border)">
               <td style="padding:10px 12px;font-weight:600;vertical-align:top;color:var(--text)">Resultado económico</td>
-              <td style="padding:10px 12px;color:#444;line-height:1.5"><strong>Ventas firmadas − Gastos operativos.</strong> Mide la rentabilidad devengada del período, sin importar si el cliente pagó todo. Un resultado económico positivo con caja negativa indica que hay saldos pendientes de cobro.</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5"><strong>Ventas señadas − Gastos operativos.</strong> Mide la rentabilidad devengada del período, sin importar si el cliente pagó todo. Un resultado económico positivo con caja negativa indica que hay saldos pendientes de cobro.</td>
             </tr>
             <tr style="border-bottom:1px solid var(--border)">
               <td style="padding:10px 12px;font-weight:600;vertical-align:top;color:var(--text)">Por cobrar</td>
-              <td style="padding:10px 12px;color:#444;line-height:1.5">Suma de saldos pendientes en pedidos activos (no cancelados). Es deuda de clientes hacia Mosca, todavía no cobrada.</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5">Suma de saldos pendientes en pedidos activos (excluye cancelados). Es deuda de clientes hacia Mosca, todavía no cobrada. La vista "Por cobrar" muestra además cuántos pedidos están en producción, sin iniciar, o listos para entregar.</td>
             </tr>
             <tr style="border-bottom:1px solid var(--border)">
               <td style="padding:10px 12px;font-weight:600;vertical-align:top;color:var(--text)">Ticket promedio</td>
@@ -547,7 +547,7 @@
             </tr>
             <tr>
               <td style="padding:10px 12px;font-weight:600;vertical-align:top;color:var(--text)">Cobrabilidad 30/60/90d</td>
-              <td style="padding:10px 12px;color:#444;line-height:1.5">% de ventas firmadas en el período que se cobró dentro de 30, 60 o 90 días. A 60 y 90 días se aproxima sumando saldos cobrados en M+1 y M+2.</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5">% de ventas señadas en el período que se cobró dentro de 30, 60 o 90 días. A 60 y 90 días se aproxima sumando saldos cobrados en M+1 y M+2.</td>
             </tr>
           </tbody>
         </table>
@@ -681,9 +681,13 @@
               <td style="padding:8px 12px;font-weight:600;color:var(--text)">Capitalización</td>
               <td style="padding:8px 12px;color:#444">Aporte de socio. tipo_flujo = Capital. <strong>No va al P&amp;L.</strong></td>
             </tr>
-            <tr>
+            <tr style="border-bottom:1px solid var(--border)">
               <td style="padding:8px 12px;font-weight:600;color:var(--text)">Recupero capital</td>
               <td style="padding:8px 12px;color:#444">Devolución al socio. tipo_flujo = Capital. <strong>No va al P&amp;L.</strong></td>
+            </tr>
+            <tr>
+              <td style="padding:8px 12px;font-weight:600;color:var(--negative)">Cancelado</td>
+              <td style="padding:8px 12px;color:#444">Pedido cancelado. Excluido de todos los conteos activos: Ventas señadas, Por cobrar, tabla Comercial. Aparece como badge informativo (tachado) en la vista Comercial del período sin sumar a ningún total.</td>
             </tr>
           </tbody>
         </table>
@@ -975,17 +979,25 @@ function renderKPIs() {
     : allData.gastos;
   const gastosOpKpi      = gastosRawKpi.filter(r => !isEdgarCobertura(r));
   const gastosOpTotalKpi = gastosOpKpi.reduce((s,r) => s + (r.fields.monto||0), 0);
-  const cobros           = f.Cobros || 0;
-  const resFinanciero    = cobros - gastosOpTotalKpi;
-  const resEconomico     = (f.Ventas || 0) - gastosOpTotalKpi;
+  // Ventas señadas: desde raw pedidos, excl. cancelados, filtrados por fecha de seña
+  const mesPedidos = res.fields.Mes || '';
+  const pedidosVentas = allData.pedidos.filter(r =>
+    (r.fields.estado || '') !== 'Cancelado' &&
+    (!mesPedidos || (r.fields.seña || '').slice(0, 7) === mesPedidos)
+  );
+  const ventasMonto = pedidosVentas.reduce((s,r) => s + (r.fields.monto_total_pactado || r.fields.precio_pactado || 0), 0);
+  const ventasCount = pedidosVentas.length;
+  const cobros        = f.Cobros || 0;
+  const resFinanciero = cobros - gastosOpTotalKpi;
+  const resEconomico  = ventasMonto - gastosOpTotalKpi;
 
   // Orden natural: Ventas → Cobros → Gastos → Res.Caja → Res.Econ → Por cobrar → Ticket
   const kpis = [
-    { label: 'Ventas firmadas',    value: f.Ventas,                                    format: fmt,     sub: `${f.QVentas || 0} pedidos` },
+    { label: 'Ventas señadas',     value: ventasMonto,                                 format: fmt,     sub: `${ventasCount} pedidos` },
     { label: 'Cobros del mes',     value: cobros,                                      format: fmtFull, sub: 'Ingresos netos' },
     { label: 'Gastos',             value: -gastosOpTotalKpi,                           format: fmtFull, forceClass: 'negative' },
     { label: 'Resultado caja',     value: resFinanciero,                               format: fmtFull, sub: 'Cobros − Gastos' },
-    { label: 'Res. Económico',    value: resEconomico,                                format: fmtFull, sub: 'Ventas − Gastos' },
+    { label: 'Res. Económico',    value: resEconomico,                                format: fmtFull, sub: 'Ventas señadas − Gastos' },
     { label: 'Por cobrar',         value: f.PorCobrar,                                 format: fmt,     sub: 'Saldos pendientes' },
     { label: 'Ticket promedio',    value: isSpecial(f.Ticket) ? null : f.Ticket,       format: fmt },
   ];
@@ -1059,15 +1071,15 @@ function renderKPIs() {
       <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#e57373;margin-right:4px"></span>Variables</span>
       <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#ef9a9a;margin-right:4px"></span>Única vez</span>
     </div>
-    ${buildInsight(res)}
+    ${buildInsight(res, ventasMonto)}
   `;
 }
 
-function buildInsight(res) {
+function buildInsight(res, ventasMonto) {
   if (!res) return '';
   const f = res.fields;
   const cobros    = f.Cobros  || 0;
-  const ventas    = f.Ventas  || 0;
+  const ventas    = ventasMonto || 0;
   const porCobrar = f.PorCobrar || 0;
   // Gastos P&L desde raw data (excl. Prestamos Edgar)
   const gastosRawI = selectedMonth
@@ -1092,7 +1104,7 @@ function buildInsight(res) {
 
   // Gap caja vs devengado
   const gap = resE - resF;
-  if (gap > 10000) lines.push(`Hay ${fmtFull(gap)} en ventas firmadas que todavía no entraron a caja.`);
+  if (gap > 10000) lines.push(`Hay ${fmtFull(gap)} en ventas señadas que todavía no entraron a caja.`);
   else if (gap < -10000) lines.push(`Se cobró más de lo vendido este mes — probable cobro de saldos de meses anteriores.`);
 
   // Por cobrar
@@ -1123,13 +1135,23 @@ function renderEvolucion() {
     else if (r.fields.tipo === 'Variable') gastosOpByMes[mes].vars += m;
   });
 
+  // Ventas señadas por mes: desde raw pedidos, excl. cancelados
+  const ventasByMes = {};
+  allData.pedidos.filter(r => (r.fields.estado || '') !== 'Cancelado').forEach(r => {
+    const mes = (r.fields.seña || '').slice(0, 7);
+    if (!mes) return;
+    if (!ventasByMes[mes]) ventasByMes[mes] = { total: 0, count: 0 };
+    ventasByMes[mes].total += r.fields.monto_total_pactado || r.fields.precio_pactado || 0;
+    ventasByMes[mes].count += 1;
+  });
+
   const labels     = sorted.map(r => mesLabel(r.fields.Mes));
   const cobros     = sorted.map(r => r.fields.Cobros || 0);
-  const ventas     = sorted.map(r => r.fields.Ventas || 0);
+  const ventas     = sorted.map(r => (ventasByMes[r.fields.Mes] || {}).total || 0);
   const gastFijos  = sorted.map(r => (gastosOpByMes[r.fields.Mes] || {}).fijos || 0);
   const gastVars   = sorted.map(r => (gastosOpByMes[r.fields.Mes] || {}).vars  || 0);
   const resFinanc  = sorted.map(r => (r.fields.Cobros||0) - ((gastosOpByMes[r.fields.Mes]||{}).total||0));
-  const resEcon    = sorted.map(r => (r.fields.Ventas||0) - ((gastosOpByMes[r.fields.Mes]||{}).total||0));
+  const resEcon    = sorted.map(r => ((ventasByMes[r.fields.Mes]||{}).total||0) - ((gastosOpByMes[r.fields.Mes]||{}).total||0));
   const capital    = sorted.map(r => r.fields.Capitalizacion || 0);
 
   if (chartEvol) chartEvol.destroy();
@@ -1191,22 +1213,24 @@ function renderEvolucion() {
   const makeRow = r => {
     const f    = r.fields;
     const gOp  = gastosOpByMes[f.Mes] || {};
+    const vMes = (ventasByMes[f.Mes] || {}).total || 0;
+    const qMes = (ventasByMes[f.Mes] || {}).count || 0;
     const gFij = gOp.fijos || 0;
     const gVar = gOp.vars  || 0;
     const resF = (f.Cobros||0) - (gOp.total||0);
-    const resE = (f.Ventas||0) - (gOp.total||0);
+    const resE = vMes - (gOp.total||0);
     const cap  = f.Capitalizacion || 0;
     return `<tr>
       <td><strong>${mesLabel(f.Mes)}</strong></td>
       <td class="right mono">${fmtFull(f.Cobros)}</td>
       <td class="right mono ${signClass(cap)}">${cap !== 0 ? fmtFull(cap) : '—'}</td>
-      <td class="right mono">${fmtFull(f.Ventas)}</td>
+      <td class="right mono">${fmtFull(vMes)}</td>
       <td class="right mono negative">${fmtFull(gFij)}</td>
       <td class="right mono negative">${fmtFull(gVar)}</td>
       <td class="right mono ${signClass(resF)}">${fmtFull(resF)}</td>
       <td class="right mono ${signClass(resE)}">${fmtFull(resE)}</td>
       <td class="right mono blue">${fmtFull(f.PorCobrar)}</td>
-      <td class="right">${f.QVentas || 0}</td>
+      <td class="right">${qMes}</td>
     </tr>`;
   };
 
@@ -1214,7 +1238,7 @@ function renderEvolucion() {
 
   Object.entries(byYear).sort((a,b) => b[0].localeCompare(a[0])).forEach(([year, rows]) => {
     const totalC = rows.reduce((s,r) => s+(r.fields.Cobros||0), 0);
-    const totalV = rows.reduce((s,r) => s+(r.fields.Ventas||0), 0);
+    const totalV = rows.reduce((s,r) => s+((ventasByMes[r.fields.Mes]||{}).total||0), 0);
     const totalG = rows.reduce((s,r) => s+((gastosOpByMes[r.fields.Mes]||{}).total||0), 0);
     html += `<tr style="cursor:pointer;background:#ece8e3" onclick="toggleYearGroup('y${year}')">
       <td colspan="10" style="padding:8px 10px;font-size:12px;font-weight:600;color:var(--accent)">
@@ -1697,7 +1721,9 @@ function renderComercial() {
     if (meta) meta.textContent = 'Histórico';
   }
 
-  // 2. Quitar cancelados
+  // 2. Capturar cancelados (para mostrar como info, no para conteos activos)
+  const cancelados = pedidos.filter(r => (r.fields.estado || '') === 'Cancelado');
+  const canceladosMonto = cancelados.reduce((s,r) => s + (r.fields.monto_total_pactado||r.fields.precio_pactado||0), 0);
   pedidos = pedidos.filter(r => (r.fields.estado || '') !== 'Cancelado');
 
   // 3. Obtener estados únicos para el dropdown
@@ -1793,7 +1819,10 @@ function renderComercial() {
       <div class="kpi"><div class="kpi-label">Monto total</div><div class="kpi-value positive">${fmt(totalVentas)}</div></div>
       <div class="kpi"><div class="kpi-label">Ticket promedio</div><div class="kpi-value neutral">${fmt(ticket)}</div></div>
     </div>
-    <div style="margin-bottom:14px">${estadoTags}</div>
+    <div style="margin-bottom:14px">
+      ${estadoTags}
+      ${cancelados.length > 0 ? `<span class="tag tag-gray" style="margin-left:4px;text-decoration:line-through;opacity:.7">Cancelados: ${cancelados.length} · ${fmtFull(canceladosMonto)}</span>` : ''}
+    </div>
     <div class="table-wrap">
       <table>
         <thead><tr>
@@ -2083,8 +2112,9 @@ function renderPorCobrar() {
   const produccionById = {};
   allData.produccion.forEach(r => { produccionById[r.id] = r.fields; });
 
-  // Sort by fecha_entrega asc (nulls last), then by saldo desc
-  const conSaldo = allData.pedidos.filter(r => (r.fields.saldo||0) > 0)
+  // Sort by fecha_entrega asc (nulls last), then by saldo desc — excluir cancelados
+  const conSaldo = allData.pedidos
+    .filter(r => (r.fields.saldo||0) > 0 && (r.fields.estado || '') !== 'Cancelado')
     .sort((a,b) => {
       const da = a.fields.fecha_entrega || 'zzz';
       const db = b.fields.fecha_entrega || 'zzz';
@@ -2094,6 +2124,20 @@ function renderPorCobrar() {
 
   const totalPorCobrar = conSaldo.reduce((s,r) => s + (r.fields.saldo||0), 0);
   if (meta) meta.textContent = `${conSaldo.length} pedidos · ${fmtFull(totalPorCobrar)} total`;
+
+  // Breakdown por estado de producción
+  let pcEnProd = 0, pcListos = 0, pcSinIniciar = 0;
+  conSaldo.forEach(r => {
+    const prodRecs = (r.fields.produccion || []).map(id => produccionById[id]).filter(Boolean);
+    if (prodRecs.length === 0) { pcSinIniciar++; return; }
+    const buckets   = prodRecs.map(p => getKanbanBucket(p.estado || ''));
+    const hayActivo = buckets.some(b => b === 'estructura' || b === 'terminacion');
+    const hayListo  = buckets.some(b => b === 'paraentregar');
+    const inerte    = buckets.every(b => b === 'backlog' || b === 'entregado');
+    if (hayActivo)      pcEnProd++;
+    else if (hayListo)  pcListos++;
+    else                pcSinIniciar++; // solo backlog o entregado
+  });
 
   if (conSaldo.length === 0) {
     document.getElementById('contenidoPorCobrar').innerHTML =
@@ -2146,6 +2190,9 @@ function renderPorCobrar() {
     <div class="kpi-grid" style="margin-bottom:16px">
       <div class="kpi"><div class="kpi-label">Pedidos con saldo</div><div class="kpi-value neutral">${conSaldo.length}</div></div>
       <div class="kpi"><div class="kpi-label">Total por cobrar</div><div class="kpi-value blue">${fmt(totalPorCobrar)}</div></div>
+      <div class="kpi"><div class="kpi-label">En producción</div><div class="kpi-value" style="color:var(--amber)">${pcEnProd}</div><div class="kpi-sub">estructura · terminación</div></div>
+      <div class="kpi"><div class="kpi-label">Sin iniciar</div><div class="kpi-value neutral">${pcSinIniciar}</div><div class="kpi-sub">sin ficha o en backlog</div></div>
+      ${pcListos > 0 ? `<div class="kpi"><div class="kpi-label">Listos p/entregar</div><div class="kpi-value blue">${pcListos}</div><div class="kpi-sub">para entregar</div></div>` : ''}
     </div>
     <div class="table-wrap">
       <table>
