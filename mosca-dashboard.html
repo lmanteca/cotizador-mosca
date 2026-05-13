@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mosca Taller — Dashboard v1.2</title>
+  <title>Mosca Taller — Dashboard v1.4</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     :root {
@@ -363,12 +363,13 @@
 
 <!-- NAV -->
 <nav class="nav no-print">
-  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v1.3 · 2026-05-11</span></span>
+  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v1.4 · 2026-05-13</span></span>
   <div class="nav-tabs">
     <button class="nav-tab active" data-page="reporte" onclick="showPage('reporte')">Financiero</button>
     <button class="nav-tab" data-page="comercial" onclick="showPage('comercial')">Comercial</button>
     <button class="nav-tab" data-page="produccion" onclick="showPage('produccion')">Producción</button>
     <button class="nav-tab" data-page="edgar" onclick="showPage('edgar')">Edgar</button>
+    <button class="nav-tab" data-page="glosario" onclick="showPage('glosario')">Glosario</button>
   </div>
   <div class="nav-actions">
     <button class="btn-nav" onclick="loadData()">↻ Actualizar</button>
@@ -500,6 +501,217 @@
     <button onclick="window.print()" class="btn-nav">⎙ Imprimir</button>
   </div>
   <div id="fichasInner"></div>
+</div>
+
+<!-- PÁGINA: GLOSARIO -->
+<div id="page-glosario" class="page">
+  <div class="content" style="max-width:860px">
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Glosario y reglas de negocio</span>
+        <span class="section-meta">Referencia del dashboard</span>
+      </div>
+
+      <!-- BLOQUE: MÉTRICAS FINANCIERAS -->
+      <div style="margin-bottom:28px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);margin-bottom:14px;padding-bottom:6px;border-bottom:2px solid var(--accent)">Métricas financieras</div>
+        <table style="width:100%;font-size:13px;border-collapse:collapse">
+          <tbody>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:10px 12px;font-weight:600;width:200px;vertical-align:top;color:var(--text)">Cobros del mes</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5">Ingresos de clientes efectivamente cobrados en el período: señas y saldos pagados. No incluye capitalizaciones de socios ni Recuperos Edgar.</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:10px 12px;font-weight:600;vertical-align:top;color:var(--text)">Ventas firmadas</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5">Monto total de los pedidos cuya seña fue cobrada en el período. Representa el compromiso comercial, independientemente de cuándo se cobre el saldo. Es la base del resultado económico (devengado).</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:10px 12px;font-weight:600;vertical-align:top;color:var(--text)">Gastos (P&amp;L)</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5">Gastos operativos del período. <strong>Excluyen Prestamos Edgar</strong> (esos van a la CC de Edgar, no al resultado operativo). Incluyen Fijos, Variables y Única vez.</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:10px 12px;font-weight:600;vertical-align:top;color:var(--text)">Resultado caja</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5"><strong>Cobros − Gastos operativos.</strong> Mide el flujo real de efectivo: cuánta plata entró vs. cuánta salió. Puede diferir del resultado económico si hay ventas cobradas parcialmente o saldos de meses anteriores.</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:10px 12px;font-weight:600;vertical-align:top;color:var(--text)">Resultado económico</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5"><strong>Ventas firmadas − Gastos operativos.</strong> Mide la rentabilidad devengada del período, sin importar si el cliente pagó todo. Un resultado económico positivo con caja negativa indica que hay saldos pendientes de cobro.</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:10px 12px;font-weight:600;vertical-align:top;color:var(--text)">Por cobrar</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5">Suma de saldos pendientes en pedidos activos (no cancelados). Es deuda de clientes hacia Mosca, todavía no cobrada.</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:10px 12px;font-weight:600;vertical-align:top;color:var(--text)">Ticket promedio</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5">Cobros del período dividido por la cantidad de señas. Se usa la seña como proxy de un pedido nuevo (1 seña = 1 pedido).</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 12px;font-weight:600;vertical-align:top;color:var(--text)">Cobrabilidad 30/60/90d</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5">% de ventas firmadas en el período que se cobró dentro de 30, 60 o 90 días. A 60 y 90 días se aproxima sumando saldos cobrados en M+1 y M+2.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- BLOQUE: TIPOS DE GASTOS -->
+      <div style="margin-bottom:28px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);margin-bottom:14px;padding-bottom:6px;border-bottom:2px solid var(--accent)">Tipos de gastos</div>
+        <table style="width:100%;font-size:13px;border-collapse:collapse">
+          <tbody>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:10px 12px;font-weight:600;width:200px;vertical-align:top;color:var(--text)">Fijo</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5">Gasto recurrente mensual predecible: alquiler, servicios, sueldo fijo. Marca el piso de gastos que Mosca debe cubrir aunque no haya ventas. Los cobros del mes se evalúan contra este piso.</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:10px 12px;font-weight:600;vertical-align:top;color:var(--text)">Variable</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5">Gasto ligado a producción o ventas: materiales, mano de obra por pedido, insumos. Varía según el volumen de trabajo.</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:10px 12px;font-weight:600;vertical-align:top;color:var(--text)">Única vez</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5">Gasto puntual no recurrente: herramientas, inversiones, reparaciones. No representa una obligación mensual.</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 12px;font-weight:600;vertical-align:top;color:var(--negative)">Prestamos Edgar</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5"><strong>No impactan el P&amp;L.</strong> Son financiamientos que Mosca hace a Edgar: alquiler de su depto/taller, luz, adelantos en efectivo. Van exclusivamente a la Cuenta Corriente de Edgar. Cuando Edgar compensa con trabajo o devuelve efectivo, se registra como Recupero Edgar.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- BLOQUE: CIRCUITO EDGAR -->
+      <div style="margin-bottom:28px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);margin-bottom:14px;padding-bottom:6px;border-bottom:2px solid var(--accent)">Circuito Edgar — regla obligatoria</div>
+        <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:5px;padding:14px 16px;margin-bottom:14px;font-size:13px;line-height:1.6;color:#5d4037">
+          <strong>Cuando Edgar entrega trabajo, siempre se crean DOS registros simultáneos. No uno sin el otro.</strong>
+        </div>
+        <table style="width:100%;font-size:13px;border-collapse:collapse">
+          <tbody>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:10px 12px;font-weight:600;width:200px;vertical-align:top;color:var(--positive)">Recupero Edgar (Ingreso)</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5">
+                Se registra en tabla <strong>Ingresos</strong>. Concepto: "Recupero Edgar". tipo_flujo: <strong>Capital</strong> (cancela deuda en CC, no es ingreso operativo). La nota describe el mueble o trabajo. Cancela el saldo que Mosca le debe a Edgar en la cuenta corriente.
+              </td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:10px 12px;font-weight:600;vertical-align:top;color:var(--negative)">Mano de Obra Edgar (Gasto)</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5">
+                Se registra en tabla <strong>Gastos</strong>. Categoría: "Mano de Obra". Tipo: Variable. Proveedor: Edgar. Es el costo real que <strong>sí impacta el P&amp;L operativo</strong>. Sin este registro el resultado quedaría inflado.
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:10px 12px;font-weight:600;vertical-align:top;color:var(--muted)">Por qué dos registros</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5">El Recupero cancela la deuda de la CC de Edgar (movimiento financiero). El Gasto MdO es el costo económico que impacta el P&amp;L. Son dos lados del mismo movimiento. Crear solo uno deja el P&amp;L o la CC incorrectos.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- BLOQUE: SOCIOS Y CAPITAL -->
+      <div style="margin-bottom:28px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);margin-bottom:14px;padding-bottom:6px;border-bottom:2px solid var(--accent)">Socios y capital</div>
+        <table style="width:100%;font-size:13px;border-collapse:collapse">
+          <tbody>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:10px 12px;font-weight:600;width:200px;vertical-align:top;color:var(--text)">Capitalización</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5">Aporte de dinero de un socio (Lisandro o Javier) al negocio. tipo_flujo = "Capital". <strong>No es ingreso operativo</strong>: no se incluye en cobros del mes ni en el P&amp;L. Aparece en la solapa Financiero &gt; Situación de socios.</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:10px 12px;font-weight:600;vertical-align:top;color:var(--text)">Recupero capital</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5">Devolución de capital al socio. tipo_flujo = "Capital". No es gasto operativo. Reduce la deuda del negocio con el socio.</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:10px 12px;font-weight:600;vertical-align:top;color:var(--text)">Posición neta del socio</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5">Capitalizaciones menos recuperos acumulados. <strong>Negativo = el negocio le debe al socio.</strong> Positivo = el socio retiró más de lo que puso.</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 12px;font-weight:600;vertical-align:top;color:var(--text)">tipo_flujo</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5">Clasificación de cada ingreso. "Operativo" = cobro de cliente (seña, saldo, venta directa). "Capital" = movimiento de socio o Edgar. Solo los ingresos Operativos van al P&amp;L y a los cobros del mes.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- BLOQUE: CC EDGAR -->
+      <div style="margin-bottom:28px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);margin-bottom:14px;padding-bottom:6px;border-bottom:2px solid var(--accent)">Cuenta corriente Edgar (CC)</div>
+        <table style="width:100%;font-size:13px;border-collapse:collapse">
+          <tbody>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:10px 12px;font-weight:600;width:200px;vertical-align:top;color:var(--negative)">DEBE (Mosca pone)</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5">Gastos cat=Prestamos Edgar: alquiler depto, luz, taller, adelantos en efectivo. Aumentan la deuda de Edgar con Mosca.</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:10px 12px;font-weight:600;vertical-align:top;color:var(--positive)">HABER (Edgar da)</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5">Recupero Edgar con metodo_cobro=laburo (trabajo entregado) o metodo_cobro=efectivo (cash). Premios por pedido (campo premio_edgar). Reducen la deuda de Edgar.</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:10px 12px;font-weight:600;vertical-align:top;color:var(--text)">Saldo CC</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5">HABER − DEBE acumulado histórico. <strong>Negativo = Edgar le debe trabajo o cash a Mosca. Positivo = Mosca le debe cash a Edgar.</strong></td>
+            </tr>
+            <tr>
+              <td style="padding:10px 12px;font-weight:600;vertical-align:top;color:var(--text)">Premio Edgar</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5">Bonus acordado por pedido, definido en la tabla Pedidos (campo premio_edgar). Se acredita en la CC cuando el pedido no está cancelado. No es un gasto del P&amp;L, es una obligación financiera con Edgar.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- BLOQUE: CONCEPTOS DE INGRESOS -->
+      <div style="margin-bottom:28px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);margin-bottom:14px;padding-bottom:6px;border-bottom:2px solid var(--accent)">Conceptos de ingresos (Single Select)</div>
+        <table style="width:100%;font-size:13px;border-collapse:collapse">
+          <tbody>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:8px 12px;font-weight:600;width:200px;color:var(--text)">Seña</td>
+              <td style="padding:8px 12px;color:#444">Anticipo del cliente al confirmar el pedido. Indica una venta nueva firmada.</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:8px 12px;font-weight:600;color:var(--text)">Saldo</td>
+              <td style="padding:8px 12px;color:#444">Pago final del cliente al recibir el mueble. Cierra la deuda del pedido.</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:8px 12px;font-weight:600;color:var(--text)">Venta</td>
+              <td style="padding:8px 12px;color:#444">Pago único sin seña previa (venta directa o mostrador).</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:8px 12px;font-weight:600;color:var(--text)">Recupero Edgar</td>
+              <td style="padding:8px 12px;color:#444">Cancelación de deuda de Edgar hacia Mosca. tipo_flujo = Capital. <strong>No va al P&amp;L.</strong></td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:8px 12px;font-weight:600;color:var(--text)">Capitalización</td>
+              <td style="padding:8px 12px;color:#444">Aporte de socio. tipo_flujo = Capital. <strong>No va al P&amp;L.</strong></td>
+            </tr>
+            <tr>
+              <td style="padding:8px 12px;font-weight:600;color:var(--text)">Recupero capital</td>
+              <td style="padding:8px 12px;color:#444">Devolución al socio. tipo_flujo = Capital. <strong>No va al P&amp;L.</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- BLOQUE: REGLAS ESPECIALES -->
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);margin-bottom:14px;padding-bottom:6px;border-bottom:2px solid var(--accent)">Reglas especiales del parseo / webhook</div>
+        <table style="width:100%;font-size:13px;border-collapse:collapse">
+          <tbody>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:10px 12px;font-weight:600;width:200px;vertical-align:top;color:var(--text)">Alias Mosca Taller</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5">CBU 4530000800019697462992 (Naranja X Lisandro) y alias mosca.taller.muebles se parsean siempre como Ingreso Operativo de cliente, <strong>nunca como Capitalización</strong>, aunque el nombre del titular sea Lisandro.</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:10px 12px;font-weight:600;vertical-align:top;color:var(--text)">Mapa Resultados</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5">El webhook asigna cada movimiento al registro de Resultados correcto según el mes. El mapa está hardcodeado en el HTML del cotizador y en el prompt de n8n (cubre 2025-06 a 2026-04).</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 12px;font-weight:600;vertical-align:top;color:var(--text)">Gasto MdO Edgar ≠ CC Edgar</td>
+              <td style="padding:10px 12px;color:#444;line-height:1.5">Los gastos de Mano de Obra con proveedor=Edgar son costos del P&amp;L (aparecen en Movimientos). Los Prestamos Edgar son CC (aparecen solo en la solapa Edgar). Incluir ambos en el mismo lado duplicaría el monto.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
 </div>
 
 <!-- PÁGINA: EDGAR -->
@@ -727,6 +939,16 @@ function onMonthChange() {
     : 'Mosca Taller — Reporte';
 }
 
+// ─── REGLAS DE NEGOCIO ──────────────────────────────────────────────────────
+// Gastos cat=Prestamos Edgar → van a CC Edgar, NO al P&L operativo
+const isEdgarCobertura = r => {
+  const p = (Array.isArray(r.fields['proveedor (de Proveedores)'])
+    ? r.fields['proveedor (de Proveedores)'].join(' ')
+    : (r.fields['proveedor (de Proveedores)'] || '')).toLowerCase();
+  return (p.includes('edgar') || (r.fields.concepto||'').toLowerCase().includes('edgar'))
+      && (r.fields.categoria || '') === 'Prestamos Edgar';
+};
+
 // ─── KPIs ────────────────────────────────────────────────────────────────────
 function renderKPIs() {
   const meta = document.getElementById('kpiMeta');
@@ -747,14 +969,21 @@ function renderKPIs() {
     return;
   }
   const f = res.fields;
-  const resFinanciero = f.Resultado || 0;
-  const resEconomico  = (f.Ventas || 0) - (f.Gastos || 0);
+  // Gastos P&L: desde raw data, excluyendo Prestamos Edgar (esos van a CC Edgar)
+  const gastosRawKpi  = selectedMonth
+    ? allData.gastos.filter(r => r.fields['mes-a'] === selectedMonth)
+    : allData.gastos;
+  const gastosOpKpi      = gastosRawKpi.filter(r => !isEdgarCobertura(r));
+  const gastosOpTotalKpi = gastosOpKpi.reduce((s,r) => s + (r.fields.monto||0), 0);
+  const cobros           = f.Cobros || 0;
+  const resFinanciero    = cobros - gastosOpTotalKpi;
+  const resEconomico     = (f.Ventas || 0) - gastosOpTotalKpi;
 
   // Orden natural: Ventas → Cobros → Gastos → Res.Caja → Res.Econ → Por cobrar → Ticket
   const kpis = [
     { label: 'Ventas firmadas',    value: f.Ventas,                                    format: fmt,     sub: `${f.QVentas || 0} pedidos` },
-    { label: 'Cobros del mes',     value: f.Cobros,                                    format: fmtFull, sub: 'Ingresos netos' },
-    { label: 'Gastos',             value: -(f.Gastos || 0),                            format: fmtFull, forceClass: 'negative' },
+    { label: 'Cobros del mes',     value: cobros,                                      format: fmtFull, sub: 'Ingresos netos' },
+    { label: 'Gastos',             value: -gastosOpTotalKpi,                           format: fmtFull, forceClass: 'negative' },
     { label: 'Resultado caja',     value: resFinanciero,                               format: fmtFull, sub: 'Cobros − Gastos' },
     { label: 'Res. Económico',    value: resEconomico,                                format: fmtFull, sub: 'Ventas − Gastos' },
     { label: 'Por cobrar',         value: f.PorCobrar,                                 format: fmt,     sub: 'Saldos pendientes' },
@@ -771,12 +1000,11 @@ function renderKPIs() {
     </div>`;
   }).join('');
 
-  // Gastos breakdown (Fijos / Variables / Única vez)
-  const fijos     = f['Gastos Fijos']     || 0;
-  const variables = f['Gastos Variables'] || 0;
-  const unicaVez  = f['Gastos Unica Vez'] || 0;
-  const totalG    = f.Gastos || 0;
-  const cobros    = f.Cobros || 0;
+  // Gastos breakdown (Fijos / Variables / Única vez) — desde raw data, excl. Prestamos Edgar
+  const fijos       = gastosOpKpi.filter(r => r.fields.tipo === 'Fijo').reduce((s,r) => s+(r.fields.monto||0), 0);
+  const variables   = gastosOpKpi.filter(r => r.fields.tipo === 'Variable').reduce((s,r) => s+(r.fields.monto||0), 0);
+  const unicaVez    = Math.max(gastosOpTotalKpi - fijos - variables, 0);
+  const totalG      = gastosOpTotalKpi;
   const cubrenFijos = cobros >= fijos;
 
   // Gastos sin catalogar del período
@@ -838,13 +1066,18 @@ function renderKPIs() {
 function buildInsight(res) {
   if (!res) return '';
   const f = res.fields;
-  const cobros   = f.Cobros   || 0;
-  const gastos   = f.Gastos   || 0;
-  const ventas   = f.Ventas   || 0;
-  const fijos    = f['Gastos Fijos'] || 0;
-  const resF     = f.Resultado || 0;
-  const resE     = ventas - gastos;
-  const porCobrar= f.PorCobrar || 0;
+  const cobros    = f.Cobros  || 0;
+  const ventas    = f.Ventas  || 0;
+  const porCobrar = f.PorCobrar || 0;
+  // Gastos P&L desde raw data (excl. Prestamos Edgar)
+  const gastosRawI = selectedMonth
+    ? allData.gastos.filter(r => r.fields['mes-a'] === selectedMonth)
+    : allData.gastos;
+  const gastosOpI  = gastosRawI.filter(r => !isEdgarCobertura(r));
+  const gastos     = gastosOpI.reduce((s,r) => s + (r.fields.monto||0), 0);
+  const fijos      = gastosOpI.filter(r => r.fields.tipo === 'Fijo').reduce((s,r) => s+(r.fields.monto||0), 0);
+  const resF       = cobros - gastos;
+  const resE       = ventas - gastos;
 
   const lines = [];
 
@@ -878,13 +1111,25 @@ function renderEvolucion() {
   const sorted     = [...allData.resultados]
     .filter(r => (r.fields.Mes || '') <= todayYM)
     .sort((a,b) => (a.fields.Mes||'').localeCompare(b.fields.Mes||''));
+  // Gastos operativos por mes: desde raw data, excluyen Prestamos Edgar
+  const gastosOpByMes = {};
+  allData.gastos.filter(r => !isEdgarCobertura(r)).forEach(r => {
+    const mes = r.fields['mes-a'] || '';
+    if (!mes) return;
+    if (!gastosOpByMes[mes]) gastosOpByMes[mes] = { total: 0, fijos: 0, vars: 0 };
+    const m = r.fields.monto || 0;
+    gastosOpByMes[mes].total += m;
+    if (r.fields.tipo === 'Fijo')     gastosOpByMes[mes].fijos += m;
+    else if (r.fields.tipo === 'Variable') gastosOpByMes[mes].vars += m;
+  });
+
   const labels     = sorted.map(r => mesLabel(r.fields.Mes));
   const cobros     = sorted.map(r => r.fields.Cobros || 0);
   const ventas     = sorted.map(r => r.fields.Ventas || 0);
-  const gastFijos  = sorted.map(r => r.fields['Gastos Fijos']     || 0);
-  const gastVars   = sorted.map(r => r.fields['Gastos Variables'] || 0);
-  const resFinanc  = sorted.map(r => r.fields.Resultado || 0);
-  const resEcon    = sorted.map(r => (r.fields.Ventas||0) - (r.fields.Gastos||0));
+  const gastFijos  = sorted.map(r => (gastosOpByMes[r.fields.Mes] || {}).fijos || 0);
+  const gastVars   = sorted.map(r => (gastosOpByMes[r.fields.Mes] || {}).vars  || 0);
+  const resFinanc  = sorted.map(r => (r.fields.Cobros||0) - ((gastosOpByMes[r.fields.Mes]||{}).total||0));
+  const resEcon    = sorted.map(r => (r.fields.Ventas||0) - ((gastosOpByMes[r.fields.Mes]||{}).total||0));
   const capital    = sorted.map(r => r.fields.Capitalizacion || 0);
 
   if (chartEvol) chartEvol.destroy();
@@ -944,12 +1189,13 @@ function renderEvolucion() {
   });
 
   const makeRow = r => {
-    const f = r.fields;
-    const resF  = f.Resultado || 0;
-    const resE  = (f.Ventas||0) - (f.Gastos||0);
-    const gFij  = f['Gastos Fijos']     || 0;
-    const gVar  = f['Gastos Variables'] || 0;
-    const cap = f.Capitalizacion || 0;
+    const f    = r.fields;
+    const gOp  = gastosOpByMes[f.Mes] || {};
+    const gFij = gOp.fijos || 0;
+    const gVar = gOp.vars  || 0;
+    const resF = (f.Cobros||0) - (gOp.total||0);
+    const resE = (f.Ventas||0) - (gOp.total||0);
+    const cap  = f.Capitalizacion || 0;
     return `<tr>
       <td><strong>${mesLabel(f.Mes)}</strong></td>
       <td class="right mono">${fmtFull(f.Cobros)}</td>
@@ -969,7 +1215,7 @@ function renderEvolucion() {
   Object.entries(byYear).sort((a,b) => b[0].localeCompare(a[0])).forEach(([year, rows]) => {
     const totalC = rows.reduce((s,r) => s+(r.fields.Cobros||0), 0);
     const totalV = rows.reduce((s,r) => s+(r.fields.Ventas||0), 0);
-    const totalG = rows.reduce((s,r) => s+(r.fields.Gastos||0), 0);
+    const totalG = rows.reduce((s,r) => s+((gastosOpByMes[r.fields.Mes]||{}).total||0), 0);
     html += `<tr style="cursor:pointer;background:#ece8e3" onclick="toggleYearGroup('y${year}')">
       <td colspan="10" style="padding:8px 10px;font-size:12px;font-weight:600;color:var(--accent)">
         <span id="yr-arrow-${year}">▶</span> ${year} — ${rows.length} meses &nbsp;·&nbsp; Cobros ${fmtFull(totalC)} &nbsp;·&nbsp; Ventas ${fmtFull(totalV)} &nbsp;·&nbsp; Gastos ${fmtFull(totalG)}
@@ -1005,14 +1251,7 @@ function renderMovimientos() {
     gasts = gasts.filter(r => r.fields['mes-a'] === selectedMonth);
   }
 
-  // Gastos Edgar cat=Prestamos → solo van a cuenta corriente Edgar, NO al P&L operativo
-  const isEdgarCobertura = r => {
-    const p = (Array.isArray(r.fields['proveedor (de Proveedores)'])
-      ? r.fields['proveedor (de Proveedores)'].join(' ')
-      : (r.fields['proveedor (de Proveedores)'] || '')).toLowerCase();
-    return (p.includes('edgar') || (r.fields.concepto||'').toLowerCase().includes('edgar'))
-        && (r.fields.categoria || '') === 'Prestamos Edgar';
-  };
+  // Gastos P&L: excluir Prestamos Edgar (van a CC Edgar, no al P&L)
   const gastsOp = gasts.filter(r => !isEdgarCobertura(r));
 
   // Ingresos: separar cobros de clientes de movimientos de capital/internos
@@ -1037,7 +1276,7 @@ function renderMovimientos() {
       subtipo:  r.fields.tipo_flujo || 'Operativo',
       categoria: r.fields.concepto || '—',
     })),
-    ...gasts.map(r => {
+    ...gastsOp.map(r => {
       const cat = normCatG(r.fields.categoria || 'No Clasificados');
       return {
         fecha:    r.fields.fecha || '',
@@ -1127,7 +1366,7 @@ function renderMovimientos() {
   }).join('') || '<div style="color:#bbb;font-size:12px">Sin cobros de clientes</div>';
 
   // Filtros
-  const gastCatsF = [...new Set(gasts.map(r => normCatG(r.fields.categoria || 'No Clasificados')))].sort();
+  const gastCatsF = [...new Set(gastsOp.map(r => normCatG(r.fields.categoria || 'No Clasificados')))].sort();
   const ingCatsF  = [...new Set(ingsClientes.map(r => r.fields.concepto || r.fields.tipo_flujo || 'No Clasificados'))].sort();
   const visibleCats = movFilter.tipo === 'I' ? ingCatsF
                     : movFilter.tipo === 'G' ? gastCatsF
@@ -1164,7 +1403,7 @@ function renderMovimientos() {
           <td><span class="tag ${stCls}" style="font-size:10px">${r.subtipo}</span></td>
           <td style="color:#666;font-size:12px">${r.categoria}</td>
           <td>${r.concepto}</td>
-          <td style="color:#999;font-size:12px;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.nota}</td>
+          <td style="color:#666;font-size:12px;max-width:220px;white-space:pre-line;word-break:break-word;line-height:1.45;vertical-align:top">${r.nota}</td>
           <td class="right mono ${r.monto >= 0 ? 'positive' : 'negative'}">${fmtFull(r.monto)}</td>
         </tr>`;
       }).join('');
