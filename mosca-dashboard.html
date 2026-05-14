@@ -976,21 +976,16 @@ function getDerivedMonths() {
   return [...months].filter(m => m <= todayYM).sort();
 }
 
-// Aportes netos de socios por mes: Capitalización (positivo) − Recupero capital (negativo)
+// Aportes netos de socios por mes: Capitalización (monto positivo) + Recupero capital (monto negativo en Airtable)
 function buildCapitalByMes() {
   const map = {};
-  const CAPS   = ['Capitalizacion - Lisandro', 'Capitalizacion - Javier'];
-  const RECUPS = ['Recupero capital Lisandro', 'Recupero capital Javier'];
+  const SOCIOS_CONCEPTOS = ['Capitalizacion - Lisandro', 'Capitalizacion - Javier', 'Recupero capital Lisandro', 'Recupero capital Javier'];
   allData.ingresos
-    .filter(r => {
-      const c = r.fields.concepto || '';
-      return CAPS.includes(c) || RECUPS.includes(c);
-    })
+    .filter(r => SOCIOS_CONCEPTOS.includes(r.fields.concepto || ''))
     .forEach(r => {
       const mes = r.fields['mes-a'] || '';
       if (!mes) return;
-      const signo = RECUPS.includes(r.fields.concepto || '') ? -1 : 1;
-      map[mes] = (map[mes] || 0) + signo * (r.fields.monto || 0);
+      map[mes] = (map[mes] || 0) + (r.fields.monto || 0);
     });
   return map;
 }
