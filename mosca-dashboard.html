@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mosca Taller — Dashboard v1.8</title>
+  <title>Mosca Taller — Dashboard v1.11</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     :root {
@@ -363,7 +363,7 @@
 
 <!-- NAV -->
 <nav class="nav no-print">
-  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v1.10 · 2026-05-14</span></span>
+  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v1.11 · 2026-05-14</span></span>
   <div class="nav-tabs">
     <button class="nav-tab active" data-page="reporte" onclick="showPage('reporte')">Financiero</button>
     <button class="nav-tab" data-page="comercial" onclick="showPage('comercial')">Comercial</button>
@@ -1040,8 +1040,8 @@ function renderKPIs() {
   const cobros        = ingsOpKpi.reduce((s,r) => s + (r.fields.monto||0), 0);
   const resFinanciero = cobros - gastosOpTotalKpi;
   const resEconomico  = ventasMonto - gastosOpTotalKpi;
-  // Por cobrar: ventas señadas − cobros del período (saldo pendiente estimado)
-  const porCobrar     = Math.max(ventasMonto - cobros, 0);
+  // Por cobrar: suma de saldo real de pedidos del período (excl. cancelados)
+  const porCobrar = pedidosVentas.reduce((s,r) => s + (r.fields.saldo || 0), 0);
   // Ticket promedio: cobros / cantidad de señas (1 seña = 1 pedido)
   const señasCount    = ingsOpKpi.filter(r => (r.fields.concepto||'') === 'Seña').length;
   const ticketProm    = cobros / (señasCount > 0 ? señasCount : Math.max(ingsOpKpi.length, 1));
@@ -1137,8 +1137,12 @@ function buildInsight(mesStr, ventasMonto) {
   const cobros = allData.ingresos
     .filter(r => r.fields['mes-a'] === mesStr && !isIngresoCapital(r))
     .reduce((s,r) => s + (r.fields.monto||0), 0);
-  // Por cobrar: ventas − cobros del período
-  const porCobrar = Math.max(ventas - cobros, 0);
+  // Por cobrar: suma de saldo real de pedidos del período (excl. cancelados)
+  const porCobrar = allData.pedidos
+    .filter(r => (r.fields.estado || '') !== 'Cancelado' &&
+                 (r.fields.seña || '').slice(0, 7) === mesStr &&
+                 (r.fields.saldo || 0) > 0)
+    .reduce((s,r) => s + (r.fields.saldo || 0), 0);
   // Gastos P&L desde raw data (excl. Prestamos Edgar)
   const gastosRawI = mesStr
     ? allData.gastos.filter(r => r.fields['mes-a'] === mesStr)
@@ -1209,6 +1213,15 @@ function renderEvolucion() {
     if (!ventasByMes[mes]) ventasByMes[mes] = { total: 0, count: 0 };
     ventasByMes[mes].total += r.fields.monto_total_pactado || r.fields.precio_pactado || 0;
     ventasByMes[mes].count += 1;
+  });
+
+  // Saldo real pendiente por mes: suma de saldo actual de cada pedido (excl. cancelados)
+  // Usa el campo saldo del pedido en lugar de ventas-cobros, para reflejar cobros posteriores
+  const saldoByMes = {};
+  allData.pedidos.filter(r => (r.fields.estado || '') !== 'Cancelado' && (r.fields.saldo || 0) > 0).forEach(r => {
+    const mes = (r.fields.seña || '').slice(0, 7);
+    if (!mes) return;
+    saldoByMes[mes] = (saldoByMes[mes] || 0) + (r.fields.saldo || 0);
   });
 
   const labels     = sorted.map(r => mesLabel(r.fields.Mes));
@@ -1287,7 +1300,7 @@ function renderEvolucion() {
     const resF = cMes - (gOp.total||0);
     const resE = vMes - (gOp.total||0);
     const cap  = capitalByMes[f.Mes] || 0;
-    const porCobrarMes = Math.max(vMes - cMes, 0);
+    const porCobrarMes = saldoByMes[f.Mes] || 0;
     return `<tr>
       <td><strong>${mesLabel(f.Mes)}</strong></td>
       <td class="right mono">${fmtFull(cMes)}</td>
