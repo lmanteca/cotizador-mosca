@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mosca Taller — Dashboard v1.7</title>
+  <title>Mosca Taller — Dashboard v1.8</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     :root {
@@ -363,7 +363,7 @@
 
 <!-- NAV -->
 <nav class="nav no-print">
-  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v1.7 · 2026-05-13</span></span>
+  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v1.9 · 2026-05-14</span></span>
   <div class="nav-tabs">
     <button class="nav-tab active" data-page="reporte" onclick="showPage('reporte')">Financiero</button>
     <button class="nav-tab" data-page="comercial" onclick="showPage('comercial')">Comercial</button>
@@ -886,25 +886,19 @@ async function loadData() {
       variantes_map: d.variantes_map || {}
     };
 
-    // Populate month selector
+    // Populate month selector — derivado de datos crudos, sin depender de Resultados
     const sel = document.getElementById('monthSelect');
     sel.innerHTML = '<option value="">Todos los meses</option>';
-    const todayYM = new Date().toISOString().slice(0, 7); // "YYYY-MM"
-    const sorted = [...allData.resultados]
-      .filter(r => (r.fields.Mes || '') <= todayYM)
-      .sort((a,b) => (a.fields.Mes||'').localeCompare(b.fields.Mes||''));
-    sorted.forEach(r => {
-      const m = r.fields.Mes;
-      if (m) {
-        const opt = document.createElement('option');
-        opt.value = m;
-        opt.textContent = mesLabel(m);
-        sel.appendChild(opt);
-      }
+    const derivedMonths = getDerivedMonths();
+    derivedMonths.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = mesLabel(m);
+      sel.appendChild(opt);
     });
     // Default to latest month
-    if (sorted.length > 0) {
-      const lastMes = sorted[sorted.length - 1].fields.Mes;
+    if (derivedMonths.length > 0) {
+      const lastMes = derivedMonths[derivedMonths.length - 1];
       sel.value = lastMes;
       selectedMonth = lastMes;
     }
@@ -943,7 +937,35 @@ function onMonthChange() {
     : 'Mosca Taller — Reporte';
 }
 
+// ─── HELPERS DE DATOS ───────────────────────────────────────────────────────
+// Meses con actividad derivados de datos crudos (no depende de Resultados)
+function getDerivedMonths() {
+  const todayYM = new Date().toISOString().slice(0, 7);
+  const months = new Set([
+    ...allData.ingresos.map(r => r.fields['mes-a']).filter(Boolean),
+    ...allData.gastos.map(r => r.fields['mes-a']).filter(Boolean),
+  ]);
+  return [...months].filter(m => m <= todayYM).sort();
+}
+
+// Capitalizaciones netas por mes (tipo_flujo=Capital, excl. Recupero Edgar que ya está en ingresos op.)
+function buildCapitalByMes() {
+  const map = {};
+  allData.ingresos
+    .filter(r => (r.fields.tipo_flujo || '') === 'Capital')
+    .forEach(r => {
+      const mes = r.fields['mes-a'] || '';
+      if (mes) map[mes] = (map[mes] || 0) + (r.fields.monto || 0);
+    });
+  return map;
+}
+
 // ─── REGLAS DE NEGOCIO ──────────────────────────────────────────────────────
+// Ingresos Capital/internos: tipo_flujo=Capital o Recupero Edgar → NO son cobros operativos
+const isIngresoCapital = r => {
+  const c = r.fields.concepto || '';
+  return (r.fields.tipo_flujo || '') === 'Capital' || c === 'Recupero Edgar';
+};
 // Gastos cat=Prestamos Edgar → van a CC Edgar, NO al P&L operativo
 const isEdgarCobertura = r => {
   const p = (Array.isArray(r.fields['proveedor (de Proveedores)'])
@@ -956,50 +978,55 @@ const isEdgarCobertura = r => {
 // ─── KPIs ────────────────────────────────────────────────────────────────────
 function renderKPIs() {
   const meta = document.getElementById('kpiMeta');
-  let res = null;
-  if (selectedMonth) {
-    res = allData.resultados.find(r => r.fields.Mes === selectedMonth);
-    if (meta) meta.textContent = mesLabel(selectedMonth);
-  } else {
-    const sorted = [...allData.resultados].sort((a,b) => (a.fields.Mes||'').localeCompare(b.fields.Mes||''));
-    res = sorted[sorted.length - 1] || null;
-    if (meta) meta.textContent = res ? `Último: ${mesLabel(res.fields.Mes)}` : 'Sin datos';
-  }
+  // Mes activo: selectedMonth o el último mes con datos
+  const derivedMonths = getDerivedMonths();
+  const currentMes = selectedMonth || (derivedMonths.length ? derivedMonths[derivedMonths.length - 1] : null);
 
-  if (!res) {
+  if (!currentMes) {
     document.getElementById('kpiGrid').innerHTML = '<p style="color:#999;font-size:13px">Sin datos para el período</p>';
     const bd = document.getElementById('gastosBreakdown');
     if (bd) bd.innerHTML = '';
+    if (meta) meta.textContent = 'Sin datos';
     return;
   }
-  const f = res.fields;
-  // Gastos P&L: desde raw data, excluyendo Prestamos Edgar (esos van a CC Edgar)
+  if (meta) meta.textContent = selectedMonth ? mesLabel(currentMes) : `Último: ${mesLabel(currentMes)}`;
+
+  // Gastos P&L: desde raw data, excluyendo Prestamos Edgar
   const gastosRawKpi  = selectedMonth
-    ? allData.gastos.filter(r => r.fields['mes-a'] === selectedMonth)
+    ? allData.gastos.filter(r => r.fields['mes-a'] === currentMes)
     : allData.gastos;
   const gastosOpKpi      = gastosRawKpi.filter(r => !isEdgarCobertura(r));
   const gastosOpTotalKpi = gastosOpKpi.reduce((s,r) => s + (r.fields.monto||0), 0);
   // Ventas señadas: desde raw pedidos, excl. cancelados, filtrados por fecha de seña
-  const mesPedidos = res.fields.Mes || '';
   const pedidosVentas = allData.pedidos.filter(r =>
     (r.fields.estado || '') !== 'Cancelado' &&
-    (!mesPedidos || (r.fields.seña || '').slice(0, 7) === mesPedidos)
+    (!currentMes || (r.fields.seña || '').slice(0, 7) === currentMes)
   );
   const ventasMonto = pedidosVentas.reduce((s,r) => s + (r.fields.monto_total_pactado || r.fields.precio_pactado || 0), 0);
   const ventasCount = pedidosVentas.length;
-  const cobros        = f.Cobros || 0;
+  // Cobros: desde raw ingresos (excluye Capital y Recupero Edgar)
+  const ingsRawKpi    = selectedMonth
+    ? allData.ingresos.filter(r => r.fields['mes-a'] === currentMes)
+    : allData.ingresos;
+  const ingsOpKpi     = ingsRawKpi.filter(r => !isIngresoCapital(r));
+  const cobros        = ingsOpKpi.reduce((s,r) => s + (r.fields.monto||0), 0);
   const resFinanciero = cobros - gastosOpTotalKpi;
   const resEconomico  = ventasMonto - gastosOpTotalKpi;
+  // Por cobrar: ventas señadas − cobros del período (saldo pendiente estimado)
+  const porCobrar     = Math.max(ventasMonto - cobros, 0);
+  // Ticket promedio: cobros / cantidad de señas (1 seña = 1 pedido)
+  const señasCount    = ingsOpKpi.filter(r => (r.fields.concepto||'') === 'Seña').length;
+  const ticketProm    = cobros / (señasCount > 0 ? señasCount : Math.max(ingsOpKpi.length, 1));
 
   // Orden natural: Ventas → Cobros → Gastos → Res.Caja → Res.Econ → Por cobrar → Ticket
   const kpis = [
-    { label: 'Ventas señadas',     value: ventasMonto,                                 format: fmt,     sub: `${ventasCount} pedidos` },
-    { label: 'Cobros del mes',     value: cobros,                                      format: fmtFull, sub: 'Ingresos netos' },
-    { label: 'Gastos',             value: -gastosOpTotalKpi,                           format: fmtFull, forceClass: 'negative' },
-    { label: 'Resultado caja',     value: resFinanciero,                               format: fmtFull, sub: 'Cobros − Gastos' },
-    { label: 'Res. Económico',    value: resEconomico,                                format: fmtFull, sub: 'Ventas señadas − Gastos' },
-    { label: 'Por cobrar',         value: f.PorCobrar,                                 format: fmt,     sub: 'Saldos pendientes' },
-    { label: 'Ticket promedio',    value: isSpecial(f.Ticket) ? null : f.Ticket,       format: fmt },
+    { label: 'Ventas señadas',     value: ventasMonto,    format: fmt,     sub: `${ventasCount} pedidos` },
+    { label: 'Cobros del mes',     value: cobros,         format: fmtFull, sub: 'Ingresos netos' },
+    { label: 'Gastos',             value: -gastosOpTotalKpi, format: fmtFull, forceClass: 'negative' },
+    { label: 'Resultado caja',     value: resFinanciero,  format: fmtFull, sub: 'Cobros − Gastos' },
+    { label: 'Res. Económico',     value: resEconomico,   format: fmtFull, sub: 'Ventas señadas − Gastos' },
+    { label: 'Por cobrar',         value: porCobrar,      format: fmt,     sub: 'Saldos pendientes' },
+    { label: 'Ticket promedio',    value: señasCount > 0 ? ticketProm : null, format: fmt },
   ];
 
   document.getElementById('kpiGrid').innerHTML = kpis.map(k => {
@@ -1071,19 +1098,22 @@ function renderKPIs() {
       <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#e57373;margin-right:4px"></span>Variables</span>
       <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#ef9a9a;margin-right:4px"></span>Única vez</span>
     </div>
-    ${buildInsight(res, ventasMonto)}
+    ${buildInsight(currentMes, ventasMonto)}
   `;
 }
 
-function buildInsight(res, ventasMonto) {
-  if (!res) return '';
-  const f = res.fields;
-  const cobros    = f.Cobros  || 0;
-  const ventas    = ventasMonto || 0;
-  const porCobrar = f.PorCobrar || 0;
+function buildInsight(mesStr, ventasMonto) {
+  if (!mesStr) return '';
+  const ventas = ventasMonto || 0;
+  // Cobros: desde raw ingresos (excl. Capital/Edgar)
+  const cobros = allData.ingresos
+    .filter(r => r.fields['mes-a'] === mesStr && !isIngresoCapital(r))
+    .reduce((s,r) => s + (r.fields.monto||0), 0);
+  // Por cobrar: ventas − cobros del período
+  const porCobrar = Math.max(ventas - cobros, 0);
   // Gastos P&L desde raw data (excl. Prestamos Edgar)
-  const gastosRawI = selectedMonth
-    ? allData.gastos.filter(r => r.fields['mes-a'] === selectedMonth)
+  const gastosRawI = mesStr
+    ? allData.gastos.filter(r => r.fields['mes-a'] === mesStr)
     : allData.gastos;
   const gastosOpI  = gastosRawI.filter(r => !isEdgarCobertura(r));
   const gastos     = gastosOpI.reduce((s,r) => s + (r.fields.monto||0), 0);
@@ -1119,10 +1149,18 @@ function buildInsight(res, ventasMonto) {
 
 // ─── EVOLUCIÓN ───────────────────────────────────────────────────────────────
 function renderEvolucion() {
-  const todayYM = new Date().toISOString().slice(0, 7);
-  const sorted     = [...allData.resultados]
-    .filter(r => (r.fields.Mes || '') <= todayYM)
-    .sort((a,b) => (a.fields.Mes||'').localeCompare(b.fields.Mes||''));
+  // Meses y datos derivados 100% de datos crudos
+  const sorted = getDerivedMonths().map(mes => ({ fields: { Mes: mes } }));
+  // Capitalizaciones netas por mes (socios)
+  const capitalByMes = buildCapitalByMes();
+  // Cobros operativos por mes: desde raw ingresos (excl. Capital y Recupero Edgar)
+  const cobrosOpByMes = {};
+  allData.ingresos.filter(r => !isIngresoCapital(r)).forEach(r => {
+    const mes = r.fields['mes-a'] || '';
+    if (!mes) return;
+    cobrosOpByMes[mes] = (cobrosOpByMes[mes] || 0) + (r.fields.monto || 0);
+  });
+
   // Gastos operativos por mes: desde raw data, excluyen Prestamos Edgar
   const gastosOpByMes = {};
   allData.gastos.filter(r => !isEdgarCobertura(r)).forEach(r => {
@@ -1146,13 +1184,13 @@ function renderEvolucion() {
   });
 
   const labels     = sorted.map(r => mesLabel(r.fields.Mes));
-  const cobros     = sorted.map(r => r.fields.Cobros || 0);
+  const cobros     = sorted.map(r => cobrosOpByMes[r.fields.Mes] || 0);
   const ventas     = sorted.map(r => (ventasByMes[r.fields.Mes] || {}).total || 0);
   const gastFijos  = sorted.map(r => (gastosOpByMes[r.fields.Mes] || {}).fijos || 0);
   const gastVars   = sorted.map(r => (gastosOpByMes[r.fields.Mes] || {}).vars  || 0);
-  const resFinanc  = sorted.map(r => (r.fields.Cobros||0) - ((gastosOpByMes[r.fields.Mes]||{}).total||0));
+  const resFinanc  = sorted.map(r => (cobrosOpByMes[r.fields.Mes]||0) - ((gastosOpByMes[r.fields.Mes]||{}).total||0));
   const resEcon    = sorted.map(r => ((ventasByMes[r.fields.Mes]||{}).total||0) - ((gastosOpByMes[r.fields.Mes]||{}).total||0));
-  const capital    = sorted.map(r => r.fields.Capitalizacion || 0);
+  const capital    = sorted.map(r => capitalByMes[r.fields.Mes] || 0);
 
   if (chartEvol) chartEvol.destroy();
   const ctx = document.getElementById('chartEvol').getContext('2d');
@@ -1217,19 +1255,21 @@ function renderEvolucion() {
     const qMes = (ventasByMes[f.Mes] || {}).count || 0;
     const gFij = gOp.fijos || 0;
     const gVar = gOp.vars  || 0;
-    const resF = (f.Cobros||0) - (gOp.total||0);
+    const cMes = cobrosOpByMes[f.Mes] || 0;
+    const resF = cMes - (gOp.total||0);
     const resE = vMes - (gOp.total||0);
-    const cap  = f.Capitalizacion || 0;
+    const cap  = capitalByMes[f.Mes] || 0;
+    const porCobrarMes = Math.max(vMes - cMes, 0);
     return `<tr>
       <td><strong>${mesLabel(f.Mes)}</strong></td>
-      <td class="right mono">${fmtFull(f.Cobros)}</td>
+      <td class="right mono">${fmtFull(cMes)}</td>
       <td class="right mono ${signClass(cap)}">${cap !== 0 ? fmtFull(cap) : '—'}</td>
       <td class="right mono">${fmtFull(vMes)}</td>
       <td class="right mono negative">${fmtFull(gFij)}</td>
       <td class="right mono negative">${fmtFull(gVar)}</td>
       <td class="right mono ${signClass(resF)}">${fmtFull(resF)}</td>
       <td class="right mono ${signClass(resE)}">${fmtFull(resE)}</td>
-      <td class="right mono blue">${fmtFull(f.PorCobrar)}</td>
+      <td class="right mono blue">${porCobrarMes > 0 ? fmtFull(porCobrarMes) : '—'}</td>
       <td class="right">${qMes}</td>
     </tr>`;
   };
@@ -1237,7 +1277,7 @@ function renderEvolucion() {
   let html = curRows.map(makeRow).join('');
 
   Object.entries(byYear).sort((a,b) => b[0].localeCompare(a[0])).forEach(([year, rows]) => {
-    const totalC = rows.reduce((s,r) => s+(r.fields.Cobros||0), 0);
+    const totalC = rows.reduce((s,r) => s+(cobrosOpByMes[r.fields.Mes]||0), 0);
     const totalV = rows.reduce((s,r) => s+((ventasByMes[r.fields.Mes]||{}).total||0), 0);
     const totalG = rows.reduce((s,r) => s+((gastosOpByMes[r.fields.Mes]||{}).total||0), 0);
     html += `<tr style="cursor:pointer;background:#ece8e3" onclick="toggleYearGroup('y${year}')">
@@ -1279,10 +1319,6 @@ function renderMovimientos() {
   const gastsOp = gasts.filter(r => !isEdgarCobertura(r));
 
   // Ingresos: separar cobros de clientes de movimientos de capital/internos
-  const isIngresoCapital = r => {
-    const c = r.fields.concepto || '';
-    return (r.fields.tipo_flujo || '') === 'Capital' || c === 'Recupero Edgar';
-  };
   const ingsClientes = ings.filter(r => !isIngresoCapital(r));
 
   // Normalizador de categorías de gastos
@@ -1347,9 +1383,12 @@ function renderMovimientos() {
   const pedCount   = señasCount > 0 ? señasCount : Math.max(ingsClientes.length, 1);
   const ticketProm = totalI / pedCount;
 
-  // Cobrabilidad del mes
-  const resDelMes    = selectedMonth ? allData.resultados.find(r => r.fields.Mes === selectedMonth) : null;
-  const ventasDelMes = resDelMes ? (resDelMes.fields.Ventas || 0) : 0;
+  // Cobrabilidad del mes — ventas señadas del período desde raw pedidos
+  const ventasDelMes = selectedMonth
+    ? allData.pedidos
+        .filter(r => (r.fields.estado || '') !== 'Cancelado' && (r.fields.seña || '').slice(0, 7) === selectedMonth)
+        .reduce((s,r) => s + (r.fields.monto_total_pactado || r.fields.precio_pactado || 0), 0)
+    : 0;
   const cobPct30 = ventasDelMes > 0 ? Math.round(totalI / ventasDelMes * 100) : null;
 
   // Cobrabilidad a 60/90 días — Saldos de meses M+1 y M+2 (aproximado)
