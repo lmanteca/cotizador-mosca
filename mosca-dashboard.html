@@ -363,7 +363,7 @@
 
 <!-- NAV -->
 <nav class="nav no-print">
-  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v1.11 · 2026-05-14</span></span>
+  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v1.12 · 2026-05-14</span></span>
   <div class="nav-tabs">
     <button class="nav-tab active" data-page="reporte" onclick="showPage('reporte')">Financiero</button>
     <button class="nav-tab" data-page="comercial" onclick="showPage('comercial')">Comercial</button>
@@ -976,14 +976,21 @@ function getDerivedMonths() {
   return [...months].filter(m => m <= todayYM).sort();
 }
 
-// Capitalizaciones netas por mes (tipo_flujo=Capital, excl. Recupero Edgar que ya está en ingresos op.)
+// Aportes netos de socios por mes: Capitalización (positivo) − Recupero capital (negativo)
 function buildCapitalByMes() {
   const map = {};
+  const CAPS   = ['Capitalizacion - Lisandro', 'Capitalizacion - Javier'];
+  const RECUPS = ['Recupero capital Lisandro', 'Recupero capital Javier'];
   allData.ingresos
-    .filter(r => (r.fields.tipo_flujo || '') === 'Capital')
+    .filter(r => {
+      const c = r.fields.concepto || '';
+      return CAPS.includes(c) || RECUPS.includes(c);
+    })
     .forEach(r => {
       const mes = r.fields['mes-a'] || '';
-      if (mes) map[mes] = (map[mes] || 0) + (r.fields.monto || 0);
+      if (!mes) return;
+      const signo = RECUPS.includes(r.fields.concepto || '') ? -1 : 1;
+      map[mes] = (map[mes] || 0) + signo * (r.fields.monto || 0);
     });
   return map;
 }
@@ -1245,7 +1252,7 @@ function renderEvolucion() {
         { type: 'bar',  label: 'G. Variables',  data: gastVars, backgroundColor: 'rgba(229,115,115,0.65)',stack: 'gastos',  yAxisID: 'y' },
         { type: 'line', label: 'Res. Caja',     data: resFinanc,borderColor: '#c4873a', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, tension: 0.3, yAxisID: 'y' },
         { type: 'line', label: 'Res. Econ.',    data: resEcon,  borderColor: '#d2beaa', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, borderDash: [5,3], tension: 0.3, yAxisID: 'y' },
-        { type: 'line', label: 'Capital/Ret.',  data: capital,  borderColor: '#8e44ad', backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 3, borderDash: [3,3], tension: 0.3, yAxisID: 'y' }
+        { type: 'line', label: 'Aportes socios', data: capital,  borderColor: '#8e44ad', backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 3, borderDash: [3,3], tension: 0.3, yAxisID: 'y' }
       ]
     },
     options: {
