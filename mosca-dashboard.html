@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mosca Taller — Dashboard v1.11</title>
+  <title>Mosca Taller — Dashboard v1.23</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     :root {
@@ -209,6 +209,30 @@
     .filter-btn:hover { background: var(--bg); }
     .filter-btn.active { background: var(--accent); color: white; }
     .filter-select { font-size: 12px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 5px; background: white; color: var(--text); cursor: pointer; }
+    .custom-multiselect { position: relative; display: inline-block; }
+    .multiselect-btn {
+      font-size: 12px; padding: 5px 24px 5px 10px; border: 1px solid var(--border); border-radius: 5px;
+      background: white; color: var(--text); cursor: pointer; text-align: left;
+      min-width: 140px; max-width: 210px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      position: relative; display: flex; align-items: center; justify-content: space-between;
+    }
+    .multiselect-btn::after {
+      content: ""; position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+      border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid var(--muted);
+      pointer-events: none;
+    }
+    .multiselect-dropdown {
+      display: none; position: absolute; top: 100%; left: 0; background: white;
+      border: 1px solid var(--border); border-radius: 5px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      z-index: 1000; min-width: 170px; max-height: 250px; overflow-y: auto; padding: 4px 0; margin-top: 3px;
+    }
+    .multiselect-dropdown.open { display: block; }
+    .multiselect-option {
+      display: flex; align-items: center; gap: 8px; padding: 5px 10px;
+      font-size: 12px; color: var(--text); cursor: pointer; user-select: none;
+    }
+    .multiselect-option:hover { background: var(--bg); }
+    .multiselect-option input { cursor: pointer; margin: 0; }
     .mov-analysis { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
     .mov-analysis-col { background: var(--bg); border-radius: 6px; padding: 12px 14px; border: 1px solid var(--border); }
     .mov-analysis-title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--muted); letter-spacing: 0.5px; margin-bottom: 10px; }
@@ -314,13 +338,24 @@
     .ficha-checklist { display: flex; gap: 16px; flex-wrap: wrap; border-top: 1px solid #eee; padding-top: 10px; margin-top: auto; }
 
     /* ── Producción full-screen ── */
-    #page-produccion.page.active { display: flex; flex-direction: column; height: calc(100vh - 96px); overflow: hidden; }
-    #page-produccion .content    { flex: 1; max-width: none; padding: 10px 16px; display: flex; flex-direction: column; min-height: 0; }
-    #page-produccion .section    { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-    #page-produccion .section-header { flex-shrink: 0; }
-    #page-produccion .kanban-board   { flex: 1; min-height: 0; align-items: stretch; }
-    #page-produccion .kanban-col     { flex: 1 1 0; min-width: 170px; display: flex; flex-direction: column; }
-    #page-produccion .kanban-cards   { flex: 1; max-height: none; }
+    #page-produccion.page.active { display: flex; flex-direction: column; height: auto; min-height: calc(100vh - 54px); overflow: visible; }
+    #page-produccion .content    { flex: 1; max-width: none; padding: 10px 16px; display: block; min-height: 0; }
+    #page-produccion .section    { display: block; }
+    #page-produccion .section-header { margin-bottom: 12px; }
+    #page-produccion .kanban-board   { display: flex; gap: 12px; overflow-x: auto; overflow-y: visible; padding-bottom: 20px; align-items: flex-start; }
+    #page-produccion .kanban-col     { flex: 0 0 260px; width: 260px; min-width: 260px; display: flex; flex-direction: column; background: var(--bg); border-radius: 6px; border: 1px solid var(--border); max-height: none; }
+    #page-produccion .kanban-cards   { padding: 8px; display: flex; flex-direction: column; gap: 8px; min-height: 100px; max-height: none; overflow-y: visible; }
+    .kanban-card-id { font-size: 9px; color: #aaa; font-family: monospace; margin-top: 4px; }
+
+    /* Drag & Drop Visual Styles */
+    .kanban-card { cursor: grab; transition: transform 0.15s, box-shadow 0.15s; position: relative; }
+    .kanban-card:active { cursor: grabbing; }
+    .kanban-card.dragging { opacity: 0.4; border: 1.5px dashed var(--muted); }
+    .kanban-cards.drag-over { background: rgba(10, 70, 90, 0.05); border: 1.5px dashed var(--accent); }
+
+    /* Thumbnail style in cards */
+    .kanban-card-thumb { width: 50px; height: 50px; border-radius: 4px; background-size: cover; background-position: center; background-color: #fafafa; border: 1px solid var(--border); flex-shrink: 0; cursor: pointer; transition: transform 0.1s; }
+    .kanban-card-thumb:hover { transform: scale(1.05); }
     .kanban-card-id { font-size: 9px; color: #aaa; font-family: monospace; margin-top: 4px; }
 
     /* ── Ficha A4 rediseñada ── */
@@ -363,7 +398,7 @@
 
 <!-- NAV -->
 <nav class="nav no-print">
-  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v1.12 · 2026-05-14</span></span>
+  <span class="nav-brand">MOSCA TALLER <span style="font-size:10px;font-weight:400;opacity:0.5;letter-spacing:0">v1.23 · 2026-06-01</span></span>
   <div class="nav-tabs">
     <button class="nav-tab active" data-page="reporte" onclick="showPage('reporte')">Financiero</button>
     <button class="nav-tab" data-page="comercial" onclick="showPage('comercial')">Comercial</button>
@@ -783,39 +818,295 @@
 <script>
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 const WEBHOOK_URL = 'https://n8n.groumachine.com.ar/webhook/mosca-dashboard-datos';
+const UPDATE_WEBHOOK_URL = 'https://n8n.groumachine.com.ar/webhook/mosca-produccion-actualizar';
 
 // Kanban states config (orden, label, color de header)
-const KANBAN_STATES = [
-  { key: 'backlog',       label: 'Backlog',        color: '#78909c' },
-  { key: 'estructura',    label: 'Estructura',     color: '#e6ac30' },
-  { key: 'terminacion',   label: 'Terminación',    color: '#e08030' },
-  { key: 'paraentregar',  label: 'Para entregar',  color: '#43a047' },
-  { key: 'entregado',     label: 'Entregado',      color: '#1b6b3a' }
+let KANBAN_STATES = [
+  { key: 'Nuevo!',                  label: 'Nuevo!',                  color: '#78909c' },
+  { key: 'A Producir',              label: 'A Producir',              color: '#0a465a' },
+  { key: 'En Produ',                label: 'En Producción',            color: '#136b85' },
+  { key: 'En produ - herreria',     label: 'Herrería',                color: '#d2beaa' },
+  { key: 'En produ - carpinteria',   label: 'Carpintería',             color: '#e08030' },
+  { key: 'Rehacer',                 label: 'Rehacer',                 color: '#c0392b' },
+  { key: 'En Stock',                label: 'En Stock',                color: '#1565c0' },
+  { key: 'Para entregar',           label: 'Para entregar',           color: '#43a047' },
+  { key: 'Entregado',               label: 'Entregado',               color: '#1b6b3a' },
+  { key: 'Cancelado',               label: 'Cancelado',               color: '#9e9e9e' }
 ];
 
+function getAirtableColorHex(colorName) {
+  const colors = {
+    'blue': '#1565c0',
+    'blueLight': '#90caf9',
+    'green': '#2e7d32',
+    'greenLight': '#a5d6a7',
+    'red': '#c0392b',
+    'redLight': '#ef9a9a',
+    'yellow': '#f57f17',
+    'yellowLight': '#fff59d',
+    'orange': '#e67e22',
+    'orangeLight': '#ffcc80',
+    'purple': '#8e44ad',
+    'purpleLight': '#e1bee7',
+    'pink': '#ec407a',
+    'pinkLight': '#f8bbd0',
+    'cyan': '#00acc1',
+    'cyanLight': '#b2ebf2',
+    'teal': '#004d40',
+    'tealLight': '#80cbc4',
+    'gray': '#78909c',
+    'grayLight': '#cfd8dc'
+  };
+  return colors[colorName] || '#78909c';
+}
+
+// Helper para normalizar cadenas eliminando acentos/diacríticos y en minúsculas
+const clean = str => (str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
 function getKanbanBucket(estado) {
-  const e = (estado || '').toLowerCase().trim();
-  if (!e || e === 'sin estado') return 'backlog';
-  if (e.includes('backlog'))    return 'backlog';
-  if (e.includes('planificado') || e.includes('planeado')) return 'backlog';
-  if (e.includes('estructura')) return 'estructura';
-  if (e.includes('terminac'))   return 'terminacion';
-  if (e.includes('para entregar') || (e.includes('listo') && !e.includes('entregado'))) return 'paraentregar';
-  if (e.includes('entregado'))  return 'entregado';
-  return 'backlog';
+  const e = (estado || '').trim();
+  const defaultState = KANBAN_STATES.length > 0 ? KANBAN_STATES[0].key : 'Nuevo!';
+  if (!e) return defaultState;
+  
+  const cleanE = clean(e);
+  
+  // 1. Coincidencia exacta (insensible a acentos/mayúsculas)
+  const found = KANBAN_STATES.find(s => clean(s.key) === cleanE);
+  if (found) return found.key;
+  
+  // 2. Coincidencia difusa por palabras clave en orden de prioridad
+  const keywords = ['herreria', 'carpinteria', 'producir', 'nuevo', 'stock', 'rehacer', 'para entregar', 'listo', 'entregado', 'cancelado', 'laca', 'terminacion', 'calidad', 'lijado'];
+  
+  for (const kw of keywords) {
+    if (cleanE.includes(kw)) {
+      const f = KANBAN_STATES.find(s => clean(s.key).includes(kw));
+      if (f) return f.key;
+    }
+  }
+  
+  // 3. Coincidencia cruzada final
+  for (const s of KANBAN_STATES) {
+    const skey = clean(s.key);
+    if (cleanE.includes(skey) || skey.includes(cleanE)) {
+      return s.key;
+    }
+  }
+  
+  return defaultState;
+}
+
+// Determinar la categoría general de producción para métricas y KPIs
+function getProductionCategory(estado) {
+  const bucket = clean(getKanbanBucket(estado));
+  if (bucket.includes('cancelado')) {
+    return 'cancelado';
+  }
+  if (bucket.includes('entregado')) {
+    return 'finalizado';
+  }
+  if (bucket.includes('para entregar') || bucket.includes('listo') || bucket.includes('stock')) {
+    return 'listo';
+  }
+  if (bucket.includes('herreria') || bucket.includes('carpinteria') || bucket.includes('en prod') || bucket.includes('produccion') || bucket.includes('rehacer') || bucket.includes('laca') || bucket.includes('calidad') || bucket.includes('proceso') || bucket.includes('lijado')) {
+    return 'activo';
+  }
+  return 'sin_iniciar';
+}
+
+function getCardImageUrl(f) {
+  if (!f) return null;
+  const fieldsToCheck = ['imagen', 'img_custom', 'img_custom (de variante)', 'imagen (de variante)'];
+  for (const field of fieldsToCheck) {
+    const val = f[field];
+    if (val) {
+      if (Array.isArray(val) && val.length > 0) {
+        const item = val[0];
+        if (item && typeof item === 'object') {
+          if (item.thumbnails && item.thumbnails.large) {
+            return item.thumbnails.large.url;
+          }
+          if (item.url) return item.url;
+        }
+        if (typeof item === 'string') return item;
+      }
+      if (typeof val === 'string') return val;
+    }
+  }
+  return null;
+}
+
+// Drag & Drop event handlers
+let draggedRecordId = null;
+
+function drag(ev, recordId) {
+  draggedRecordId = recordId;
+  ev.dataTransfer.setData("text/plain", recordId);
+  ev.currentTarget.classList.add('dragging');
+  console.log('Drag started for record ID:', recordId);
+}
+
+function dragEnd(ev) {
+  ev.currentTarget.classList.remove('dragging');
+  draggedRecordId = null;
+}
+
+function dragOver(ev) {
+  ev.preventDefault();
+  ev.currentTarget.classList.add('drag-over');
+}
+
+function dragLeave(ev) {
+  ev.currentTarget.classList.remove('drag-over');
+}
+
+async function drop(ev, targetStatus) {
+  ev.preventDefault();
+  ev.currentTarget.classList.remove('drag-over');
+  const recordId = draggedRecordId || ev.dataTransfer.getData("text/plain");
+  console.log('Drop event for record ID:', recordId, 'targetStatus:', targetStatus);
+  if (!recordId) return;
+
+  const record = allData.produccion.find(r => r.id === recordId);
+  if (!record) {
+    console.error('Record not found in local data:', recordId);
+    return;
+  }
+
+  const oldStatus = record.fields.estado;
+  if (oldStatus === targetStatus) return;
+
+  // Actualización optimista local
+  record.fields.estado = targetStatus;
+  renderProduccion();
+
+  try {
+    setStatus('Sincronizando estado...');
+    const resp = await fetch(UPDATE_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: recordId, estado: targetStatus })
+    });
+    if (!resp.ok) {
+      throw new Error(`Servidor retornó ${resp.status}`);
+    }
+    setStatus('Estado actualizado en Airtable');
+    setTimeout(loadData, 2000);
+  } catch (err) {
+    console.error(err);
+    setStatus('Error al actualizar estado');
+    
+    let errorDetail = err.message;
+    if (err.message === 'Failed to fetch' || err.message.includes('fetch')) {
+      errorDetail += '\n\nPosible causa: El webhook de n8n no está respondiendo o no está activo.\n\n' +
+                    'Para solucionarlo, asegurate de:\n' +
+                    '1. Importar o actualizar el workflow "Mosca MCP.json" en n8n.\n' +
+                    '2. Activar el workflow en n8n (toggle "Active" en la esquina superior derecha).\n' +
+                    '3. Conectar tus credenciales de Airtable en el nodo de Airtable dentro del workflow de n8n.';
+    }
+    
+    alert('No se pudo actualizar el estado en Airtable. Se revertirá al estado original. Detalle: ' + errorDetail);
+    record.fields.estado = oldStatus;
+    renderProduccion();
+  }
 }
 
 // ─── STATE ──────────────────────────────────────────────────────────────────
 let allData = { resultados: [], ingresos: [], gastos: [], pedidos: [], produccion: [], variantes_map: {} };
+let isFirstLoad = true;
 let movFilter = { tipo: 'all', cat: '', subtipo: '' };
 let prodSearch = '';
-let prodEstadoFilter = '';
+// Nuevos estados multiselect
+let prodEstadosSelected = KANBAN_STATES.map(s => s.key); // todos por default
+let prodTiposSelected = ['Clientes']; // por default, producción a clientes
+let filteredProduccion = [];
 let pedFilter = { estado: '', mostrarSinCliente: false };
 let selectedMonth = '';
 let chartEvol = null;
 let chartGastCat = null;
 let chartGastTipo = null;
 let edgarMesFilter = '';
+
+// ─── MULTISELECT HELPERS ───────────────────────────────────────────────────
+function toggleMultiselect(id) {
+  const container = document.getElementById(id);
+  if (!container) return;
+  const dropdown = container.querySelector('.multiselect-dropdown');
+  if (!dropdown) return;
+  const isOpen = dropdown.classList.contains('open');
+  
+  // Close all other dropdowns
+  document.querySelectorAll('.multiselect-dropdown.open').forEach(el => {
+    if (el !== dropdown) el.classList.remove('open');
+  });
+  
+  if (isOpen) {
+    dropdown.classList.remove('open');
+  } else {
+    dropdown.classList.add('open');
+  }
+}
+
+// Close dropdowns on clicking outside
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.custom-multiselect')) {
+    document.querySelectorAll('.multiselect-dropdown.open').forEach(el => {
+      el.classList.remove('open');
+    });
+  }
+});
+
+function buildMultiselectHTML(id, placeholder, options, selectedList, onchangeCallback) {
+  const isSelected = (val) => selectedList.includes(val);
+  
+  // Build dynamic button text based on selection
+  let btnText = placeholder;
+  if (selectedList.length > 0) {
+    if (selectedList.length === options.length) {
+      btnText = "Todos";
+    } else if (selectedList.length === 1) {
+      const opt = options.find(o => o.value === selectedList[0]);
+      btnText = opt ? opt.label : selectedList[0];
+    } else {
+      btnText = `${selectedList.length} selec.`;
+    }
+  }
+  
+  const optionsHTML = options.map(opt => {
+    const checked = isSelected(opt.value) ? 'checked' : '';
+    return `<label class="multiselect-option" onclick="event.stopPropagation();">
+      <input type="checkbox" value="${opt.value.replace(/"/g, '&quot;')}" ${checked} 
+        onchange="${onchangeCallback}(this, '${opt.value.replace(/'/g, "\\'")}')">
+      <span>${opt.label}</span>
+    </label>`;
+  }).join('');
+  
+  return `<div class="custom-multiselect" id="${id}">
+    <button type="button" class="multiselect-btn" onclick="event.stopPropagation(); toggleMultiselect('${id}')">${btnText}</button>
+    <div class="multiselect-dropdown">
+      ${optionsHTML}
+    </div>
+  </div>`;
+}
+
+// (Filtros de madera y acabados eliminados)
+
+function onEstadoChange(cb, val) {
+  if (cb.checked) {
+    if (!prodEstadosSelected.includes(val)) prodEstadosSelected.push(val);
+  } else {
+    prodEstadosSelected = prodEstadosSelected.filter(v => v !== val);
+  }
+  renderProduccion();
+}
+
+function onTipoChange(cb, val) {
+  if (cb.checked) {
+    if (!prodTiposSelected.includes(val)) prodTiposSelected.push(val);
+  } else {
+    prodTiposSelected = prodTiposSelected.filter(v => v !== val);
+  }
+  renderProduccion();
+}
 
 // ─── UTILITIES ──────────────────────────────────────────────────────────────
 const fmt = n => {
@@ -914,6 +1205,96 @@ async function loadData() {
       variantes_map: d.variantes_map || {}
     };
 
+    // Actualizar estados dinámicamente desde Airtable (siempre tomados desde Airtable)
+    let airtableEstados = [];
+    if (d.estados && Array.isArray(d.estados) && d.estados.length > 0) {
+      airtableEstados = d.estados.map(choice => ({
+        key: choice.name,
+        label: choice.name,
+        color: getAirtableColorHex(choice.color)
+      }));
+    } else {
+      // Fallback: extraer los estados únicos de los registros reales en allData.produccion
+      const uniqueStates = [...new Set(allData.produccion.map(r => r.fields.estado).filter(Boolean))];
+      
+      const STATE_ORDER = {
+        'nuevo!': 1,
+        'nuevo': 1,
+        'a producir': 2,
+        'en produ': 3,
+        'en produccion': 3,
+        'en produ - herreria': 4,
+        'herreria': 4,
+        'en produ - carpinteria': 5,
+        'carpinteria': 5,
+        'rehacer': 6,
+        'en stock': 7,
+        'para entregar': 8,
+        'entregado': 9,
+        'cancelado': 10
+      };
+
+      const STATE_COLORS = {
+        'nuevo!': '#78909c',
+        'nuevo': '#78909c',
+        'a producir': '#0a465a',
+        'en produ': '#136b85',
+        'en produccion': '#136b85',
+        'en produ - herreria': '#d2beaa',
+        'herreria': '#d2beaa',
+        'en produ - carpinteria': '#e08030',
+        'carpinteria': '#e08030',
+        'rehacer': '#c0392b',
+        'en stock': '#1565c0',
+        'para entregar': '#43a047',
+        'entregado': '#1b6b3a',
+        'cancelado': '#9e9e9e'
+      };
+
+      const getOrderValue = (stateName) => {
+        const cleanState = clean(stateName);
+        if (STATE_ORDER[cleanState] !== undefined) return STATE_ORDER[cleanState];
+        for (const [k, v] of Object.entries(STATE_ORDER)) {
+          if (cleanState.includes(k) || k.includes(cleanState)) return v;
+        }
+        return 99;
+      };
+
+      const getStateColor = (stateName) => {
+        const cleanState = clean(stateName);
+        if (STATE_COLORS[cleanState] !== undefined) return STATE_COLORS[cleanState];
+        for (const [k, v] of Object.entries(STATE_COLORS)) {
+          if (cleanState.includes(k) || k.includes(cleanState)) return v;
+        }
+        return '#78909c';
+      };
+
+      uniqueStates.sort((a, b) => getOrderValue(a) - getOrderValue(b));
+
+      airtableEstados = uniqueStates.map(stateName => ({
+        key: stateName,
+        label: stateName,
+        color: getStateColor(stateName)
+      }));
+    }
+
+    if (airtableEstados.length > 0) {
+      const oldStates = KANBAN_STATES.map(s => s.key);
+      KANBAN_STATES = airtableEstados;
+      
+      if (isFirstLoad) {
+        prodEstadosSelected = KANBAN_STATES.map(s => s.key);
+        isFirstLoad = false;
+      } else {
+        // Conservar la selección del usuario si ya existía y es compatible
+        const preSelected = prodEstadosSelected || [];
+        const validPreSelected = preSelected.filter(key => KANBAN_STATES.some(s => s.key === key));
+        // Agregar automáticamente cualquier estado nuevo que no existiera en oldStates
+        const brandNewStates = KANBAN_STATES.filter(s => !oldStates.includes(s.key)).map(s => s.key);
+        prodEstadosSelected = [...new Set([...validPreSelected, ...brandNewStates])];
+      }
+    }
+
     // Populate month selector — derivado de datos crudos, sin depender de Resultados
     const sel = document.getElementById('monthSelect');
     sel.innerHTML = '<option value="">Todos los meses</option>';
@@ -976,12 +1357,11 @@ function getDerivedMonths() {
   return [...months].filter(m => m <= todayYM).sort();
 }
 
-// Aportes netos de socios por mes: Capitalización (monto positivo) + Recupero capital (monto negativo en Airtable)
+// Aportes netos de socios por mes: tipo_flujo=Capital + concepto de socio (igual criterio que sección Socios)
 function buildCapitalByMes() {
   const map = {};
-  const SOCIOS_CONCEPTOS = ['Capitalizacion - Lisandro', 'Capitalizacion - Javier', 'Recupero capital Lisandro', 'Recupero capital Javier'];
   allData.ingresos
-    .filter(r => SOCIOS_CONCEPTOS.includes(r.fields.concepto || ''))
+    .filter(r => r.fields.tipo_flujo === 'Capital' && /Lisandro|Javier/.test(r.fields.concepto || ''))
     .forEach(r => {
       const mes = r.fields['mes-a'] || '';
       if (!mes) return;
@@ -1005,6 +1385,15 @@ const isEdgarCobertura = r => {
       && (r.fields.categoria || '') === 'Prestamos Edgar';
 };
 
+// Pedido comercial válido: excluye cancelados, sin cliente o internos de Mosca Taller
+const isPedidoComercialValido = r => {
+  if ((r.fields.estado || '') === 'Cancelado') return false;
+  const cs = Array.isArray(r.fields.cliente) ? r.fields.cliente : [r.fields.cliente || ''];
+  const hasClient = cs.some(c => c && c.trim());
+  const isMosca   = cs.some(c => /mosca\s*taller/i.test(c || ''));
+  return hasClient && !isMosca;
+};
+
 // ─── KPIs ────────────────────────────────────────────────────────────────────
 function renderKPIs() {
   const meta = document.getElementById('kpiMeta');
@@ -1021,21 +1410,21 @@ function renderKPIs() {
   }
   if (meta) meta.textContent = selectedMonth ? mesLabel(currentMes) : `Último: ${mesLabel(currentMes)}`;
 
-  // Gastos P&L: desde raw data, excluyendo Prestamos Edgar
-  const gastosRawKpi  = selectedMonth
+  // Gastos P&L: desde raw data, excluyendo Prestamos Edgar (filtrado por currentMes para consistencia)
+  const gastosRawKpi  = currentMes
     ? allData.gastos.filter(r => r.fields['mes-a'] === currentMes)
     : allData.gastos;
   const gastosOpKpi      = gastosRawKpi.filter(r => !isEdgarCobertura(r));
   const gastosOpTotalKpi = gastosOpKpi.reduce((s,r) => s + (r.fields.monto||0), 0);
-  // Ventas señadas: desde raw pedidos, excl. cancelados, filtrados por fecha de seña
+  // Ventas señadas: desde raw pedidos, excl. cancelados e internos, filtrados por fecha de seña
   const pedidosVentas = allData.pedidos.filter(r =>
-    (r.fields.estado || '') !== 'Cancelado' &&
+    isPedidoComercialValido(r) &&
     (!currentMes || (r.fields.seña || '').slice(0, 7) === currentMes)
   );
   const ventasMonto = pedidosVentas.reduce((s,r) => s + (r.fields.monto_total_pactado || r.fields.precio_pactado || 0), 0);
   const ventasCount = pedidosVentas.length;
-  // Cobros: desde raw ingresos (excluye Capital y Recupero Edgar)
-  const ingsRawKpi    = selectedMonth
+  // Cobros: desde raw ingresos (excluye Capital y Recupero Edgar, filtrado por currentMes para consistencia)
+  const ingsRawKpi    = currentMes
     ? allData.ingresos.filter(r => r.fields['mes-a'] === currentMes)
     : allData.ingresos;
   const ingsOpKpi     = ingsRawKpi.filter(r => !isIngresoCapital(r));
@@ -1076,9 +1465,9 @@ function renderKPIs() {
   const totalG      = gastosOpTotalKpi;
   const cubrenFijos = cobros >= fijos;
 
-  // Gastos sin catalogar del período
-  const gastosDelMes = selectedMonth
-    ? allData.gastos.filter(r => r.fields['mes-a'] === selectedMonth)
+  // Gastos sin catalogar del período (filtrado por currentMes)
+  const gastosDelMes = currentMes
+    ? allData.gastos.filter(r => r.fields['mes-a'] === currentMes)
     : allData.gastos;
   const sinCatalogCount = gastosDelMes.filter(r => !r.fields.tipo || !r.fields.categoria).length;
 
@@ -1139,9 +1528,9 @@ function buildInsight(mesStr, ventasMonto) {
   const cobros = allData.ingresos
     .filter(r => r.fields['mes-a'] === mesStr && !isIngresoCapital(r))
     .reduce((s,r) => s + (r.fields.monto||0), 0);
-  // Por cobrar: suma de saldo real de pedidos del período (excl. cancelados)
+  // Por cobrar: suma de saldo real de pedidos del período (excl. cancelados e internos)
   const porCobrar = allData.pedidos
-    .filter(r => (r.fields.estado || '') !== 'Cancelado' &&
+    .filter(r => isPedidoComercialValido(r) &&
                  (r.fields.seña || '').slice(0, 7) === mesStr &&
                  (r.fields.saldo || 0) > 0)
     .reduce((s,r) => s + (r.fields.saldo || 0), 0);
@@ -1207,9 +1596,9 @@ function renderEvolucion() {
     else if (r.fields.tipo === 'Variable') gastosOpByMes[mes].vars += m;
   });
 
-  // Ventas señadas por mes: desde raw pedidos, excl. cancelados
+  // Ventas señadas por mes: desde raw pedidos, excl. cancelados e internos
   const ventasByMes = {};
-  allData.pedidos.filter(r => (r.fields.estado || '') !== 'Cancelado').forEach(r => {
+  allData.pedidos.filter(isPedidoComercialValido).forEach(r => {
     const mes = (r.fields.seña || '').slice(0, 7);
     if (!mes) return;
     if (!ventasByMes[mes]) ventasByMes[mes] = { total: 0, count: 0 };
@@ -1217,10 +1606,10 @@ function renderEvolucion() {
     ventasByMes[mes].count += 1;
   });
 
-  // Saldo real pendiente por mes: suma de saldo actual de cada pedido (excl. cancelados)
+  // Saldo real pendiente por mes: suma de saldo actual de cada pedido (excl. cancelados e internos)
   // Usa el campo saldo del pedido en lugar de ventas-cobros, para reflejar cobros posteriores
   const saldoByMes = {};
-  allData.pedidos.filter(r => (r.fields.estado || '') !== 'Cancelado' && (r.fields.saldo || 0) > 0).forEach(r => {
+  allData.pedidos.filter(r => isPedidoComercialValido(r) && (r.fields.saldo || 0) > 0).forEach(r => {
     const mes = (r.fields.seña || '').slice(0, 7);
     if (!mes) return;
     saldoByMes[mes] = (saldoByMes[mes] || 0) + (r.fields.saldo || 0);
@@ -1426,10 +1815,10 @@ function renderMovimientos() {
   const pedCount   = señasCount > 0 ? señasCount : Math.max(ingsClientes.length, 1);
   const ticketProm = totalI / pedCount;
 
-  // Cobrabilidad del mes — ventas señadas del período desde raw pedidos
+  // Cobrabilidad del mes — ventas señadas del período desde raw pedidos (excl. cancelados e internos)
   const ventasDelMes = selectedMonth
     ? allData.pedidos
-        .filter(r => (r.fields.estado || '') !== 'Cancelado' && (r.fields.seña || '').slice(0, 7) === selectedMonth)
+        .filter(r => isPedidoComercialValido(r) && (r.fields.seña || '').slice(0, 7) === selectedMonth)
         .reduce((s,r) => s + (r.fields.monto_total_pactado || r.fields.precio_pactado || 0), 0)
     : 0;
   const cobPct30 = ventasDelMes > 0 ? Math.round(totalI / ventasDelMes * 100) : null;
@@ -1846,7 +2235,14 @@ function renderComercial() {
   // 6. KPIs
   const totalVentas = activos.reduce((s,r) => s + (r.fields.monto_total_pactado||r.fields.precio_pactado||0), 0);
   const cantMuebles = activos.reduce((s,r) => s + (r.fields.cant_muebles||0), 0);
-  const cantPedidos = activos.length;
+  // Group by client to count active orders of unique clients
+  const uniqueClients = new Set();
+  activos.forEach(r => {
+    const cs = Array.isArray(r.fields.cliente) ? r.fields.cliente : [r.fields.cliente || ''];
+    const client = cs.filter(c => c && c.trim()).join(', ');
+    if (client) uniqueClients.add(clean(client));
+  });
+  const cantPedidos = uniqueClients.size;
   const ticket = cantPedidos > 0 ? totalVentas / cantPedidos : 0;
 
   // 7. Tags de estado
@@ -1919,47 +2315,78 @@ function renderComercial() {
 
 // ─── PRODUCCIÓN ───────────────────────────────────────────────────────────────
 function renderProduccion() {
-  // Render filter toolbar
-  const estadoOpts = ['', ...KANBAN_STATES.map(s => s.key)]
-    .map(k => {
-      const st = KANBAN_STATES.find(s => s.key === k);
-      return `<option value="${k}" ${prodEstadoFilter === k ? 'selected' : ''}>${k ? (st ? st.label : k) : 'Todos los estados'}</option>`;
-    }).join('');
+  // Guardar foco y posición del cursor si el buscador está activo
+  const activeEl = document.activeElement;
+  const isSearchActive = activeEl && activeEl.id === 'prodSearchInput';
+  const selStart = isSearchActive ? activeEl.selectionStart : null;
+  const selEnd = isSearchActive ? activeEl.selectionEnd : null;
+
+  // Guardar si hay algún dropdown multiselect abierto
+  const openDropdownId = document.querySelector('.multiselect-dropdown.open')?.parentElement?.id;
+
+  // Build the multiselect widgets
+  const estadoOptions = KANBAN_STATES.map(s => ({ value: s.key, label: s.label }));
+  const tipoOptions = [
+    { value: 'Propia', label: 'Producción Propia' },
+    { value: 'Clientes', label: 'Producción a Clientes' }
+  ];
+
+  const widgetEstados = buildMultiselectHTML('ms-estados', 'Todos los estados', estadoOptions, prodEstadosSelected, 'onEstadoChange');
+  const widgetTipos = buildMultiselectHTML('ms-tipos', 'Origen de Prod.', tipoOptions, prodTiposSelected, 'onTipoChange');
+
   const tb = document.getElementById('prodToolbar');
   if (tb) tb.innerHTML = `
-    <input type="text" class="prod-search" placeholder="🔍 Buscar variante o cliente..." value="${prodSearch.replace(/"/g,'&quot;')}"
-      oninput="prodSearch=this.value;renderProduccion()" />
-    <select class="filter-select" onchange="prodEstadoFilter=this.value;renderProduccion()">${estadoOpts}</select>
-    <button class="btn-nav no-print" onclick="printFichas()" style="margin-left:auto">⎙ Imprimir fichas</button>
+    <input type="text" id="prodSearchInput" class="prod-search" placeholder="🔍 Buscar variante o cliente..." value="${prodSearch.replace(/"/g,'&quot;')}"
+      oninput="prodSearch=this.value;renderProduccion()" style="flex:1; max-width:220px;" />
+    ${widgetEstados}
+    <div style="display:flex; align-items:center; gap:6px;">
+      <span style="font-size:12px; color:var(--muted); white-space:nowrap;">Origen:</span>
+      ${widgetTipos}
+    </div>
+    <button class="btn-nav primary no-print" onclick="printFichas()" style="margin-left:auto; display:flex; align-items:center; gap:6px;">
+      ⎙ Armar Fichas Filtradas
+    </button>
   `;
   const meta = document.getElementById('prodMeta');
   const today = new Date(); today.setHours(0,0,0,0);
 
-  // Only show records with a real client (non-empty, not "Mosca Taller")
   const q = prodSearch.toLowerCase().trim();
   const prods = allData.produccion.filter(r => {
     const clientes = Array.isArray(r.fields.cliente) ? r.fields.cliente : [r.fields.cliente || ''];
-    const hasClient = clientes.some(c => c && c.trim());
-    const isMosca   = clientes.some(c => /mosca\s*taller/i.test(c || ''));
-    if (!hasClient || isMosca) return false;
-    // Search filter
-    if (q) {
+
+    // Search filter: only apply if the query is at least 3 characters long
+    if (q && q.length >= 3) {
       const varIds  = Array.isArray(r.fields.variante) ? r.fields.variante : [];
       const varName = varIds.map(id => allData.variantes_map[id] || '').join(' ').toLowerCase();
       const cliStr  = clientes.join(' ').toLowerCase();
       if (!varName.includes(q) && !cliStr.includes(q)) return false;
     }
-    // Estado filter
-    if (prodEstadoFilter && getKanbanBucket(r.fields.estado) !== prodEstadoFilter) return false;
+    
+    // Filtro de Origen (Propia vs Clientes)
+    const isMosca = clientes.some(c => /mosca\s*taller/i.test(c || ''));
+    const matchPropia = prodTiposSelected.includes('Propia') && isMosca;
+    const matchClientes = prodTiposSelected.includes('Clientes') && !isMosca;
+    if (!matchPropia && !matchClientes) return false;
+
+    // (Filtros de madera y acabados eliminados)
+    // Estado filter (multiselect)
+    const bk = getKanbanBucket(r.fields.estado);
+    if (!prodEstadosSelected.includes(bk)) return false;
+    
     return true;
   });
 
-  const activos    = prods.filter(r => getKanbanBucket(r.fields.estado) !== 'entregado');
-  const entregados = prods.filter(r => getKanbanBucket(r.fields.estado) === 'entregado');
+  filteredProduccion = prods;
+
+  const activos    = prods.filter(r => {
+    const cat = getProductionCategory(r.fields.estado);
+    return cat !== 'finalizado' && cat !== 'cancelado';
+  });
+  const entregados = prods.filter(r => getProductionCategory(r.fields.estado) === 'finalizado');
   const conProbs   = prods.filter(r => r.fields.problemas);
   if (meta) meta.textContent = `${activos.length} activos · ${entregados.length} entregados${conProbs.length ? ' · ' + conProbs.length + ' con problemas' : ''}`;
 
-  // Build kanban buckets (show all states except entregado for activos; entregado column shows recent 10)
+  // Build kanban buckets
   const buckets = {};
   KANBAN_STATES.forEach(s => { buckets[s.key] = []; });
 
@@ -1975,10 +2402,11 @@ function renderProduccion() {
     return da.localeCompare(db);
   }));
 
-  // Limit entregado to most recent 10
-  if (buckets.entregado.length > 10) buckets.entregado = buckets.entregado.slice(-10);
+  // Limit entregado to most recent 10, limit cancelado to 10
+  if (buckets.Entregado && buckets.Entregado.length > 10) buckets.Entregado = buckets.Entregado.slice(-10);
+  if (buckets.Cancelado && buckets.Cancelado.length > 10) buckets.Cancelado = buckets.Cancelado.slice(-10);
 
-  const cols = KANBAN_STATES.map(st => {
+  const cols = KANBAN_STATES.filter(st => prodEstadosSelected.includes(st.key)).map(st => {
     const cards = buckets[st.key].map(r => {
       const f = r.fields;
       const clientes = Array.isArray(f.cliente) ? f.cliente : [f.cliente || '—'];
@@ -1995,30 +2423,41 @@ function renderProduccion() {
         : null;
 
       let daysBadge = '';
-      if (daysLeft !== null && st.key !== 'entregado') {
+      if (daysLeft !== null && st.key !== 'Entregado' && st.key !== 'Cancelado') {
         if (daysLeft < 0)      daysBadge = `<div class="days-badge days-late">${daysLeft}d vencido</div>`;
         else if (daysLeft <= 7) daysBadge = `<div class="days-badge days-warn">${daysLeft}d</div>`;
         else                   daysBadge = `<div class="days-badge days-ok">${daysLeft}d</div>`;
       }
 
       const prodNumId = f.ID || f.id_produccion || f.numero || f.Numero || (r.id ? r.id.replace('rec','').slice(0,8) : '');
-      // Encode record for print (JSON safe)
       const rEncoded = encodeURIComponent(JSON.stringify({id: r.id, fields: f}));
-      return `<div class="kanban-card">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px">
-          <div class="kanban-card-title" style="flex:1">${varName || '(sin variante)'}</div>
-          <button title="Imprimir ficha" onclick="event.stopPropagation();openFichaWindow([JSON.parse(decodeURIComponent('${rEncoded}'))])"
-            style="background:none;border:none;cursor:pointer;font-size:14px;padding:0;line-height:1;color:#888;flex-shrink:0">🖨</button>
+
+      // Image thumbnail
+      const imgUrl = getCardImageUrl(f);
+      const cardImg = imgUrl
+        ? `<div class="kanban-card-thumb" style="background-image: url('${imgUrl}');" onclick="event.stopPropagation(); openFichaWindow([JSON.parse(decodeURIComponent('${rEncoded}'))])" title="Ver Ficha A4"></div>`
+        : '';
+
+      return `<div class="kanban-card" draggable="true" ondragstart="drag(event, '${r.id}')" ondragend="dragEnd(event)">
+        <div class="kanban-card-body" style="display:flex; width:100%; gap:8px; align-items:flex-start;">
+          <div class="kanban-card-info" style="flex:1; min-width:0;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px; margin-bottom:4px;">
+              <div class="kanban-card-title" style="font-weight:600;font-size:12px;color:var(--text);flex:1;word-break:break-word;">
+                <span style="color:var(--accent); font-family:monospace; margin-right:4px;">#${prodNumId}</span>
+                ${varName || '(sin variante)'}
+              </div>
+              <button title="Imprimir ficha" onclick="event.stopPropagation();openFichaWindow([JSON.parse(decodeURIComponent('${rEncoded}'))])"
+                style="background:none;border:none;cursor:pointer;font-size:14px;padding:0;line-height:1;color:#888;flex-shrink:0">🖨</button>
+            </div>
+            <div class="kanban-card-meta" style="font-size:11px;color:var(--muted);">${cliente}</div>
+            ${fechaRaw ? `<div class="kanban-card-meta" style="font-size:11px;color:var(--muted);">${fmtDate(fechaRaw)}</div>` : ''}
+            ${daysBadge}
+            ${f.problemas ? `<div class="kanban-card-problema" style="font-size:10px;color:var(--negative);margin-top:3px;">⚠ ${f.problemas}</div>` : ''}
+          </div>
+          ${cardImg}
         </div>
-        <div class="kanban-card-meta">${cliente}</div>
-        ${fechaRaw ? `<div class="kanban-card-meta">${fmtDate(fechaRaw)}</div>` : ''}
-        ${daysBadge}
-        ${f.problemas ? `<div class="kanban-card-problema">⚠ ${f.problemas}</div>` : ''}
-        <div class="kanban-card-id">Nro. ${prodNumId}</div>
       </div>`;
     }).join('');
-
-    // Encode all records in this bucket for column-level print
     const colEncoded = encodeURIComponent(JSON.stringify(buckets[st.key].map(r2 => ({id: r2.id, fields: r2.fields}))));
     return `<div class="kanban-col">
       <div class="kanban-col-header" style="background:${st.color}">
@@ -2029,15 +2468,32 @@ function renderProduccion() {
             style="background:rgba(255,255,255,0.2);border:none;cursor:pointer;font-size:12px;padding:1px 5px;border-radius:3px;color:white;line-height:1.4">🖨</button>` : ''}
         </div>
       </div>
-      <div class="kanban-cards">${cards || '<div style="padding:8px;font-size:11px;color:#bbb;text-align:center">—</div>'}</div>
+      <div class="kanban-cards" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="drop(event, '${st.key}')">${cards || '<div style="padding:8px;font-size:11px;color:#bbb;text-align:center">—</div>'}</div>
     </div>`;
   }).join('');
-
   document.getElementById('contenidoProduccion').innerHTML = `<div class="kanban-board">${cols}</div>`;
+
+  // Restaurar foco y posición del cursor del buscador
+  if (isSearchActive) {
+    const searchInput = document.getElementById('prodSearchInput');
+    if (searchInput) {
+      searchInput.focus();
+      if (selStart !== null && selEnd !== null) {
+        searchInput.setSelectionRange(selStart, selEnd);
+      }
+    }
+  }
+
+  // Restaurar el dropdown multiselect abierto si correspondiera
+  if (openDropdownId) {
+    const container = document.getElementById(openDropdownId);
+    if (container) {
+      container.querySelector('.multiselect-dropdown')?.classList.add('open');
+    }
+  }
 }
 
 // ─── FICHAS DE TALLER ────────────────────────────────────────────────────────
-// CSS embebido para la ventana popup de fichas
 function fichaWindowCSS() {
   return `
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -2046,34 +2502,31 @@ function fichaWindowCSS() {
     .btn { padding: 8px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; }
     .btn-print { background: #0a465a; color: white; }
     .btn-close { background: #c62828; color: white; }
-    .ficha2-page { background: white; width: 210mm; min-height: 297mm; margin: 16px auto; padding: 14mm 14mm 10mm; box-sizing: border-box; font-size: 11pt; display: flex; flex-direction: column; }
+    .ficha2-page { background: white; width: 210mm; min-height: 297mm; margin: 16px auto; padding: 14mm 14mm 10mm; box-sizing: border-box; font-size: 13pt; position: relative; display: flex; flex-direction: column; }
     .ficha2-topbar { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 6px; }
-    .ficha2-num { font-size: 28pt; font-weight: 900; color: #111; line-height: 1; }
-    .ficha2-bee { font-size: 22pt; margin-right: 6px; }
+    .ficha2-num { font-size: 32pt; font-weight: 900; color: #111; line-height: 1; }
+.ficha2-bee { font-size: 26pt; margin-right: 8px; }
     .ficha2-numblock { display: flex; align-items: center; }
     .ficha2-entrega { text-align: center; }
-    .ficha2-entrega-label { font-size: 10pt; color: #555; }
-    .ficha2-entrega-date { font-size: 20pt; font-weight: 700; color: #111; }
-    .ficha2-brand { text-align: right; font-size: 22pt; font-weight: 900; letter-spacing: -1px; line-height: 1.05; color: #111; }
-    .ficha2-clientbar { display: flex; gap: 20px; background: #f4f4f4; border-radius: 3px; padding: 5px 10px; font-size: 9.5pt; margin-bottom: 8px; color: #333; }
-    .ficha2-productbar { display: flex; justify-content: space-between; align-items: flex-start; border-top: 2px solid #111; border-bottom: 1px solid #ccc; padding: 6px 0; margin-bottom: 10px; }
-    .ficha2-product-name { font-size: 16pt; font-weight: 700; color: #111; flex: 1; line-height: 1.2; }
-    .ficha2-dims { text-align: right; font-size: 9.5pt; color: #444; line-height: 1.8; flex-shrink: 0; min-width: 90px; }
-    .ficha2-dims b { font-size: 11pt; }
-    .ficha2-body { display: flex; gap: 14px; flex: 1; margin-bottom: 10px; min-height: 80mm; }
-    .ficha2-photo { flex: 0 0 55%; border: 1px solid #ccc; border-radius: 3px; display: flex; align-items: center; justify-content: center; color: #bbb; font-size: 10pt; background: #fafafa; }
+    .ficha2-entrega-label { font-size: 11pt; color: #555; }
+    .ficha2-entrega-date { font-size: 22pt; font-weight: 700; color: #111; }
+    .ficha2-brand { text-align: right; font-size: 24pt; font-weight: 900; letter-spacing: -1px; line-height: 1.05; color: #111; }
+    .ficha2-clientbar { display: flex; gap: 20px; background: #f4f4f4; border-radius: 3px; padding: 6px 12px; font-size: 11pt; margin-bottom: 10px; color: #333; }
+    .ficha2-productbar { display: flex; justify-content: space-between; align-items: flex-start; border-top: 2.5px solid #111; border-bottom: 1.5px solid #ccc; padding: 8px 0; margin-bottom: 12px; }
+    .ficha2-product-name { font-size: 18pt; font-weight: 700; color: #111; flex: 1; line-height: 1.25; }
+    .ficha2-dims { text-align: right; font-size: 11pt; color: #444; line-height: 1.6; flex-shrink: 0; min-width: 100px; }
+    .ficha2-dims b { font-size: 13pt; }
+    .ficha2-body { display: flex; gap: 16px; flex: 1; margin-bottom: 12px; min-height: 80mm; }
+    .ficha2-photo { flex: 0 0 55%; border: 1px solid #ccc; border-radius: 3px; display: flex; align-items: center; justify-content: center; min-height: 80mm; background: #fafafa; }
     .ficha2-specs { flex: 1; display: flex; flex-direction: column; }
-    .ficha2-spec-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #eee; font-size: 10pt; }
+    .ficha2-spec-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; font-size: 12pt; }
     .ficha2-spec-label { color: #555; }
     .ficha2-spec-value { font-weight: 600; color: #111; text-align: right; max-width: 55%; }
-    .ficha2-section-title { font-size: 11pt; font-weight: 700; margin: 10px 0 4px; color: #111; }
-    .ficha2-table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
-    .ficha2-table th { background: #eee; border: 1px solid #ccc; padding: 4px 8px; text-align: left; font-weight: 600; }
-    .ficha2-table td { border: 1px solid #ccc; padding: 4px 8px; height: 24px; }
-    .ficha2-checklist { display: flex; gap: 18px; flex-wrap: wrap; border-top: 2px solid #111; padding-top: 8px; margin-top: 10px; }
-    .ficha2-check { display: flex; align-items: center; gap: 6px; font-size: 10pt; }
-    .ficha2-check-box { width: 14px; height: 14px; border: 1.5px solid #333; border-radius: 2px; flex-shrink: 0; display: inline-block; }
-    .ficha2-problema { background: #fff3e0; border: 1px solid #ffb74d; border-radius: 3px; padding: 6px 10px; margin-bottom: 8px; font-size: 10pt; color: #e65100; }
+    .ficha2-section-title { font-size: 12pt; font-weight: 700; margin: 12px 0 6px; color: #111; }
+    .ficha2-checklist { display: flex; gap: 20px; flex-wrap: wrap; border-top: 2.5px solid #111; padding-top: 10px; margin-top: auto; }
+    .ficha2-check { display: flex; align-items: center; gap: 8px; font-size: 12pt; font-weight: 600; }
+    .ficha2-check-box { width: 18px; height: 18px; border: 2px solid #333; border-radius: 3px; flex-shrink: 0; display: inline-block; }
+    .ficha2-problema { background: #fff3e0; border: 1px solid #ffb74d; border-radius: 3px; padding: 8px 12px; margin-bottom: 10px; font-size: 11pt; color: #e65100; font-weight: 600; }
     @media print {
       .controls { display: none; }
       body { background: white; }
@@ -2081,6 +2534,52 @@ function fichaWindowCSS() {
       .ficha2-page:last-child { page-break-after: avoid; }
     }
   `;
+}
+
+function getFieldValue(val, suffix = '') {
+  if (val === null || val === undefined) return '—';
+  const clean = Array.isArray(val) ? val.filter(Boolean).join(', ') : String(val).trim();
+  return clean ? clean + suffix : '—';
+}
+
+function getClientPhone(f) {
+  const fieldsToCheck = [
+    'telefono (de cliente)',
+    'telefono_cliente',
+    'telefono (de Pedido)',
+    'telefono_contacto'
+  ];
+  for (const field of fieldsToCheck) {
+    const val = f[field];
+    if (val) {
+      if (Array.isArray(val) && val.length > 0) {
+        return val[0];
+      }
+      if (typeof val === 'string') return val;
+    }
+  }
+  const tel = f.telefono;
+  if (tel) {
+    const val = Array.isArray(tel) ? tel[0] : tel;
+    if (typeof val === 'string' && !val.startsWith('rec')) {
+      return val;
+    }
+  }
+  return null;
+}
+
+function isStageChecked(currentStatus, stageName) {
+  const bucket = clean(getKanbanBucket(currentStatus));
+  const lower = clean(stageName);
+  
+  if (bucket === lower) return true;
+  
+  if (lower.includes('herrer') && (bucket.includes('herrer') || bucket === 'en produ - herreria')) return true;
+  if (lower.includes('carpinter') && (bucket.includes('carpinter') || bucket === 'en produ - carpinteria')) return true;
+  if (lower.includes('laca') && bucket.includes('laca')) return true;
+  if (lower.includes('calidad') && (bucket.includes('calidad') || bucket.includes('control'))) return true;
+  if (lower.includes('listo') && (bucket === 'para entregar' || bucket === 'en stock' || bucket === 'entregado' || bucket.includes('listo'))) return true;
+  return false;
 }
 
 function buildFichaHTML(r, variantesMap, fechaImp) {
@@ -2094,25 +2593,35 @@ function buildFichaHTML(r, variantesMap, fechaImp) {
   const fechaDisplay = fechaRaw
     ? new Date(fechaRaw + 'T12:00:00').toLocaleDateString('es-AR', {day:'numeric',month:'numeric',year:'numeric'})
     : '—';
-  const estadoKey = typeof getKanbanBucket === 'function' ? getKanbanBucket(f.estado) : '';
-  const estadoSt  = (typeof KANBAN_STATES !== 'undefined' ? KANBAN_STATES : []).find(s => s.key === estadoKey);
-  const estadoLabel = estadoSt ? estadoSt.label : (f.estado || 'Sin estado');
   const problema = f.problemas || '';
   const numId    = f.ID || f.id_produccion || f.numero || f.Numero || (r.id ? String(r.id).replace('rec','').slice(0,10) : '—');
 
-  // Parse notas_variante as key:value spec rows
-  const notasRaw = Array.isArray(f.notas_variante)
-    ? f.notas_variante.filter(Boolean).join('\n')
-    : (f.notas_variante || '');
-  const specRows = notasRaw.split('\n').filter(l => l.trim()).map(line => {
-    const idx = line.indexOf(':');
-    if (idx > 0) {
-      return `<div class="ficha2-spec-row"><span class="ficha2-spec-label">${line.slice(0,idx).trim()}</span><span class="ficha2-spec-value">${line.slice(idx+1).trim()}</span></div>`;
-    }
-    return `<div class="ficha2-spec-row"><span class="ficha2-spec-label">${line}</span><span class="ficha2-spec-value"></span></div>`;
+  const woodVal = getFieldValue(f['tipo_madera (de Pedido)'] || f.tipo_madera);
+  const isWoodHighlight = woodVal !== '—' && !woodVal.toLowerCase().includes('alamo');
+
+  const acabadoVal = getFieldValue(f.acabado);
+  const isAcabadoHighlight = acabadoVal !== '—' && !acabadoVal.toLowerCase().includes('mate');
+
+  const specs = [
+    { label: 'Ancho', value: getFieldValue(f.ancho, ' cm') },
+    { label: 'Alto', value: getFieldValue(f.alto, ' cm') },
+    { label: 'Profundidad', value: getFieldValue(f.profundidad, ' cm') },
+    { label: 'Largo', value: getFieldValue(f.largo, ' cm') },
+    { label: 'Tipo Madera', value: woodVal, highlight: isWoodHighlight },
+    { label: 'Tono Madera', value: getFieldValue(f.tono_madera) },
+    { label: 'Terminación', value: getFieldValue(f.terminacion) },
+    { label: 'Acabado', value: acabadoVal, highlight: isAcabadoHighlight },
+    { label: 'Tono Hierro', value: getFieldValue(f.tono_hierro) },
+    { label: 'Estructura / Macizo', value: getFieldValue(f.macizo) }
+  ];
+
+  const specRowsHtml = specs.map(s => {
+    const valHtml = s.highlight
+      ? `<span style="background: #ffebee; color: #c62828; font-weight: bold; border: 1.5px solid #c62828; padding: 2px 6px; border-radius: 4px; font-size: 11pt; display: inline-block;">⚠️ ${s.value}</span>`
+      : `<span>${s.value}</span>`;
+    return `<div class="ficha2-spec-row" style="padding: 4px 0; border-bottom: 1px solid #eee; font-size: 12pt; display: flex; justify-content: space-between; align-items: center;"><span class="ficha2-spec-label" style="color: #555;">${s.label}</span><span class="ficha2-spec-value" style="font-weight: 600; color: #111; text-align: right; max-width: 60%;">${valHtml}</span></div>`;
   }).join('');
 
-  // Extract dimensions from varName
   let dimsHtml = '';
   const dimMatch = varName.match(/(\d+)[xX\u00d7](\d+)(?:[xX\u00d7](\d+))?/);
   if (dimMatch) {
@@ -2120,15 +2629,52 @@ function buildFichaHTML(r, variantesMap, fechaImp) {
     dimsHtml = `<div class="ficha2-dims">Ancho: <b>${d1}</b><br>Alto: <b>${d2}</b>${d3 ? `<br>Prof.: <b>${d3}</b>` : ''}</div>`;
   }
 
+  const imgUrl = getCardImageUrl(f);
+  const photoHTML = imgUrl
+    ? `<div class="ficha2-photo" style="border: 1px solid #ccc; border-radius: 3px; display: flex; align-items: center; justify-content: center; min-height: 85mm; background: #fafafa; overflow: hidden;"><img src="${imgUrl}" style="max-width: 100%; max-height: 85mm; object-fit: contain;" /></div>`
+    : `<div class="ficha2-photo" style="border: 1px dashed #ccc; border-radius: 3px; display: flex; align-items: center; justify-content: center; color: #bbb; font-size: 10pt; min-height: 85mm; background: #fafafa;">Sin imagen de referencia</div>`;
+
+  const notesList = Array.isArray(f.notas) ? f.notas.filter(Boolean) : (f.notas ? [f.notas] : []);
+  const generalNotes = notesList.join('\n').trim();
+  const notesHTML = generalNotes
+    ? `<div style="border: 2.5px solid #111; border-radius: 6px; padding: 14px 18px; margin-top: 12px; background: #fff;">
+        <div style="font-size: 10pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1.2px; color: #555; margin-bottom: 6px; border-bottom: 1.5px solid #eee; padding-bottom: 4px;">Notas de Taller / Observaciones Especiales</div>
+        <div style="font-size: 16pt; font-weight: 700; color: #000; line-height: 1.45; white-space: pre-line;">${generalNotes}</div>
+       </div>`
+    : '';
+
+  const clientPhone = getClientPhone(f);
+  const clientAddress = getFieldValue(f['direccion (de Pedido)'] || f.direccion);
+  const clientHTML = `
+    <div style="border: 2.5px solid #0a465a; border-radius: 6px; padding: 14px 18px; margin-top: 12px; background: #f0f7f9;">
+      <div style="font-size: 10pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1.2px; color: #0a465a; margin-bottom: 8px; border-bottom: 1.5px solid #b3d1db; padding-bottom: 4px;">Datos del Cliente (Entrega)</div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div style="font-size: 18pt; font-weight: 800; color: #111;">Cliente: ${cliente}</div>
+        <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+          <div style="font-size: 14pt; font-weight: 700; color: #333; flex: 1; min-width: 220px;">📞 Teléfono: ${clientPhone || '—'}</div>
+          <div style="font-size: 14pt; font-weight: 700; color: #333; flex: 2; min-width: 320px;">📍 Dirección: ${clientAddress}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const checkStyle = (stage) => isStageChecked(f.estado, stage)
+    ? `background: #111; color: white; display: inline-flex; align-items: center; justify-content: center; font-weight: bold;`
+    : '';
+  const checkChar = (stage) => isStageChecked(f.estado, stage) ? '✓' : '';
+
   return `<div class="ficha2-page">
     <div class="ficha2-topbar">
-      <div class="ficha2-numblock"><span class="ficha2-bee">&#x1F41D;</span><div><div class="ficha2-num">${numId}</div></div></div>
+      <div class="ficha2-numblock">
+        <img class="ficha2-logo" src="mosca.png" style="height: 36px; width: 36px; object-fit: contain; margin-right: 10px;" onerror="this.style.display='none';" />
+        <div><div class="ficha2-num">${numId}</div></div>
+      </div>
       <div class="ficha2-entrega"><div class="ficha2-entrega-label">Entrega</div><div class="ficha2-entrega-date">${fechaDisplay}</div></div>
       <div class="ficha2-brand">MOSCA<br>TALLER</div>
     </div>
     <div class="ficha2-clientbar">
-      <span>${cliente}</span>
-      <span style="margin-left:auto;font-size:9pt;color:#888">Estado: ${estadoLabel} &middot; Impreso: ${fechaImp}</span>
+      <span><b>Ficha de Taller</b></span>
+      <span style="margin-left:auto;font-size:10pt;color:#666">Impreso: ${fechaImp}</span>
     </div>
     <div class="ficha2-productbar">
       <div class="ficha2-product-name">${varName}</div>
@@ -2136,20 +2682,20 @@ function buildFichaHTML(r, variantesMap, fechaImp) {
     </div>
     ${problema ? `<div class="ficha2-problema">&#x26A0; Problema: ${problema}</div>` : ''}
     <div class="ficha2-body">
-      <div class="ficha2-photo">[ Foto / Referencia ]</div>
-      <div class="ficha2-specs">${specRows || '<div style="color:#bbb;font-size:9pt;padding:8px 0">Sin especificaciones detalladas</div>'}</div>
+      ${photoHTML}
+      <div class="ficha2-specs">
+        <div style="font-size: 10pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #555; margin-bottom: 6px; border-bottom: 1px solid #eee; padding-bottom: 4px;">Especificaciones</div>
+        ${specRowsHtml}
+      </div>
     </div>
-    <div class="ficha2-section-title">Materiales</div>
-    <table class="ficha2-table">
-      <thead><tr><th>Material</th><th>Cantidad</th><th>% Desperdicio aprox</th></tr></thead>
-      <tbody><tr><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td></tr></tbody>
-    </table>
+    ${notesHTML}
+    ${clientHTML}
     <div class="ficha2-checklist">
-      <div class="ficha2-check"><div class="ficha2-check-box"></div> Estructura</div>
-      <div class="ficha2-check"><div class="ficha2-check-box"></div> Terminaci&oacute;n</div>
-      <div class="ficha2-check"><div class="ficha2-check-box"></div> Tapizado / Pintura</div>
-      <div class="ficha2-check"><div class="ficha2-check-box"></div> Control calidad</div>
-      <div class="ficha2-check"><div class="ficha2-check-box"></div> Listo para entregar</div>
+      <div class="ficha2-check"><div class="ficha2-check-box" style="${checkStyle('Herrería')}">${checkChar('Herrería')}</div> Herrer&iacute;a</div>
+      <div class="ficha2-check"><div class="ficha2-check-box" style="${checkStyle('Carpintería')}">${checkChar('Carpintería')}</div> Carpinter&iacute;a</div>
+      <div class="ficha2-check"><div class="ficha2-check-box" style="${checkStyle('Laca')}">${checkChar('Laca')}</div> Laca / Terminaci&oacute;n</div>
+      <div class="ficha2-check"><div class="ficha2-check-box" style="${checkStyle('Calidad')}">${checkChar('Calidad')}</div> Control de Calidad</div>
+      <div class="ficha2-check"><div class="ficha2-check-box" style="${checkStyle('Listo')}">${checkChar('Listo')}</div> Listo / Embalado</div>
     </div>
   </div>`;
 }
@@ -2168,22 +2714,7 @@ function openFichaWindow(prods) {
 
 // Mantener botón "Imprimir fichas" del toolbar que imprime los filtrados actualmente
 function printFichas() {
-  const q = prodSearch.toLowerCase().trim();
-  const prods = allData.produccion.filter(r => {
-    const clientes = Array.isArray(r.fields.cliente) ? r.fields.cliente : [r.fields.cliente || ''];
-    const hasClient = clientes.some(c => c && c.trim());
-    const isMosca   = clientes.some(c => /mosca\s*taller/i.test(c || ''));
-    if (!hasClient || isMosca) return false;
-    if (q) {
-      const varIds  = Array.isArray(r.fields.variante) ? r.fields.variante : [];
-      const varName = varIds.map(id => allData.variantes_map[id] || '').join(' ').toLowerCase();
-      const cliStr  = clientes.join(' ').toLowerCase();
-      if (!varName.includes(q) && !cliStr.includes(q)) return false;
-    }
-    if (prodEstadoFilter && getKanbanBucket(r.fields.estado) !== prodEstadoFilter) return false;
-    return true;
-  });
-  openFichaWindow(prods);
+  openFichaWindow(filteredProduccion);
 }
 
 // ─── POR COBRAR ───────────────────────────────────────────────────────────────
@@ -2194,49 +2725,114 @@ function renderPorCobrar() {
   const produccionById = {};
   allData.produccion.forEach(r => { produccionById[r.id] = r.fields; });
 
-  // Sort by fecha_entrega asc (nulls last), then by saldo desc — excluir cancelados
-  const conSaldo = allData.pedidos
-    .filter(r => (r.fields.saldo||0) > 0 && (r.fields.estado || '') !== 'Cancelado')
-    .sort((a,b) => {
-      const da = a.fields.fecha_entrega || 'zzz';
-      const db = b.fields.fecha_entrega || 'zzz';
-      if (da !== db) return da.localeCompare(db);
-      return (b.fields.saldo||0) - (a.fields.saldo||0);
-    });
+  // 1. Filtrar pedidos válidos con saldo
+  const conSaldoRaw = allData.pedidos.filter(r => (r.fields.saldo||0) > 0 && isPedidoComercialValido(r));
 
-  const totalPorCobrar = conSaldo.reduce((s,r) => s + (r.fields.saldo||0), 0);
-  if (meta) meta.textContent = `${conSaldo.length} pedidos · ${fmtFull(totalPorCobrar)} total`;
-
-  // Breakdown por estado de producción
-  let pcEnProd = 0, pcListos = 0, pcSinIniciar = 0;
-  conSaldo.forEach(r => {
-    const prodRecs = (r.fields.produccion || []).map(id => produccionById[id]).filter(Boolean);
-    if (prodRecs.length === 0) { pcSinIniciar++; return; }
-    const buckets   = prodRecs.map(p => getKanbanBucket(p.estado || ''));
-    const hayActivo = buckets.some(b => b === 'estructura' || b === 'terminacion');
-    const hayListo  = buckets.some(b => b === 'paraentregar');
-    const inerte    = buckets.every(b => b === 'backlog' || b === 'entregado');
-    if (hayActivo)      pcEnProd++;
-    else if (hayListo)  pcListos++;
-    else                pcSinIniciar++; // solo backlog o entregado
+  // 2. Agrupar por cliente para consolidar la deuda total por pedido comercial
+  const conSaldoByClient = {};
+  conSaldoRaw.forEach(r => {
+    const f = r.fields;
+    const cliente = Array.isArray(f.cliente) ? f.cliente[0] : (f.cliente || '—');
+    const clientKey = clean(cliente);
+    if (!conSaldoByClient[clientKey]) {
+      conSaldoByClient[clientKey] = {
+        cliente,
+        pedidos: [],
+        saldoTotal: 0,
+        minFechaEntrega: null,
+        variantNames: new Set(),
+        ids: new Set()
+      };
+    }
+    const clientObj = conSaldoByClient[clientKey];
+    clientObj.pedidos.push(r);
+    clientObj.saldoTotal += (f.saldo || 0);
+    
+    const pcNumId = f.ID || f.id_pedido || f.numero || f.Numero || (r.id ? r.id.replace('rec','').slice(0,8) : '');
+    if (pcNumId) {
+      clientObj.ids.add(pcNumId);
+    }
+    
+    const varIds = Array.isArray(f.variante) ? f.variante : (Array.isArray(f.variantes) ? f.variantes : []);
+    const varNames = varIds.map(id => allData.variantes_map[id] || '').filter(Boolean);
+    varNames.forEach(v => clientObj.variantNames.add(v));
+    
+    const fechaEnt = f.fecha_entrega || '';
+    if (fechaEnt) {
+      if (!clientObj.minFechaEntrega || fechaEnt < clientObj.minFechaEntrega) {
+        clientObj.minFechaEntrega = fechaEnt;
+      }
+    }
   });
 
-  if (conSaldo.length === 0) {
+  const groupedClientsList = Object.values(conSaldoByClient);
+
+  // Auxiliar para determinar la prioridad del cliente basándose en sus registros de producción
+  function getClientPriority(c) {
+    const prodRecs = [];
+    c.pedidos.forEach(r => {
+      const orderProd = (r.fields.produccion || []).map(id => produccionById[id]).filter(Boolean);
+      prodRecs.push(...orderProd);
+    });
+    
+    if (prodRecs.length === 0) return 3; // Sin iniciar
+    
+    let minPriority = 4; // Inicializar en el nivel más bajo (Entregado/Finalizado)
+    let hasProduction = false;
+    prodRecs.forEach(p => {
+      hasProduction = true;
+      const cat = getProductionCategory(p.estado || '');
+      let pVal = 3; // Por defecto sin_iniciar
+      if (cat === 'listo') pVal = 1;
+      else if (cat === 'activo') pVal = 2;
+      else if (cat === 'sin_iniciar') pVal = 3;
+      else if (cat === 'finalizado') pVal = 4;
+      
+      if (pVal < minPriority) {
+        minPriority = pVal;
+      }
+    });
+    return hasProduction ? minPriority : 3;
+  }
+
+  // 3. Ordenación por prioridad de producción, fecha de entrega y saldo
+  groupedClientsList.sort((a, b) => {
+    const prioA = getClientPriority(a);
+    const prioB = getClientPriority(b);
+    if (prioA !== prioB) return prioA - prioB; // Prioridad menor (más urgente) primero
+    
+    const da = a.minFechaEntrega || 'zzz';
+    const db = b.minFechaEntrega || 'zzz';
+    if (da !== db) return da.localeCompare(db); // Fecha más temprana primero (nulas al final)
+    
+    return b.saldoTotal - a.saldoTotal; // Saldo mayor primero
+  });
+
+  const totalPorCobrar = conSaldoRaw.reduce((s,r) => s + (r.fields.saldo||0), 0);
+  if (meta) meta.textContent = `${groupedClientsList.length} clientes con saldo · ${fmtFull(totalPorCobrar)} total`;
+
+  // 4. Calcular KPIs por estado de producción consolidado
+  let pcEnProd = 0, pcListos = 0, pcSinIniciar = 0;
+  groupedClientsList.forEach(c => {
+    const prio = getClientPriority(c);
+    if (prio === 1) {
+      pcListos++;
+    } else if (prio === 2) {
+      pcEnProd++;
+    } else {
+      pcSinIniciar++;
+    }
+  });
+
+  if (groupedClientsList.length === 0) {
     document.getElementById('contenidoPorCobrar').innerHTML =
       '<div style="color:#999;font-size:13px;padding:12px 0">Sin saldos pendientes</div>';
     return;
   }
 
-  const rows = conSaldo.map(r => {
-    const f = r.fields;
-    const cliente  = Array.isArray(f.cliente) ? f.cliente[0] : (f.cliente || '—');
-
-    // Variante names (check both field name variants)
-    const varIds  = Array.isArray(f.variante) ? f.variante : (Array.isArray(f.variantes) ? f.variantes : []);
-    const varName = varIds.map(id => allData.variantes_map[id] || '').filter(Boolean).join(', ') || '—';
-
-    // fecha_entrega & days remaining
-    const fechaEnt = f.fecha_entrega || '';
+  // 5. Renderizar filas mostrando estados reales y colores del Kanban
+  const rows = groupedClientsList.map(c => {
+    const fechaEnt = c.minFechaEntrega || '';
     const daysLeft = fechaEnt
       ? Math.round((new Date(fechaEnt) - today) / 86400000)
       : null;
@@ -2246,31 +2842,51 @@ function renderPorCobrar() {
       diasCell = `<span class="days-badge ${cls}">${daysLeft < 0 ? daysLeft + 'd' : '+' + daysLeft + 'd'}</span>`;
     }
 
-    // Producción status
-    const prodRecs  = (f.produccion || []).map(id => produccionById[id]).filter(Boolean);
-    const pendProd  = prodRecs.filter(p => getKanbanBucket(p.estado||'') !== 'entregado' && getKanbanBucket(p.estado||'') !== 'paraentregar');
-    const listoProd = prodRecs.filter(p => getKanbanBucket(p.estado||'') === 'paraentregar');
-    let prodStatus  = '';
-    if (prodRecs.length === 0)     prodStatus = '<span class="tag tag-gray">Sin prod.</span>';
-    else if (pendProd.length > 0)  prodStatus = `<span class="tag tag-amber">En prod. (${pendProd.length})</span>`;
-    else if (listoProd.length > 0) prodStatus = `<span class="tag tag-blue">Listo (${listoProd.length})</span>`;
-    else                           prodStatus = '<span class="tag tag-green">Entregado</span>';
+    // Producción status con estados y colores reales del Kanban
+    const prodRecs = [];
+    c.pedidos.forEach(r => {
+      const orderProd = (r.fields.produccion || []).map(id => produccionById[id]).filter(Boolean);
+      prodRecs.push(...orderProd);
+    });
+    
+    let prodStatus = '';
+    if (prodRecs.length === 0) {
+      prodStatus = '<span class="tag tag-gray">Sin prod.</span>';
+    } else {
+      const stateCounts = {};
+      prodRecs.forEach(p => {
+        const bk = getKanbanBucket(p.estado);
+        stateCounts[bk] = (stateCounts[bk] || 0) + 1;
+      });
+      
+      prodStatus = KANBAN_STATES.map(st => {
+        const count = stateCounts[st.key] || 0;
+        if (count === 0) return '';
+        return `<span class="tag" style="background: ${st.color}; color: white; margin-right: 4px; margin-bottom: 4px; border: none;">${st.label} ${count > 1 ? `(${count})` : ''}</span>`;
+      }).filter(Boolean).join('');
+      
+      if (!prodStatus) {
+        prodStatus = '<span class="tag tag-gray">Sin prod.</span>';
+      }
+    }
 
-    const pcNumId = f.ID || f.id_pedido || f.numero || f.Numero || (r.id ? r.id.replace('rec','').slice(0,8) : '');
+    const combinedIds = [...c.ids].join(', ');
+    const combinedVariants = [...c.variantNames].join(', ') || '—';
+    
     return `<tr>
-      <td style="font-size:11px;color:#555;font-weight:600">${pcNumId}</td>
-      <td>${cliente}</td>
-      <td style="font-size:11px;color:#555;max-width:180px">${varName}</td>
+      <td style="font-size:11px;color:#555;font-weight:600">${combinedIds}</td>
+      <td>${c.cliente}</td>
+      <td style="font-size:11px;color:#555;max-width:180px">${combinedVariants}</td>
       <td>${fmtDate(fechaEnt)}</td>
       <td class="center">${diasCell}</td>
-      <td class="right mono blue"><strong>${fmtFull(f.saldo)}</strong></td>
+      <td class="right mono blue"><strong>${fmtFull(c.saldoTotal)}</strong></td>
       <td>${prodStatus}</td>
     </tr>`;
   }).join('');
 
   document.getElementById('contenidoPorCobrar').innerHTML = `
     <div class="kpi-grid" style="margin-bottom:16px">
-      <div class="kpi"><div class="kpi-label">Pedidos con saldo</div><div class="kpi-value neutral">${conSaldo.length}</div></div>
+      <div class="kpi"><div class="kpi-label">Pedidos con saldo</div><div class="kpi-value neutral">${groupedClientsList.length}</div></div>
       <div class="kpi"><div class="kpi-label">Total por cobrar</div><div class="kpi-value blue">${fmt(totalPorCobrar)}</div></div>
       <div class="kpi"><div class="kpi-label">En producción</div><div class="kpi-value" style="color:var(--amber)">${pcEnProd}</div><div class="kpi-sub">estructura · terminación</div></div>
       <div class="kpi"><div class="kpi-label">Sin iniciar</div><div class="kpi-value neutral">${pcSinIniciar}</div><div class="kpi-sub">sin ficha o en backlog</div></div>
@@ -2314,13 +2930,14 @@ function renderEdgar() {
   const gastosMdoEdgarAll = allData.gastos.filter(r =>
     isEdgarProv(r) && (r.fields.categoria || '') === 'Mano de Obra'
   );
-  // Recupero Edgar cubre todo lo que Edgar da a Mosca:
-  //   metodo_cobro = 'laburo'   → trabajo entregado (también costo P&L vía Gasto MdO)
-  //   metodo_cobro = 'efectivo' → cash puesto por Edgar (devolución adelanto o préstamo fresco)
-  const ingEdgarAll = allData.ingresos.filter(r =>
-    (r.fields.concepto || '') === 'Recupero Edgar'
-  );
-  const isEfectivo = r => (r.fields.metodo_cobro || '') === 'efectivo';
+  // Recupero Edgar cubre todo lo que Edgar da a Mosca (trabajo y devoluciones/préstamos frescos de dinero):
+  const ingEdgarAll = allData.ingresos.filter(r => {
+    const c = r.fields.concepto || '';
+    const cleanC = clean(c);
+    const cleanNote = clean(r.fields.Nota || '');
+    return cleanC === 'recupero edgar' || (cleanC === 'prestamos' && cleanNote.includes('edgar'));
+  });
+  const isEfectivo = r => (r.fields.metodo_cobro || '') === 'efectivo' || clean(r.fields.concepto || '') === 'prestamos';
   const premiosAll = allData.pedidos.filter(r => (r.fields.premio_edgar||0) > 0 && r.fields.estado !== 'Cancelado');
 
   // ── Datasets FILTRADOS POR MES (para KPIs y tabla) ──────────────────────────
