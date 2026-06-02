@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mosca Taller · v1.2 · 2026-06-02</title>
+  <title>Mosca Taller · v1.3 · 2026-06-02</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -198,16 +198,6 @@
     .pedido-fecha.hoy      { color: #ff9030; font-weight: 600; }
     .pedido-fecha.pronto   { color: #f0b040; }
 
-    .ec-badge {
-      flex-shrink: 0;
-      font-size: 10px;
-      padding: 2px 6px;
-      border-radius: 4px;
-      background: #222;
-      color: var(--muted);
-      white-space: nowrap;
-    }
-
     .items-list {
       border: 1px solid var(--border);
       border-top: none;
@@ -314,6 +304,44 @@
     .ebtn.current { border-color: var(--accent); background: #221500; color: var(--accent); }
     .ebtn.saving  { opacity: 0.4; pointer-events: none; }
 
+    .nota-section { margin-bottom: 10px; }
+
+    .nota-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-bottom: 6px;
+    }
+
+    .nota-textarea {
+      width: 100%;
+      background: #111;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 14px;
+      padding: 10px 12px;
+      resize: none;
+      outline: none;
+      font-family: inherit;
+      line-height: 1.4;
+      min-height: 72px;
+    }
+
+    .nota-textarea:focus { border-color: #444; }
+    .nota-textarea::placeholder { color: var(--muted); }
+
+    .btn-guardar {
+      display: block; width: 100%; padding: 13px;
+      background: var(--accent); border: none;
+      border-radius: 9px; color: #000;
+      font-size: 14px; font-weight: 700; cursor: pointer;
+      margin-bottom: 8px;
+    }
+    .btn-guardar:active { opacity: 0.7; }
+    .btn-guardar.saving { opacity: 0.5; pointer-events: none; }
+
     .btn-cancel {
       display: block; width: 100%; padding: 13px;
       background: none; border: 1px solid var(--border);
@@ -418,7 +446,7 @@
   <div class="header-top">
     <h1>Mosca Taller</h1>
     <div class="header-right">
-      <span class="version">v1.2 · 2026-06-02</span>
+      <span class="version">v1.3 · 2026-06-02</span>
       <button class="btn-icon" onclick="loadData()">↻</button>
     </div>
   </div>
@@ -451,6 +479,11 @@
     <div class="modal-title" id="modal-title"></div>
     <div class="modal-sub"   id="modal-sub"></div>
     <div class="estado-grid" id="estado-grid"></div>
+    <div class="nota-section">
+      <div class="nota-label">Alerta / Nota</div>
+      <textarea class="nota-textarea" id="nota-input" placeholder="Ej: rajado en herrería, falta pintura, medir antes de entregar…" rows="3"></textarea>
+    </div>
+    <button class="btn-guardar" id="btn-guardar" onclick="guardarCambios()">Guardar</button>
     <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
   </div>
 </div>
@@ -734,7 +767,6 @@
             <div class="pedido-cliente">${highlight(p.clienteNombre, q)}</div>
             <div class="pedido-fecha ${fechaClass}">${fechaLabel}</div>
           </div>
-          ${p.estado_comercial ? `<div class="ec-badge">${esc(p.estado_comercial)}</div>` : ''}
         </div>
         <div class="items-list">
           ${sorted.map(item => renderItem(item, q)).join('')}
@@ -809,46 +841,78 @@
   }
 
   // ── Modal ────────────────────────────────────────────────
+  let pendingEstado = null; // estado seleccionado pero no guardado aún
+
   function openModal(itemId) {
     activeItem = items.find(i => i.id === itemId);
     if (!activeItem) return;
+    pendingEstado = activeItem.estado;
 
     const p = pedidosMap[activeItem.pedidoId] || {};
     document.getElementById('modal-title').textContent = activeItem.descripcion;
     document.getElementById('modal-sub').textContent = `#${p.id_pedido ?? '?'} · ${p.clienteNombre ?? ''}`;
 
-    document.getElementById('estado-grid').innerHTML = ESTADOS.map(e => `
-      <button class="ebtn ${e === activeItem.estado ? 'current' : ''}"
-              onclick="selectEstado('${e.replace(/'/g,"\\'")}')">
-        ${esc(e)}
-      </button>`).join('');
+    renderEstadoBtns();
+
+    document.getElementById('nota-input').value = activeItem.notas_taller || '';
+    document.getElementById('btn-guardar').classList.remove('saving');
 
     document.getElementById('overlay').classList.remove('hidden');
   }
 
-  async function selectEstado(nuevoEstado) {
+  function renderEstadoBtns() {
+    document.getElementById('estado-grid').innerHTML = ESTADOS.map(e => `
+      <button class="ebtn ${e === pendingEstado ? 'current' : ''}"
+              onclick="selectEstado('${e.replace(/'/g,"\\'")}')">
+        ${esc(e)}
+      </button>`).join('');
+  }
+
+  function selectEstado(nuevoEstado) {
+    pendingEstado = nuevoEstado;
+    renderEstadoBtns();
+  }
+
+  async function guardarCambios() {
     if (!activeItem) return;
-    if (nuevoEstado === activeItem.estado) { closeModal(); return; }
 
-    document.querySelectorAll('.ebtn').forEach(b => b.classList.add('saving'));
+    const nuevoEstado = pendingEstado;
+    const nuevaNota   = document.getElementById('nota-input').value.trim();
+    const cambioEstado = nuevoEstado !== activeItem.estado;
+    const cambiaNota   = nuevaNota   !== (activeItem.notas_taller || '').trim();
 
-    const prev = activeItem.estado;
-    activeItem.estado = nuevoEstado;
+    if (!cambioEstado && !cambiaNota) { closeModal(); return; }
+
+    const btn = document.getElementById('btn-guardar');
+    btn.classList.add('saving');
+    btn.textContent = 'Guardando…';
+
+    const fields = {};
+    if (cambioEstado) fields.estado        = nuevoEstado;
+    if (cambiaNota)   fields.notas_taller  = nuevaNota;
+
+    const prevEstado = activeItem.estado;
+    const prevNota   = activeItem.notas_taller;
+    activeItem.estado       = nuevoEstado;
+    activeItem.notas_taller = nuevaNota;
 
     try {
-      await apiPatch(T_ITEMS, activeItem.id, { estado: nuevoEstado });
+      await apiPatch(T_ITEMS, activeItem.id, fields);
       closeModal();
       render();
     } catch (err) {
-      activeItem.estado = prev;
+      activeItem.estado       = prevEstado;
+      activeItem.notas_taller = prevNota;
+      btn.classList.remove('saving');
+      btn.textContent = 'Guardar';
       alert('No se pudo guardar: ' + err.message);
-      document.querySelectorAll('.ebtn').forEach(b => b.classList.remove('saving'));
     }
   }
 
   function closeModal() {
     document.getElementById('overlay').classList.add('hidden');
-    activeItem = null;
+    activeItem    = null;
+    pendingEstado = null;
   }
 
   function onOverlayClick(e) {
