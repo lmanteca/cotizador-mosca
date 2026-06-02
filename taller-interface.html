@@ -223,6 +223,7 @@
     .item-desc { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .item-dims { font-size: 12px; color: var(--muted); }
     .item-nota { font-size: 11px; color: #c09040; margin-top: 2px; }
+    .item-nota-pedido { color: #5a7ec7; }
 
     /* ── Estado badges ── */
     .ebadge {
@@ -479,8 +480,12 @@
     <div class="modal-title" id="modal-title"></div>
     <div class="modal-sub"   id="modal-sub"></div>
     <div class="estado-grid" id="estado-grid"></div>
+    <div class="nota-section" id="notas-pedido-section" style="display:none">
+      <div class="nota-label" style="color:#5a7ec7">📋 Notas del pedido</div>
+      <div class="nota-textarea" id="notas-pedido-display" style="background:#f0f4ff;color:#333;min-height:40px;white-space:pre-wrap;font-size:13px"></div>
+    </div>
     <div class="nota-section">
-      <div class="nota-label">Alerta / Nota</div>
+      <div class="nota-label">⚠ Alerta taller</div>
       <textarea class="nota-textarea" id="nota-input" placeholder="Ej: rajado en herrería, falta pintura, medir antes de entregar…" rows="3"></textarea>
     </div>
     <button class="btn-guardar" id="btn-guardar" onclick="guardarCambios()">Guardar</button>
@@ -605,7 +610,7 @@
       // Todos los items excepto Cancelado y Vendido
       const rawItems = await fetchAll(T_ITEMS, {
         filterByFormula: `AND(NOT({estado}='Cancelado'),NOT({estado}='Vendido'))`,
-        'fields[]': ['nro_linea','descripcion','dimensiones','estado','notas_taller','pedido'],
+        'fields[]': ['nro_linea','nombre','dimensiones','estado','notas_taller','notas','pedido'],
       });
 
       const pidSet = new Set(rawItems.flatMap(r => r.fields.pedido || []));
@@ -665,14 +670,4 @@
           terminacion:      r.fields.terminacion || '',
           tono_hierro:      r.fields.tono_hierro || '',
           tipo_madera:      r.fields.tipo_madera || '',
-          acabado:          r.fields.acabado || '',
-          notas_logistica:  r.fields.notas_logistica || '',
-        };
-      });
-
-      items = rawItems.map(r => ({
-        id:          r.id,
-        nro_linea:   r.fields.nro_linea || 0,
-        descripcion: r.fields.descripcion || 'Sin descripción',
-        dimensiones: r.fields.dimensiones || '',
-        estado:      r.f
+      
