@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mosca Taller · v1.4 · 2026-06-02</title>
+  <title>Mosca Taller · v1.5 · 2026-06-02</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -447,7 +447,7 @@
   <div class="header-top">
     <h1>Mosca Taller</h1>
     <div class="header-right">
-      <span class="version">v1.4 · 2026-06-02</span>
+      <span class="version">v1.5 · 2026-06-02</span>
       <button class="btn-icon" onclick="loadData()">↻</button>
     </div>
   </div>
@@ -634,17 +634,21 @@
   }
 
   // ── Load ─────────────────────────────────────────────────
+  function setLoading(step) {
+    setMain(`<div class="loading"><div class="spinner"></div><div>${step}</div></div>`);
+  }
+
   async function loadData() {
-    setMain(`<div class="loading"><div class="spinner"></div><div>Cargando...</div></div>`);
+    setLoading('Cargando items…');
 
     try {
-      // Todos los items excepto Cancelado y Vendido
+      setLoading('1/4 · Items…');
       const rawItems = await fetchAll(T_ITEMS, {
         filterByFormula: `AND(NOT({estado}='Cancelado'),NOT({estado}='Vendido'))`,
         'fields[]': ['nro_linea','dimensiones','estado','notas_taller','notas','pedido','catalogo'],
       });
 
-      // Fetch catálogo para resolver nombre de producto
+      setLoading('2/4 · Catálogo…');
       const catIds = [...new Set(rawItems.flatMap(r => r.fields.catalogo || []))];
       const catalogoMap = {};
       if (catIds.length) {
@@ -663,6 +667,7 @@
 
       if (!pidArr.length) { setMain(`<div class="empty">No hay items activos</div>`); return; }
 
+      setLoading('3/4 · Pedidos…');
       const pedFilter = pidArr.length === 1
         ? `RECORD_ID()='${pidArr[0]}'`
         : `OR(${pidArr.map(id => `RECORD_ID()='${id}'`).join(',')})`;
@@ -670,4 +675,4 @@
       const rawPedidos = await fetchAll(T_PEDIDO, {
         filterByFormula: pedFilter,
         'fields[]': ['id_pedido','fecha_seña','dias_adicionales','estado_comercial','cliente',
-                     'precio_pactado','tono_madera','terminacion','tono_hierro','tipo_madera','acabado','no
+                     'precio_pact
