@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Mosca · Finanzas v1.0 · 2026-06-03</title>
+  <style>
+    :root {
+      --bg: #f5f2ef;
+      --card: #ffffff;
+      --border: #e0ddd8;
+      --text: #1a1714;
+      --muted: #6b6560;
+      --accent: #0a465a;
+      --accent2: #136b85;
+      --amber: #c4873a;
+      --positive: #2e7d32;
+      --negative: #c0392b;
+      --blue: #1565c0;
+      --beige: #d2beaa;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ─── PIN ─────────────────────────────────────────────────── */
+    #pin-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 20px;
+      padding: 24px;
+      background: var(--bg);
+    }
+    .pin-logo {
+      font-size: 24px;
+      font-weight: 900;
+      letter-spacing: 3px;
+      color: var(--accent);
+    }
+    .pin-subtitle { font-size: 12px; color: var(--muted); letter-spacing: .5px; }
+    .pin-title { font-size: 15px; color: var(--muted); }
+    .pin-dots { display: flex; gap: 14px; }
+    .pin-dot {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--bg);
+      transition: all .15s;
+    }
+    .pin-dot.filled { background: var(--accent); border-color: var(--accent); }
+    .pin-dot.shake { animation: shake .3s ease; }
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      25% { transform: translateX(-4px); }
+      75% { transform: translateX(4px); }
+    }
+    .pin-numpad {
+      display: grid;
+      grid-template-columns: repeat(3, 72px);
+      gap: 12px;
+    }
+    .pin-btn {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--card);
+      font-size: 22px;
+      font-weight: 500;
+      cursor: pointer;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+      transition: background .1s;
+      user-select: none;
+    }
+    .pin-btn:active { background: var(--beige); }
+    .pin-btn.empty { background: none; border: none; cursor: default; }
+    .pin-btn.del { font-size: 16px; color: var(--muted); }
+    .pin-error { color: var(--negative); font-size: 13px; min-height: 18px; text-align: center; }
+
+    /* Token form */
+    #token-section {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      width: 100%;
+      max-width: 320px;
+    }
+    .token-form { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+    .token-form input {
+      padding: 11px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+      width: 100%;
+      background: var(--card);
+      color: var(--text);
+    }
+    .token-form button {
+      padding: 11px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: .3px;
+    }
+    .token-help {
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.6;
+    }
+
+    /* ─── APP ─────────────────────────────────────────────────── */
+    #app { display: none; flex-direction: column; min-height: 100vh; }
+
+    .nav {
+      background: var(--accent);
+      color: white;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      height: 50px;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-brand { font-size: 16px; font-weight: 900; letter-spacing: 2px; }
+    .nav-version { font-size: 11px; color: rgba(255,255,255,.5); }
+    .nav-spacer { flex: 1; }
+    .nav-refresh {
+      background: rgba(255,255,255,.15);
+      border: none;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 5px;
+      font-size: 13px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .nav-refresh:active { background: rgba(255,255,255,.25); }
+
+    .tabs {
+      background: var(--accent);
+      display: flex;
+      overflow-x: auto;
+      scrollbar-width: none;
+      border-top: 1px solid rgba(255,255,255,.1);
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab-btn {
+      flex-shrink: 0;
+      padding: 9px 18px;
+      border: none;
+      background: none;
+      color: rgba(255,255,255,.55);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      -webkit-tap-highlight-color: transparent;
+      transition: color .15s;
+    }
+    .tab-btn.active { color: white; border-bottom-color: rgba(255,255,255,.9); }
+
+    .status-bar {
+      padding: 5px 16px;
+      font-size: 11px;
+      color: var(--muted);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+    }
+    .error-bar {
+      margin: 12px 16px 0;
+      padding: 12px 16px;
+      background: #fff3f3;
+      border: 1px solid #ffcccc;
+      border-radius: 8px;
+      color: var(--negative);
+      font-size: 13px;
+    }
+
+    .tab-page { display: none; padding: 16px; max-width: 800px; margin: 0 auto; width: 100%; }
+    .tab-page.active { display: block; }
+
+    /* ─── COMPONENTS ─────────────────────────────────────────── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .card-title { font-size: 12px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: .5px; }
+    .card-meta { font-size: 11px; color: var(--muted); }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    @media (min-width: 420px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+    .kpi {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 13px;
+    }
+    .kpi-label { font-size: 10px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 4px; }
+    .kpi-value { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.1; }
+    .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+    .positive { color: var(--positive); }
+    .negative { color: var(--negative); }
+    .neutral  { color: var(--text); }
+    .amber    { color: var(--amber); }
+    .blue     { color: var(--blue); }
+    .muted    { color: var(--muted); }
+
+    .month-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .month-bar label { font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+    select {
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 12px;
+      background: var(--card);
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      text-align: left;
+      padding: 8px 10px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+      background: #faf8f5;
+    }
+    td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    .right { text-align: right; }
+    .mono { font-variant-numeric: tabular-nums; }
+    .bold { font-weight: 700; }
+    .small { font-size: 11px; }
+
+    tr.highlight-row td { background: #f0f7fa; font-weight: 600; }
+    tr.total-row td { background: #f5f2ef; font-weight: 700; border-top: 2px solid var(--border); }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+      white-space: nowrap;
+    }
+    .tag-green  { background: #e8f5e9; color: #2e7d32; }
+    .tag-red    { background: #ffebee; color: #c0392b; }
+    .tag-amber  { background: #fff3e0; color: #c4873a; }
+    .tag-blue   { background: #e3f2fd; color: #1565c0; }
+    .tag-gray   { background: #f5f5f5; color: #757575; }
+    .tag-purple { background: #f3e5f5; color: #7b1fa2; }
+    .tag-teal   { background: #e0f2f1; color: #004d40; }
+
+    .loading-state {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 48px 16px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty-state { text-align: center; color: var(--muted); font-size: 13px; padding: 32px; }
+
+    /* MOVIMIENTOS LIST */
+    .mov-list { display: flex; flex-direction: column; }
+    .mov-item {
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .mov-item:last-child { border-bottom: none; }
+    .mov-row1 { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .mov-concepto { font-size: 13px; font-weight: 600; flex: 1; line-height: 1.3; }
+    .mov-monto { font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+    .mov-row2 { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .mov-fecha { font-size: 11px; color: var(--muted); }
+    .mov-nota { font-size: 11px; color: var(--muted); font-style: italic; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .filter-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    /* EDGAR SALDO */
+    .cc-box {
+      border-radius: 10px;
+      padding: 18px 20px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .cc-box-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
+    .cc-box-value { font-size: 34px; font-weight: 900; letter-spacing: -1.5px; line-height: 1; }
+    .cc-box-who   { font-size: 13px; font-weight: 700; }
+    .cc-box-note  { font-size: 11px; margin-top: 2px; }
+
+    /* SOCIOS */
+    .socio-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+    @media (max-width: 360px) { .socio-cards { grid-template-columns: 1fr; } }
+    .socio-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .socio-card-header {
+      padding: 11px 14px;
+      background: var(--accent);
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .socio-name { font-weight: 700; font-size: 14px; }
+    .socio-net { font-size: 16px; font-weight: 900; }
+    .socio-body { padding: 11px 14px; }
+    .socio-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 12px; }
+    .socio-row-label { color: var(--muted); }
+    .socio-divider { border-top: 1px solid var(--border); margin: 5px 0; }
+    .socio-hint { font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+    /* MONTH GROUP HEADER */
+    .month-group {
+      padding: 7px 16px;
+      background: var(--bg);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .month-group-meta { font-weight: 400; color: var(--muted); font-size: 10px; }
+  </style>
+</head>
+<body>
+
+<!-- ─── PIN SCREEN ──────────────────────────────────────────────────────────── -->
+<div id="pin-screen">
+  <div class="pin-logo">MOSCA</div>
+  <div class="pin-subtitle">Dashboard Financiero</div>
+
+  <!-- Token input (shown after correct PIN if no token in URL) -->
+  <div id="token-section">
+    <div class="pin-title">Ingresá tu Airtable PAT</div>
+    <div class="token-form">
+      <input type="text" id="token-input" placeholder="patXXXXXXXXXX.yyy..." autocomplete="off" autocorrect="off" spellcheck="false">
+      <button onclick="saveToken()">Continuar</button>
+    </div>
+    <div class="token-help">
+      airtable.com → Account → Developer Hub → Personal Access Tokens<br>
+      Scopes: <strong>data.records:read</strong> sobre Mosca Taller Manager
+    </div>
+  </div>
+
+  <!-- PIN numpad -->
+  <div id="pin-section">
+    <div class="pin-title" style="text-align:center">PIN</div>
+    <div style="height:8px"></div>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+    <div style="height:4px"></div>
+    <div class="pin-error" id="pin-error"></div>
+    <div style="height:8px"></div>
+    <div class="pin-numpad">
+      <button class="pin-btn" onclick="pinKey('1')">1</button>
+      <button class="pin-btn" onclick="pinKey('2')">2</button>
+      <button class="pin-btn" onclick="pinKey('3')">3</button>
+      <button class="pin-btn" onclick="pinKey('4')">4</button>
+      <button class="pin-btn" onclick="pinKey('5')">5</button>
+      <button class="pin-btn" onclick="pinKey('6')">6</button>
+      <button class="pin-btn" onclick="pinKey('7')">7</button>
+      <button class="pin-btn" onclick="pinKey('8')">8</button>
+      <button class="pin-btn" onclick="pinKey('9')">9</button>
+      <button class="pin-btn empty"></button>
+      <button class="pin-btn" onclick="pinKey('0')">0</button>
+      <button class="pin-btn del" onclick="pinDel()">⌫</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── APP ─────────────────────────────────────────────────────────────────── -->
+<div id="app">
+  <div class="nav">
+    <span class="nav-brand">MOSCA</span>
+    <span class="nav-version">v1.0 · 2026-06-03</span>
+    <div class="nav-spacer"></div>
+    <button class="nav-refresh" onclick="reloadData()" title="Actualizar">↻</button>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('financiero')">Financiero</button>
+    <button class="tab-btn" onclick="showTab('movimientos')">Movimientos</button>
+    <button class="tab-btn" onclick="showTab('edgar')">Edgar</button>
+    <button class="tab-btn" onclick="showTab('socios')">Socios</button>
+  </div>
+  <div id="status-bar" class="status-bar" style="display:none"></div>
+  <div id="error-bar" class="error-bar" style="display:none"></div>
+
+  <!-- FINANCIERO -->
+  <div class="tab-page active" id="tab-financiero">
+    <div class="loading-state" id="fin-loading"><span class="spinner"></span>Cargando datos...</div>
+    <div id="fin-content" style="display:none">
+      <div class="month-bar">
+        <label>Período</label>
+        <select id="monthSelect" onchange="onMonthChange()"></select>
+      </div>
+      <div id="kpi-grid" class="kpi-grid"></div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Evolución mensual</span>
+          <span class="card-meta" id="evol-meta"></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Mes</th>
+                <th class="right">Ingresos</th>
+                <th class="right">Gastos</th>
+                <th class="right">Resultado</th>
+                <th class="right">Capital</th>
+              </tr>
+            </thead>
+            <tbody id="evol-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOVIMIENTOS -->
+  <div class="tab-page" id="tab-movimientos">
+    <div class="filter-bar">
+      <select id="mov-mes-fil" onchange="renderMovimientos()">
+        <option value="">Todos los meses</option>
+      </select>
+      <select id="mov-tipo-fil" onchange="renderMovimientos()">
+        <option value="">Ing + Gas</option>
+        <option value="ing">Solo Ingresos</option>
+        <option value="gas">Solo Gastos</option>
+      </select>
+      <select id="mov-flujo-fil" onchange="renderMovimientos()">
+        <option value="">Op + Capital</option>
+        <option value="Operativo">Operativo</option>
+        <option value="Capital">Capital</option>
+      </select>
+    </div>
+    <div class="card" id="mov-card">
+      <div class="loading-state"><span class="spinner"></span>Cargando...</div>
+    </div>
+  </div>
+
+  <!-- EDGAR -->
+  <div class="tab-page" id="tab-edgar">
+    <div id="edgar-content">
+      <div class="loading-state"><span class="spinner"></span>Cargando...</div>
+    </div>
+  </div>
+
+  <!-- SOCIOS -->
+  <div class="tab-page" id="tab-socios">
+    <div id="socios-content">
+      <div class="loading-state"><span class="spinner"></span>Cargando...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CONFIG — CAMBIAR PIN ACÁ ──────────────────────────────────────────────
+const PIN_CODE = '1234';
+
+const BASE_ID = 'appBThGsxqCSljqH1';
+const TBL_ING = 'tblS8mrLsVnt5yvSC';
+const TBL_GAS = 'tbll52naofFFppi2u';
+// IDs Edgar para filtrado por proveedor (fallback)
+const EDGAR_PROV_ID = 'rect4xz5nHgsLqbbF';
+
+// ─── STATE ─────────────────────────────────────────────────────────────────
+let TOKEN = '';
+let pinEntry = '';
+let allIngresos = [];
+let allGastos   = [];
+let selectedMonth = '';
+let edgarMesFilter = '';
+let dataLoaded = false;
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────
+const clean = s => (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+
+function fmtMoney(n) {
+  if (n == null || isNaN(n)) return '—';
+  const abs = Math.abs(n);
+  let s;
+  if (abs >= 1_000_000) s = (abs / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
+  else if (abs >= 1_000) s = Math.round(abs / 1_000) + 'k';
+  else s = Math.round(abs).toString();
+  return (n < 0 ? '-' : '') + '$' + s;
+}
+
+function fmtFull(n) {
+  if (n == null || isNaN(n)) return '—';
+  return (n < 0 ? '-' : '') + '$' + Math.abs(Math.round(n)).toLocaleString('es-AR');
+}
+
+function mesLabel(m) {
+  if (!m) return '';
+  const [y, mo] = m.split('-');
+  const ms = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  return (ms[parseInt(mo, 10) - 1] || mo) + ' ' + String(y).slice(2);
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  const p = String(d).slice(0, 10).split('-');
+  return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0].slice(2) : d;
+}
+
+function getMes(r) {
+  return r.fields['mes-a'] || (r.fields.fecha || '').slice(0, 7) || '';
+}
+
+function signClass(n) {
+  if (n > 0) return 'positive';
+  if (n < 0) return 'negative';
+  return 'neutral';
+}
+
+function now_ym() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+// ─── PIN ──────────────────────────────────────────────────────────────────
+function pinKey(k) {
+  if (pinEntry.length >= 4) return;
+  pinEntry += k;
+  updateDots();
+  if (pinEntry.length === 4) setTimeout(checkPin, 100);
+}
+
+function pinDel() {
+  pinEntry = pinEntry.slice(0, -1);
+  updateDots();
+  document.getElementById('pin-error').textContent = '';
+}
+
+function updateDots() {
+  for (let i = 0; i < 4; i++) {
+    document.getElementById('pd' + i).classList.toggle('filled', i < pinEntry.length);
+  }
+}
+
+function checkPin() {
+  if (pinEntry === PIN_CODE) {
+    document.getElementById('pin-error').textContent = '';
+    const urlToken = new URLSearchParams(location.search).get('token');
+    if (urlToken) {
+      TOKEN = urlToken;
+      launchApp();
+    } else {
+      document.getElementById('pin-section').style.display = 'none';
+      document.getElementById('token-section').style.display = 'flex';
+    }
+  } else {
+    document.getElementById('pin-error').textContent = 'PIN incorrecto';
+    document.querySelectorAll('.pin-dot').forEach(d => {
+      d.classList.add('shake');
+      setTimeout(() => d.classList.remove('shake'), 400);
+    });
+    pinEntry = '';
+    updateDots();
+  }
+}
+
+function saveToken() {
+  const val = (document.getElementById('token-input').value || '').trim();
+  if (!val) return;
+  TOKEN = val;
+  launchApp();
+}
+
+function launchApp() {
+  document.getElementById('pin-screen').style.display = 'none';
+  const app = document.getElementById('app');
+  app.style.display = 'flex';
+  app.style.flexDirection = 'column';
+  loadData();
+}
+
+// ─── AIRTABLE FETCH ────────────────────────────────────────────────────────
+async function fetchAll(tableId) {
+  let records = [];
+  let offset = null;
+  let page = 0;
+  do {
+    const url = 'https://api.airtable.com/v0/' + BASE_ID + '/' + tableId
+      + '?pageSize=100' + (offset ? '&offset=' + encodeURIComponent(offset) : '');
+    const resp = await fetch(url, { headers: { Authorization: 'Bearer ' + TOKEN } });
+    if (!resp.ok) {
+      const txt = await resp.text();
+      throw new Error('Airtable ' + resp.status + ': ' + txt.slice(0, 200));
+    }
+    const data = await resp.json();
+    records.push(...(data.records || []));
+    offset = data.offset || null;
+    page++;
+    if (page > 60) break; // safety (6000 records max)
+  } while (offset);
+  return records;
+}
+
+async function loadData() {
+  setStatus('Cargando...');
+  setError('');
+  showLoading(true);
+  try {
+    const [ings, gas] = await Promise.all([fetchAll(TBL_ING), fetchAll(TBL_GAS)]);
+    allIngresos = ings;
+    allGastos   = gas;
+    dataLoaded  = true;
+    showLoading(false);
+    buildSelects();
+    renderAll();
+    const ts = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+    setStatus((ings.length + gas.length) + ' registros · ' + ts);
+  } catch (e) {
+    showLoading(false);
+    setError('Error al cargar: ' + e.message);
+    setStatus('');
+  }
+}
+
+function reloadData() {
+  if (!TOKEN) return;
+  loadData();
+}
+
+// ─── UI UTILS ─────────────────────────────────────────────────────────────
+function setStatus(msg) {
+  const el = document.getElementById('status-bar');
+  el.textContent = msg;
+  el.style.display = msg ? '' : 'none';
+}
+
+function setError(msg) {
+  const el = document.getElementById('error-bar');
+  el.textContent = msg;
+  el.style.display = msg ? '' : 'none';
+}
+
+function showLoading(on) {
+  document.getElementById('fin-loading').style.display = on ? 'flex' : 'none';
+  document.getElementById('fin-content').style.display = on ? 'none' : 'block';
+  const loadingHtml = '<div class="loading-state"><span class="spinner"></span>Cargando...</div>';
+  if (on) {
+    document.getElementById('mov-card').innerHTML = loadingHtml;
+    document.getElementById('edgar-content').innerHTML = loadingHtml;
+    document.getElementById('socios-content').innerHTML = loadingHtml;
+  }
+}
+
+function showTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+function buildSelects() {
+  const curMes = now_ym();
+  const months = [...new Set([
+    ...allIngresos.map(getMes),
+    ...allGastos.map(getMes)
+  ].filter(m => m && m <= curMes))].sort().reverse();
+
+  // Month selector Financiero
+  const ms = document.getElementById('monthSelect');
+  ms.innerHTML = months.map(m =>
+    '<option value="' + m + '"' + (m === curMes ? ' selected' : '') + '>' + mesLabel(m) + '</option>'
+  ).join('');
+  selectedMonth = curMes;
+
+  // Month filter Movimientos
+  const mf = document.getElementById('mov-mes-fil');
+  mf.innerHTML = '<option value="">Todos los meses</option>'
+    + months.map(m => '<option value="' + m + '">' + mesLabel(m) + '</option>').join('');
+}
+
+function onMonthChange() {
+  selectedMonth = document.getElementById('monthSelect').value;
+  renderFinanciero();
+}
+
+function renderAll() {
+  renderFinanciero();
+  renderMovimientos();
+  renderEdgar();
+  renderSocios();
+}
+
+// ─── REGLAS P&L ────────────────────────────────────────────────────────────
+// Ingresos operativos: tipo_flujo=Operativo (o sin tipo_flujo)
+const isIngOp = r => (r.fields.tipo_flujo || 'Operativo') !== 'Capital';
+const isIngCap = r => r.fields.tipo_flujo === 'Capital';
+
+// Gastos operativos: excluye Prestamos Edgar (son movimientos CC, no P&L)
+// tipo_flujo=Capital también excluye (futuro)
+const isGasOp = r => {
+  if ((r.fields.categoria || '') === 'Prestamos Edgar') return false;
+  if (r.fields.tipo_flujo === 'Capital') return false;
+  return true;
+};
+
+// ─── FINANCIERO ────────────────────────────────────────────────────────────
+function renderFinanciero() {
+  if (!dataLoaded) return;
+  const mes = selectedMonth || now_ym();
+
+  const ingsM = allIngresos.filter(r => getMes(r) === mes);
+  const gasM  = allGastos.filter(r => getMes(r) === mes);
+
+  const ingsOp = ingsM.filter(isIngOp);
+  const gasOp  = gasM.filter(isGasOp);
+  const cobros = ingsOp.reduce((s, r) => s + (r.fields.monto || 0), 0);
+  const gastos = gasOp.reduce((s, r) => s + (r.fields.monto || 0), 0);
+  const resultado = cobros - gastos;
+
+  const ingsCap = ingsM.filter(isIngCap);
+  const capTotal = ingsCap.reduce((s, r) => s + (r.fields.monto || 0), 0);
+
+  const gasFijos = gasOp.filter(r => (r.fields.tipo || '') === 'Fijo').reduce((s, r) => s + (r.fields.monto || 0), 0);
+  const gasVar   = gasOp.filter(r => (r.fields.tipo || '') !== 'Fijo').reduce((s, r) => s + (r.fields.monto || 0), 0);
+
+  const kpis = [
+    { label: 'Cobros',     value: cobros,     cls: cobros > 0 ? 'positive' : 'neutral', sub: ingsOp.length + ' registros' },
+    { label: 'Gastos',     value: -gastos,    cls: 'negative', sub: gasOp.length + ' registros' },
+    { label: 'Resultado',  value: resultado,  cls: signClass(resultado), sub: 'Cobros − Gastos' },
+    { label: 'G. Fijos',   value: -gasFijos,  cls: 'negative', sub: 'Fijos del mes' },
+    { label: 'G. Variables', value: -gasVar,  cls: 'amber', sub: 'Variables del mes' },
+    { label: 'Capital',    value: capTotal,   cls: capTotal > 0 ? 'blue' : 'neutral', sub: ingsCap.length + ' aportes' },
+  ];
+
+  document.getElementById('kpi-grid').innerHTML = kpis.map(k =>
+    '<div class="kpi">' +
+      '<div class="kpi-label">' + k.label + '</div>' +
+      '<div class="kpi-value ' + k.cls + '">' + fmtMoney(k.value) + '</div>' +
+      '<div class="kpi-sub">' + (k.sub || '') + '</div>' +
+    '</div>'
+  ).join('');
+
+  // Evolución (todos los meses con datos, recientes primero)
+  const curMes = now_ym();
+  const allMonths = [...new Set([
+    ...allIngresos.map(getMes),
+    ...allGastos.map(getMes)
+  ].filter(m => m && m <= curMes))].sort().reverse();
+
+  document.getElementById('evol-meta').textContent = allMonths.length + ' meses';
+
+  document.getElementById('evol-body').innerHTML = allMonths.map(m => {
+    const io = allIngresos.filter(r => getMes(r) === m && isIngOp(r)).reduce((s, r) => s + (r.fields.monto || 0), 0);
+    const go = allGastos.filter(r => getMes(r) === m && isGasOp(r)).reduce((s, r) => s + (r.fields.monto || 0), 0);
+    const cap = allIngresos.filter(r => getMes(r) === m && isIngCap(r)).reduce((s, r) => s + (r.fields.monto || 0), 0);
+    const res = io - go;
+    const isCurrent = m === mes;
+    return '<tr' + (isCurrent ? ' class="highlight-row"' : '') + '>' +
+      '<td class="bold">' + mesLabel(m) + '</td>' +
+      '<td class="right mono positive">' + fmtMoney(io) + '</td>' +
+      '<td class="right mono negative">' + fmtMoney(-go) + '</td>' +
+      '<td class="right mono ' + signClass(res) + '">' + fmtMoney(res) + '</td>' +
+      '<td class="right mono blue">' + (cap > 0 ? fmtMoney(cap) : '<span class="muted">—</span>') + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+// ─── MOVIMIENTOS ─────────────────────────────────────────────────────────
+function renderMovimientos() {
+  if (!dataLoaded) return;
+  const mesFil   = document.getElementById('mov-mes-fil').value;
+  const tipoFil  = document.getElementById('mov-tipo-fil').value;
+  const flujoFil = document.getElementById('mov-flujo-fil').value;
+
+  let movs = [];
+
+  if (!tipoFil || tipoFil === 'ing') {
+    let ings = allIngresos;
+    if (mesFil)   ings = ings.filter(r => getMes(r) === mesFil);
+    if (flujoFil) ings = ings.filter(r => (r.fields.tipo_flujo || 'Operativo') === flujoFil);
+    ings.forEach(r => movs.push({
+      tipo: 'ing', fecha: r.fields.fecha || '', mes: getMes(r),
+      concepto: r.fields.concepto || '—',
+      nota: r.fields.Nota || '',
+      monto: r.fields.monto || 0,
+      flujo: r.fields.tipo_flujo || 'Operativo',
+      cat: ''
+    }));
+  }
+
+  if (!tipoFil || tipoFil === 'gas') {
+    let gas = allGastos;
+    if (mesFil)   gas = gas.filter(r => getMes(r) === mesFil);
+    if (flujoFil) gas = gas.filter(r => (r.fields.tipo_flujo || 'Operativo') === flujoFil);
+    gas.forEach(r => movs.push({
+      tipo: 'gas', fecha: r.fields.fecha || '', mes: getMes(r),
+      concepto: r.fields.concepto || '—',
+      nota: r.fields.Nota || '',
+      monto: r.fields.monto || 0,
+      flujo: r.fields.tipo_flujo || 'Operativo',
+      cat: r.fields.categoria || ''
+    }));
+  }
+
+  movs.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+
+  if (!movs.length) {
+    document.getElementById('mov-card').innerHTML = '<div class="empty-state">Sin movimientos para el filtro seleccionado</div>';
+    return;
+  }
+
+  let html = '<div class="mov-list">';
+
+  if (!mesFil) {
+    // Group by month
+    const byMes = {};
+    movs.forEach(m => { (byMes[m.mes] = byMes[m.mes] || []).push(m); });
+    const meses = Object.keys(byMes).sort().reverse();
+    meses.forEach(mes => {
+      const items = byMes[mes];
+      const sumIng = items.filter(m => m.tipo === 'ing').reduce((s, m) => s + m.monto, 0);
+      const sumGas = items.filter(m => m.tipo === 'gas').reduce((s, m) => s + m.monto, 0);
+      const summary = (sumIng ? '<span class="positive">+' + fmtMoney(sumIng) + '</span>' : '')
+        + (sumIng && sumGas ? ' / ' : '')
+        + (sumGas ? '<span class="negative">-' + fmtMoney(sumGas) + '</span>' : '');
+      html += '<div class="month-group"><span>' + mesLabel(mes) + '</span>'
+        + '<span class="month-group-meta">' + summary + ' · ' + items.length + ' mov.</span></div>';
+      html += items.map(movItem).join('');
+    });
+  } else {
+    html += movs.map(movItem).join('');
+  }
+
+  html += '</div>';
+  document.getElementById('mov-card').innerHTML = html;
+}
+
+function movItem(m) {
+  const isIng = m.tipo === 'ing';
+  const montoClass = isIng ? 'positive' : 'negative';
+  const sign = isIng ? '+' : '-';
+  const flujoTag = m.flujo === 'Capital' ? '<span class="tag tag-purple">Capital</span>' : '';
+  const catTag   = m.cat ? '<span class="tag tag-gray">' + m.cat + '</span>' : '';
+  return '<div class="mov-item">' +
+    '<div class="mov-row1">' +
+      '<span class="mov-concepto">' + m.concepto + '</span>' +
+      '<span class="mov-monto ' + montoClass + '">' + sign + fmtFull(m.monto) + '</span>' +
+    '</div>' +
+    '<div class="mov-row2">' +
+      '<span class="mov-fecha">' + fmtDate(m.fecha) + '</span>' +
+      flujoTag + catTag +
+      (m.nota ? '<span class="mov-nota">' + m.nota + '</span>' : '') +
+    '</div>' +
+  '</div>';
+}
+
+// ─── EDGAR ────────────────────────────────────────────────────────────────
+function renderEdgar() {
+  if (!dataLoaded) return;
+
+  // CC DEBE: Gastos categoria=Prestamos Edgar
+  const gastosDebeAll = allGastos.filter(r => (r.fields.categoria || '') === 'Prestamos Edgar');
+
+  // CC HABER: Ingresos concepto=Recupero Edgar + concepto=Prestamos con nota edgar (cash fresco)
+  const ingHaberAll = allIngresos.filter(r => {
+    const c = clean(r.fields.concepto || '');
+    const n = clean(r.fields.Nota || '');
+    return c === 'recupero edgar' || (c === 'prestamos' && n.includes('edgar'));
+  });
+
+  // Saldo CC histórico
+  const totalDebe  = gastosDebeAll.reduce((s, r) => s + (r.fields.monto || 0), 0);
+  const totalHaber = ingHaberAll.reduce((s, r) => s + (r.fields.monto || 0), 0);
+  const saldoCC    = totalHaber - totalDebe; // positivo = Mosca debe a Edgar; negativo = Edgar debe a Mosca
+
+  const saldoColor = saldoCC >= 0 ? 'var(--positive)' : 'var(--negative)';
+  const saldoBg    = saldoCC >= 0 ? '#f1f8e9' : '#fff3f3';
+  const saldoWho   = saldoCC > 0 ? 'Mosca le debe a Edgar' : saldoCC < 0 ? 'Edgar le debe a Mosca' : 'Al día';
+  const saldoNote  = saldoCC > 0 ? 'Hay cash a pagarle' : saldoCC < 0 ? 'Trabajo/cash pendiente de Edgar' : '';
+
+  // Meses disponibles
+  const mesesDisp = [...new Set(
+    [...gastosDebeAll, ...ingHaberAll].map(r => (r.fields.fecha || '').slice(0, 7)).filter(Boolean)
+  )].sort().reverse();
+
+  // Filtered
+  const debeF  = edgarMesFilter ? gastosDebeAll.filter(r => (r.fields.fecha || '').slice(0, 7) === edgarMesFilter) : gastosDebeAll;
+  const haberF = edgarMesFilter ? ingHaberAll.filter(r => (r.fields.fecha || '').slice(0, 7) === edgarMesFilter) : ingHaberAll;
+
+  const pdebe  = debeF.reduce((s, r) => s + (r.fields.monto || 0), 0);
+  const phaber = haberF.reduce((s, r) => s + (r.fields.monto || 0), 0);
+  const pdelta = phaber - pdebe;
+
+  // Build running balance for all movs (ASC)
+  const allMovsCC = [
+    ...gastosDebeAll.map(r => ({ fecha: r.fields.fecha || '', tipo: 'debe', impacto: -(r.fields.monto || 0), monto: r.fields.monto || 0, concepto: r.fields.concepto || 'Financiamiento', nota: r.fields.Nota || '' })),
+    ...ingHaberAll.map(r  => ({ fecha: r.fields.fecha || '', tipo: 'haber', impacto: r.fields.monto || 0, monto: r.fields.monto || 0, concepto: (r.fields.Nota || r.fields.concepto || 'Recupero'), nota: r.fields.Nota || '' }))
+  ].sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
+
+  let bal = 0;
+  allMovsCC.forEach(m => { bal += m.impacto; m.balAfter = bal; });
+
+  const movsDisplay = (edgarMesFilter
+    ? allMovsCC.filter(m => m.fecha.slice(0, 7) === edgarMesFilter)
+    : allMovsCC
+  ).slice().sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+
+  const movsHtml = movsDisplay.length
+    ? movsDisplay.map(m => {
+        const isH = m.tipo === 'haber';
+        const cls = isH ? 'positive' : 'negative';
+        const tag = isH ? '<span class="tag tag-green">HABER</span>' : '<span class="tag tag-red">DEBE</span>';
+        return '<div class="mov-item">' +
+          '<div class="mov-row1">' +
+            '<span class="mov-concepto">' + m.concepto + '</span>' +
+            '<span class="mov-monto ' + cls + '">' + (isH ? '+' : '-') + fmtFull(m.monto) + '</span>' +
+          '</div>' +
+          '<div class="mov-row2">' +
+            '<span class="mov-fecha">' + fmtDate(m.fecha) + '</span>' +
+            tag +
+            (!edgarMesFilter ? '<span class="mov-nota">Saldo: ' + fmtFull(m.balAfter) + '</span>' : '') +
+          '</div>' +
+        '</div>';
+      }).join('')
+    : '<div class="empty-state">Sin movimientos para el período</div>';
+
+  const selHtml = mesesDisp.map(m =>
+    '<option value="' + m + '"' + (edgarMesFilter === m ? ' selected' : '') + '>' + mesLabel(m) + '</option>'
+  ).join('');
+
+  document.getElementById('edgar-content').innerHTML =
+    '<div class="cc-box" style="background:' + saldoBg + ';border:2px solid ' + saldoColor + '">' +
+      '<div class="cc-box-label" style="color:' + saldoColor + '">Saldo CC · histórico</div>' +
+      '<div class="cc-box-value" style="color:' + saldoColor + '">' + fmtFull(Math.abs(saldoCC)) + '</div>' +
+      '<div class="cc-box-who" style="color:' + saldoColor + '">' + saldoWho + '</div>' +
+      (saldoNote ? '<div class="cc-box-note" style="color:' + saldoColor + '">' + saldoNote + '</div>' : '') +
+    '</div>' +
+
+    '<div class="month-bar" style="margin-bottom:12px">' +
+      '<label>Período</label>' +
+      '<select onchange="edgarMesFilter=this.value;renderEdgar()">' +
+        '<option value="">Histórico completo</option>' + selHtml +
+      '</select>' +
+    '</div>' +
+
+    '<div class="kpi-grid">' +
+      '<div class="kpi"><div class="kpi-label">DEBE (período)</div><div class="kpi-value negative">' + fmtMoney(-pdebe) + '</div><div class="kpi-sub">Cobertura + adelantos</div></div>' +
+      '<div class="kpi"><div class="kpi-label">HABER (período)</div><div class="kpi-value positive">' + fmtMoney(phaber) + '</div><div class="kpi-sub">Trabajo + cash Edgar</div></div>' +
+      '<div class="kpi"><div class="kpi-label">Delta período</div><div class="kpi-value ' + signClass(pdelta) + '">' + fmtMoney(pdelta) + '</div><div class="kpi-sub">Haber − Debe</div></div>' +
+    '</div>' +
+
+    '<div class="card">' +
+      '<div class="card-header">' +
+        '<span class="card-title">Movimientos CC Edgar</span>' +
+        '<span class="card-meta">' + (edgarMesFilter ? mesLabel(edgarMesFilter) : 'Histórico · ' + movsDisplay.length + ' registros') + '</span>' +
+      '</div>' +
+      '<div class="mov-list">' + movsHtml + '</div>' +
+    '</div>';
+}
+
+// ─── SOCIOS ───────────────────────────────────────────────────────────────
+function renderSocios() {
+  if (!dataLoaded) return;
+
+  const capitalMovs = allIngresos.filter(r =>
+    r.fields.tipo_flujo === 'Capital' &&
+    /Lisandro|Javier/.test(r.fields.concepto || '')
+  );
+
+  const socios = { Lisandro: [], Javier: [] };
+  capitalMovs.forEach(r => {
+    const c = r.fields.concepto || '';
+    if (c.includes('Lisandro')) socios.Lisandro.push(r);
+    else if (c.includes('Javier')) socios.Javier.push(r);
+  });
+
+  const cardsHtml = Object.entries(socios).map(([nombre, movs]) => {
+    const caps   = movs.filter(r => (r.fields.concepto || '').includes('Capitaliz'));
+    const recups = movs.filter(r => (r.fields.concepto || '').includes('Recupero'));
+    const totalCaps  = caps.reduce((s, r) => s + (r.fields.monto || 0), 0);
+    const totalRecup = recups.reduce((s, r) => s + (r.fields.monto || 0), 0);
+    // posicion neta desde perspectiva del negocio: caps = deuda con socio, recup = cancela deuda
+    const neta = totalRecup - totalCaps; // negativo = negocio le debe al socio
+    const netaColor = neta <= 0 ? 'var(--negative)' : 'var(--positive)';
+
+    return '<div class="socio-card">' +
+      '<div class="socio-card-header">' +
+        '<span class="socio-name">' + nombre + '</span>' +
+        '<span class="socio-net ' + signClass(neta) + '">' + fmtMoney(neta) + '</span>' +
+      '</div>' +
+      '<div class="socio-body">' +
+        '<div class="socio-row"><span class="socio-row-label">Capitalizaciones</span><span class="negative mono">' + fmtMoney(-totalCaps) + '</span></div>' +
+        '<div class="socio-row"><span class="socio-row-label">Recuperos</span><span class="positive mono">' + fmtMoney(totalRecup) + '</span></div>' +
+        '<div class="socio-divider"></div>' +
+        '<div class="socio-row bold"><span>Posición neta</span><span class="' + signClass(neta) + ' mono">' + fmtFull(neta) + '</span></div>' +
+        '<div class="socio-hint">Negativo = negocio le debe al socio</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  // Movimientos recientes DESC
+  const movsHtml = [...capitalMovs]
+    .sort((a, b) => (b.fields.fecha || '').localeCompare(a.fields.fecha || ''))
+    .map(r => {
+      const c = r.fields.concepto || '';
+      const isCap  = c.includes('Capitaliz');
+      const nombre = c.includes('Lisandro') ? 'Lisandro' : 'Javier';
+      // Capitalización: socio pone plata → negocio adquiere deuda → mostrar como negativo
+      const disp = isCap ? -(r.fields.monto || 0) : (r.fields.monto || 0);
+      const tagCls = nombre === 'Lisandro' ? 'tag-blue' : 'tag-teal';
+      return '<div class="mov-item">' +
+        '<div class="mov-row1">' +
+          '<span class="mov-concepto">' + c + '</span>' +
+          '<span class="mov-monto ' + signClass(disp) + '">' + fmtFull(disp) + '</span>' +
+        '</div>' +
+        '<div class="mov-row2">' +
+          '<span class="mov-fecha">' + fmtDate(r.fields.fecha) + '</span>' +
+          '<span class="tag ' + tagCls + '">' + nombre + '</span>' +
+          (r.fields.Nota ? '<span class="mov-nota">' + r.fields.Nota + '</span>' : '') +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+  document.getElementById('socios-content').innerHTML =
+    '<div class="socio-cards">' + cardsHtml + '</div>' +
+    '<div class="card">' +
+      '<div class="card-header">' +
+        '<span class="card-title">Movimientos de capital</span>' +
+        '<span class="card-meta">' + capitalMovs.length + ' registros</span>' +
+      '</div>' +
+      '<div class="mov-list">' + (movsHtml || '<div class="empty-state">Sin movimientos de capital</div>') + '</div>' +
+    '</div>';
+}
+
+// ─── INIT ──────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // Keyboard support for PIN
+  document.addEventListener('keydown', e => {
+    if (document.getElementById('pin-screen').style.display === 'none') return;
+    if (/^[0-9]$/.test(e.key)) pinKey(e.key);
+    else if (e.key === 'Backspace') pinDel();
+    else if (e.key === 'Enter' && document.getElementById('token-section').style.display === 'flex') saveToken();
+  });
+});
+</script>
+</body>
+</html>
