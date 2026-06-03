@@ -506,11 +506,11 @@
   'use strict';
 
   // Captura errores globales no manejados
-  window.addEventListener('unhandledrejection', e => {
-    showErr('Promise no capturada:\n' + (e.reason?.stack || e.reason));
+  window.addEventListener('unhandledrejection', function(e) {
+    showErr('Promise no capturada:\n' + (e.reason && e.reason.stack ? e.reason.stack : String(e.reason)));
   });
-  window.onerror = (msg, src, line, col, err) => {
-    showErr('Error global:\n' + (err?.stack || msg));
+  window.onerror = function(msg, src, line, col, err) {
+    showErr('Error global:\n' + (err && err.stack ? err.stack : msg));
   };
 
   const BASE     = 'appBThGsxqCSljqH1';
@@ -518,67 +518,101 @@
   const T_PEDIDO = 'tblok3VLqWA3oQaPe';
   const T_CLIENT = 'tbl5tU70DznAaqNd6';
   const API      = 'https://api.airtable.com/v0';
+  const VERSION  = 'v1.6';
+  const TIMEOUT_MS = 10000;
 
-  // Todos los estados, en orden idéntico a Airtable
+  console.log('[Mosca Taller]', VERSION, new Date().toISOString());
+
   const ESTADOS = [
-    'Nuevo',
-    'En herrería',
-    'En carpintería',
-    'En pintura',
-    'Para entregar',
-    'Entregado',
-    'En Stock',
-    'Vendido',
-    'Rehacer',
-    'Cancelado',
+    'Nuevo','En herrería','En carpintería','En pintura',
+    'Para entregar','Entregado','En Stock','Vendido','Rehacer','Cancelado',
   ];
 
   let TOKEN      = null;
   let items      = [];
   let pedidosMap = {};
   let activeItem = null;
-  let activeChip = 'Nuevo';   // default
+  let activeChip = 'Nuevo';
   let searchQ    = '';
 
-  // ── Init ────────────────────────────────────────────────
+  // ── Helpers ──────────────────────────────────────────────
+  function setMain(html) { document.getElementById('main').innerHTML = html; }
+  function setLoading(step) {
+    setMain('<div class="loading"><div class="spinner"></div><div>' + step + '</div></div>');
+  }
+
+  function showErr(msg) {
+    document.getElementById('err-msg').textContent = msg;
+    document.getElementById('err-overlay').classList.remove('hidden');
+  }
+  function closeErrModal() {
+    document.getElementById('err-overlay').classList.add('hidden');
+  }
+
+  function diasHasta(fecha) {
+    if (!fecha) return null;
+    var hoy = new Date(); hoy.setHours(0,0,0,0);
+    var d   = new Date(fecha); d.setHours(0,0,0,0);
+    return Math.round((d - hoy) / 86400000);
+  }
+
+  function estadoClass(e) {
+    var map = {
+      'Nuevo':'eb-Nuevo','En herrería':'eb-En_herreria',
+      'En carpintería':'eb-En_carpinteria','En pintura':'eb-En_pintura',
+      'Para entregar':'eb-Para_entregar','Entregado':'eb-Entregado',
+      'En Stock':'eb-En_Stock','Vendido':'eb-Vendido',
+      'Rehacer':'eb-Rehacer','Cancelado':'eb-Cancelado',
+    };
+    return map[e] || 'eb-Nuevo';
+  }
+
+  function esc(s) {
+    return String(s || '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function highlight(text, q) {
+    var safe = esc(text);
+    if (!q) return safe;
+    var re = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'gi');
+    return safe.replace(re, '<mark>$1</mark>');
+  }
+
+  // ── Init ─────────────────────────────────────────────────
   TOKEN = new URLSearchParams(window.location.search).get('token');
 
   if (!TOKEN) {
-    document.getElementById('main').innerHTML =
-      `<div class="token-screen"><h2>Mosca Taller</h2><p>Pedile el link a Lisandro para acceder.</p></div>`;
+    setMain('<div class="token-screen"><h2>Mosca Taller</h2><p>Pedile el link a Lisandro para acceder.</p></div>');
   } else {
     buildChips();
-    loadData().catch(err => {
+    loadData().catch(function(err) {
       console.error('loadData() sin capturar:', err);
-      setMain(`<div class="error-box"><strong>Error inesperado</strong></div>`);
-      showErr(err?.stack || err?.message || String(err));
+      setMain('<div class="error-box"><strong>Error inesperado al cargar</strong></div>');
+      showErr(err && err.stack ? err.stack : String(err));
     });
   }
 
   // ── Chips ────────────────────────────────────────────────
   function buildChips() {
-    const wrap = document.getElementById('chips');
-    // "Todos" chip first
-    const allChip = makeChip('Todos', activeChip === 'Todos');
-    wrap.appendChild(allChip);
-    ESTADOS.forEach(e => wrap.appendChild(makeChip(e, e === activeChip)));
+    var wrap = document.getElementById('chips');
+    wrap.appendChild(makeChip('Todos', activeChip === 'Todos'));
+    ESTADOS.forEach(function(e) { wrap.appendChild(makeChip(e, e === activeChip)); });
   }
 
   function makeChip(label, active) {
-    const btn = document.createElement('button');
+    var btn = document.createElement('button');
     btn.className = 'chip' + (active ? ' active' : '');
     btn.textContent = label;
-    btn.onclick = () => selectChip(label, btn);
+    btn.onclick = function() { selectChip(label, btn); };
     return btn;
   }
 
   function selectChip(label, btn) {
-    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.chip').forEach(function(c) { c.classList.remove('active'); });
     btn.classList.add('active');
     activeChip = label;
-    // clear search when switching chip
-    const s = document.getElementById('search');
-    s.value = '';
+    document.getElementById('search').value = '';
     searchQ = '';
     render();
   }
@@ -590,57 +624,55 @@
   }
 
   // ── API ──────────────────────────────────────────────────
-  const VERSION    = 'v1.6';
-  const TIMEOUT_MS = 10000;
-  console.log('[Mosca Taller]', VERSION, new Date().toISOString());
-
-  async function fetchWithTimeout(input, init) {
-    const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-    try {
-      const r = await fetch(input, { ...init, signal: ctrl.signal });
-      clearTimeout(tid);
-      return r;
-    } catch (e) {
-      clearTimeout(tid);
-      if (e.name === 'AbortError') throw new Error(`Timeout (${TIMEOUT_MS/1000}s) — Airtable no respondió`);
-      throw e;
-    }
+  function fetchWithTimeout(input, init) {
+    return new Promise(function(resolve, reject) {
+      var tid = setTimeout(function() {
+        reject(new Error('Timeout (' + (TIMEOUT_MS/1000) + 's) — Airtable no respondió'));
+      }, TIMEOUT_MS);
+      fetch(input, init).then(function(r) {
+        clearTimeout(tid);
+        resolve(r);
+      }).catch(function(e) {
+        clearTimeout(tid);
+        reject(e);
+      });
+    });
   }
 
   async function apiFetch(tableId, params) {
-    const url = new URL(`${API}/${BASE}/${tableId}`);
-    for (const [k, v] of Object.entries(params)) {
-      if (Array.isArray(v)) v.forEach(x => url.searchParams.append(k, x));
+    var url = new URL(API + '/' + BASE + '/' + tableId);
+    Object.entries(params).forEach(function(kv) {
+      var k = kv[0], v = kv[1];
+      if (Array.isArray(v)) v.forEach(function(x) { url.searchParams.append(k, x); });
       else if (v !== undefined) url.searchParams.set(k, v);
-    }
-    const r = await fetchWithTimeout(url.toString(), { headers: { Authorization: `Bearer ${TOKEN}` } });
+    });
+    var r = await fetchWithTimeout(url.toString(), { headers: { Authorization: 'Bearer ' + TOKEN } });
     if (!r.ok) {
-      const body = await r.text();
-      throw new Error(`HTTP ${r.status} en ${tableId}\n${body}`);
+      var body = await r.text();
+      throw new Error('HTTP ' + r.status + ' en ' + tableId + '\n' + body);
     }
     return r.json();
   }
 
   async function apiPatch(tableId, recId, fields) {
-    const r = await fetchWithTimeout(`${API}/${BASE}/${tableId}/${recId}`, {
+    var r = await fetchWithTimeout(API + '/' + BASE + '/' + tableId + '/' + recId, {
       method: 'PATCH',
-      headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fields }),
+      headers: { Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields: fields }),
     });
     if (!r.ok) {
-      const body = await r.text();
-      throw new Error(`HTTP ${r.status} al guardar\n${body}`);
+      var body = await r.text();
+      throw new Error('HTTP ' + r.status + ' al guardar\n' + body);
     }
     return r.json();
   }
 
   async function fetchAll(tableId, params) {
-    let recs = [], offset;
+    var recs = [], offset;
     do {
-      const p = { ...params };
+      var p = Object.assign({}, params);
       if (offset) p.offset = offset;
-      const data = await apiFetch(tableId, p);
+      var data = await apiFetch(tableId, p);
       recs = recs.concat(data.records || []);
       offset = data.offset;
     } while (offset);
@@ -648,32 +680,282 @@
   }
 
   // ── Load ─────────────────────────────────────────────────
-  function setLoading(step) {
-    setMain(`<div class="loading"><div class="spinner"></div><div>${step}</div></div>`);
+  async function loadData() {
+    setLoading('1/4 · Items…');
+    var rawItems = await fetchAll(T_ITEMS, {
+      filterByFormula: "AND(NOT({estado}='Cancelado'),NOT({estado}='Vendido'))",
+      'fields[]': ['nro_linea','dimensiones','estado','notas_taller','notas','pedido','catalogo'],
+    });
+
+    setLoading('2/4 · Catálogo…');
+    var catIds = [];
+    rawItems.forEach(function(r) { (r.fields.catalogo || []).forEach(function(id) { if (!catIds.includes(id)) catIds.push(id); }); });
+    var catalogoMap = {};
+    if (catIds.length) {
+      var catFilter = catIds.length === 1
+        ? "RECORD_ID()='" + catIds[0] + "'"
+        : 'OR(' + catIds.map(function(id) { return "RECORD_ID()='" + id + "'"; }).join(',') + ')';
+      var rawCat = await fetchAll('tbl8iau1GmyJ3faxl', { filterByFormula: catFilter, 'fields[]': ['producto'] });
+      rawCat.forEach(function(r) { catalogoMap[r.id] = r.fields.producto || ''; });
+    }
+
+    var pidArr = [];
+    rawItems.forEach(function(r) { (r.fields.pedido || []).forEach(function(id) { if (!pidArr.includes(id)) pidArr.push(id); }); });
+
+    if (!pidArr.length) { setMain('<div class="empty">No hay items activos</div>'); return; }
+
+    setLoading('3/4 · Pedidos…');
+    var pedFilter = pidArr.length === 1
+      ? "RECORD_ID()='" + pidArr[0] + "'"
+      : 'OR(' + pidArr.map(function(id) { return "RECORD_ID()='" + id + "'"; }).join(',') + ')';
+
+    var rawPedidos = await fetchAll(T_PEDIDO, {
+      filterByFormula: pedFilter,
+      'fields[]': ['id_pedido','fecha_seña','dias_adicionales','estado_comercial','cliente',
+                   'precio_pactado','tono_madera','terminacion','tono_hierro','tipo_madera','acabado','notas_logistica'],
+    });
+
+    setLoading('4/4 · Clientes…');
+    var cidArr = [];
+    rawPedidos.forEach(function(r) { (r.fields.cliente || []).forEach(function(id) { if (!cidArr.includes(id)) cidArr.push(id); }); });
+
+    var rawClientes = [];
+    if (cidArr.length) {
+      var cFilter = cidArr.length === 1
+        ? "RECORD_ID()='" + cidArr[0] + "'"
+        : 'OR(' + cidArr.map(function(id) { return "RECORD_ID()='" + id + "'"; }).join(',') + ')';
+      rawClientes = await fetchAll(T_CLIENT, { filterByFormula: cFilter, 'fields[]': ['nombre','telefono'] });
+    }
+
+    var clienteMap = {};
+    rawClientes.forEach(function(r) { clienteMap[r.id] = r.fields; });
+
+    pedidosMap = {};
+    rawPedidos.forEach(function(r) {
+      var cid = (r.fields.cliente || [])[0];
+      var cli = cid ? clienteMap[cid] : null;
+      var fechaSena = r.fields['fecha_seña'];
+      var diasExtra = r.fields.dias_adicionales || 0;
+      var fechaEntrega = null;
+      if (fechaSena) {
+        var d = new Date(fechaSena + 'T00:00:00');
+        d.setDate(d.getDate() + 30 + diasExtra);
+        fechaEntrega = d;
+      }
+      pedidosMap[r.id] = {
+        id: r.id,
+        id_pedido: r.fields.id_pedido,
+        estado_comercial: r.fields.estado_comercial || '',
+        clienteNombre: cli ? (cli.nombre || cli.telefono || 'Sin nombre') : 'Sin cliente',
+        clienteTel: cli ? (cli.telefono || '') : '',
+        fechaEntrega: fechaEntrega,
+        fecha_sena: r.fields['fecha_seña'] || '',
+        precio_pactado: r.fields.precio_pactado || null,
+        tono_madera: r.fields.tono_madera || '',
+        terminacion: r.fields.terminacion || '',
+        tono_hierro: r.fields.tono_hierro || '',
+        tipo_madera: r.fields.tipo_madera || '',
+        acabado: r.fields.acabado || '',
+        notas_logistica: r.fields.notas_logistica || '',
+      };
+    });
+
+    items = rawItems.map(function(r) {
+      return {
+        id: r.id,
+        nro_linea: r.fields.nro_linea || 0,
+        descripcion: catalogoMap[(r.fields.catalogo || [])[0]] || 'Sin descripción',
+        dimensiones: r.fields.dimensiones || '',
+        estado: r.fields.estado || 'Nuevo',
+        notas_taller: r.fields.notas_taller || '',
+        notas: r.fields.notas || '',
+        pedidoId: (r.fields.pedido || [])[0] || null,
+      };
+    });
+
+    render();
   }
 
-  async function loadData() {
-    setLoading('Cargando items…');
+  // ── Render ───────────────────────────────────────────────
+  function render() {
+    var q = searchQ;
+    var isSearch = q.length > 0;
 
-    try {
-      setLoading('1/4 · Items…');
-      const rawItems = await fetchAll(T_ITEMS, {
-        filterByFormula: `AND(NOT({estado}='Cancelado'),NOT({estado}='Vendido'))`,
-        'fields[]': ['nro_linea','dimensiones','estado','notas_taller','notas','pedido','catalogo'],
-      });
-
-      setLoading('2/4 · Catálogo…');
-      const catIds = [...new Set(rawItems.flatMap(r => r.fields.catalogo || []))];
-      const catalogoMap = {};
-      if (catIds.length) {
-        const catFilter = catIds.length === 1
-          ? `RECORD_ID()='${catIds[0]}'`
-          : `OR(${catIds.map(id => `RECORD_ID()='${id}'`).join(',')})`;
-        const rawCat = await fetchAll('tbl8iau1GmyJ3faxl', {
-          filterByFormula: catFilter,
-          'fields[]': ['producto'],
-        });
-        rawCat.forEach(r => { catalogoMap[r.id] = r.fields.producto || ''; });
+    var filtered = items.filter(function(item) {
+      var p = pedidosMap[item.pedidoId] || {};
+      if (!isSearch && activeChip !== 'Todos' && item.estado !== activeChip) return false;
+      if (isSearch) {
+        var haystack = [item.descripcion, item.dimensiones, item.notas_taller, p.clienteNombre, String(p.id_pedido || '')].join(' ').toLowerCase();
+        return haystack.includes(q);
       }
+      return true;
+    });
 
-      const pidSet 
+    var groups = {};
+    filtered.forEach(function(item) {
+      if (!item.pedidoId || !pedidosMap[item.pedidoId]) return;
+      if (!groups[item.pedidoId]) groups[item.pedidoId] = [];
+      groups[item.pedidoId].push(item);
+    });
+
+    var pedidosSorted = Object.keys(groups).sort(function(a, b) {
+      var fa = pedidosMap[a].fechaEntrega;
+      var fb = pedidosMap[b].fechaEntrega;
+      if (fa && fb) return fa - fb;
+      return fa ? -1 : fb ? 1 : 0;
+    });
+
+    if (!pedidosSorted.length) {
+      var msg = isSearch
+        ? 'No hay resultados para "<strong>' + esc(q) + '</strong>"'
+        : 'No hay items en estado <strong>' + esc(activeChip) + '</strong>';
+      setMain('<div class="empty">' + msg + '</div>');
+      return;
+    }
+
+    setMain(pedidosSorted.map(function(pid) { return renderPedido(pid, groups[pid], q); }).join(''));
+  }
+
+  function renderPedido(pid, grpItems, q) {
+    var p = pedidosMap[pid];
+    var dias = diasHasta(p.fechaEntrega);
+    var fechaClass = '', fechaLabel = '';
+    if (p.fechaEntrega) {
+      var label = p.fechaEntrega.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+      if      (dias < 0)  { fechaClass = 'atrasado'; fechaLabel = 'Atrasado · ' + label + ' (' + Math.abs(dias) + 'd)'; }
+      else if (dias === 0){ fechaClass = 'hoy';      fechaLabel = 'Hoy · ' + label; }
+      else if (dias === 1){ fechaClass = 'hoy';      fechaLabel = 'Mañana · ' + label; }
+      else if (dias <= 4) { fechaClass = 'pronto';   fechaLabel = label + ' · ' + dias + 'd'; }
+      else                {                           fechaLabel = label + ' · ' + dias + 'd'; }
+    } else { fechaLabel = 'Sin fecha'; }
+
+    var sorted = grpItems.slice().sort(function(a,b) { return a.nro_linea - b.nro_linea; });
+
+    return '<div class="pedido-group">' +
+      '<div class="pedido-header" onclick="openFicha(\'' + pid + '\')" style="cursor:pointer">' +
+        '<div class="pid">#' + (p.id_pedido != null ? p.id_pedido : '?') + '</div>' +
+        '<div class="pedido-meta">' +
+          '<div class="pedido-cliente">' + highlight(p.clienteNombre, q) + '</div>' +
+          '<div class="pedido-fecha ' + fechaClass + '">' + fechaLabel + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="items-list">' + sorted.map(function(item) { return renderItem(item, q); }).join('') + '</div>' +
+    '</div>';
+  }
+
+  function renderItem(item, q) {
+    return '<div class="item" onclick="openModal(\'' + item.id + '\')">' +
+      '<div class="item-nr">' + (item.nro_linea || '·') + '</div>' +
+      '<div class="item-body">' +
+        '<div class="item-desc">' + highlight(item.descripcion, q) + '</div>' +
+        (item.dimensiones  ? '<div class="item-dims">' + highlight(item.dimensiones, q) + '</div>' : '') +
+        (item.notas        ? '<div class="item-nota item-nota-pedido">📋 ' + esc(item.notas) + '</div>' : '') +
+        (item.notas_taller ? '<div class="item-nota">⚠ ' + esc(item.notas_taller) + '</div>' : '') +
+      '</div>' +
+      '<div class="ebadge ' + estadoClass(item.estado) + '">' + esc(item.estado) + '</div>' +
+    '</div>';
+  }
+
+  // ── Ficha ────────────────────────────────────────────────
+  function openFicha(pedidoId) {
+    var p = pedidosMap[pedidoId];
+    if (!p) return;
+    document.getElementById('ficha-title').textContent = 'Pedido #' + (p.id_pedido != null ? p.id_pedido : '?') + ' · ' + p.clienteNombre;
+    var dias = diasHasta(p.fechaEntrega);
+    var entregaLabel = 'Sin fecha';
+    if (p.fechaEntrega) {
+      var label = p.fechaEntrega.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+      entregaLabel = dias < 0 ? label + ' (atrasado ' + Math.abs(dias) + 'd)' : dias === 0 ? label + ' (hoy)' : label + ' (' + dias + 'd)';
+    }
+    var precio = p.precio_pactado ? '$' + Number(p.precio_pactado).toLocaleString('es-AR') : null;
+    var rows = [
+      ['Cliente', p.clienteNombre], ['Teléfono', p.clienteTel],
+      ['Seña', p.fecha_sena ? new Date(p.fecha_sena + 'T00:00:00').toLocaleDateString('es-AR', {day:'numeric',month:'long',year:'numeric'}) : null],
+      ['Entrega', entregaLabel], ['Estado', p.estado_comercial], ['Precio pactado', precio],
+      ['Tono madera', p.tono_madera], ['Terminación', p.terminacion],
+      ['Tono hierro', p.tono_hierro], ['Tipo madera', p.tipo_madera],
+      ['Acabado', p.acabado], ['Logística', p.notas_logistica],
+    ];
+    document.getElementById('ficha-body').innerHTML = rows.map(function(row) {
+      var label = row[0], val = row[1];
+      return '<div class="ficha-row"><div class="ficha-label">' + label + '</div><div class="ficha-val ' + (val ? '' : 'empty') + '">' + (val ? esc(String(val)) : '—') + '</div></div>';
+    }).join('');
+    document.getElementById('ficha-overlay').classList.remove('hidden');
+  }
+
+  function closeFicha() { document.getElementById('ficha-overlay').classList.add('hidden'); }
+  function onFichaOverlayClick(e) { if (e.target === document.getElementById('ficha-overlay')) closeFicha(); }
+
+  // ── Modal item ───────────────────────────────────────────
+  var pendingEstado = null;
+
+  function openModal(itemId) {
+    activeItem = null;
+    for (var i = 0; i < items.length; i++) { if (items[i].id === itemId) { activeItem = items[i]; break; } }
+    if (!activeItem) return;
+    pendingEstado = activeItem.estado;
+    var p = pedidosMap[activeItem.pedidoId] || {};
+    document.getElementById('modal-title').textContent = activeItem.descripcion;
+    document.getElementById('modal-sub').textContent = '#' + (p.id_pedido != null ? p.id_pedido : '?') + ' · ' + (p.clienteNombre || '');
+    renderEstadoBtns();
+    document.getElementById('nota-input').value = activeItem.notas_taller || '';
+    var notasSection = document.getElementById('notas-pedido-section');
+    var notasDisplay = document.getElementById('notas-pedido-display');
+    if (activeItem.notas) {
+      notasDisplay.textContent = activeItem.notas;
+      notasSection.style.display = '';
+    } else {
+      notasSection.style.display = 'none';
+    }
+    document.getElementById('btn-guardar').classList.remove('saving');
+    document.getElementById('btn-guardar').textContent = 'Guardar';
+    document.getElementById('overlay').classList.remove('hidden');
+  }
+
+  function renderEstadoBtns() {
+    document.getElementById('estado-grid').innerHTML = ESTADOS.map(function(e) {
+      return '<button class="ebtn ' + (e === pendingEstado ? 'current' : '') + '" onclick="selectEstado(\'' + e.replace(/'/g,"\\'") + '\')">' + esc(e) + '</button>';
+    }).join('');
+  }
+
+  function selectEstado(nuevoEstado) { pendingEstado = nuevoEstado; renderEstadoBtns(); }
+
+  async function guardarCambios() {
+    if (!activeItem) return;
+    var nuevoEstado = pendingEstado;
+    var nuevaNota   = document.getElementById('nota-input').value.trim();
+    var cambioEstado = nuevoEstado !== activeItem.estado;
+    var cambiaNota   = nuevaNota   !== (activeItem.notas_taller || '').trim();
+    if (!cambioEstado && !cambiaNota) { closeModal(); return; }
+    var btn = document.getElementById('btn-guardar');
+    btn.classList.add('saving');
+    btn.textContent = 'Guardando…';
+    var fields = {};
+    if (cambioEstado) fields.estado       = nuevoEstado;
+    if (cambiaNota)   fields.notas_taller = nuevaNota;
+    var prevEstado = activeItem.estado;
+    var prevNota   = activeItem.notas_taller;
+    activeItem.estado       = nuevoEstado;
+    activeItem.notas_taller = nuevaNota;
+    try {
+      await apiPatch(T_ITEMS, activeItem.id, fields);
+      closeModal();
+      render();
+    } catch (err) {
+      activeItem.estado       = prevEstado;
+      activeItem.notas_taller = prevNota;
+      btn.classList.remove('saving');
+      btn.textContent = 'Guardar';
+      showErr('Error al guardar:\n' + err.message);
+    }
+  }
+
+  function closeModal() {
+    document.getElementById('overlay').classList.add('hidden');
+    activeItem = null; pendingEstado = null;
+  }
+  function onOverlayClick(e) { if (e.target === document.getElementById('overlay')) closeModal(); }
+
+</script>
+</body>
+</html>
