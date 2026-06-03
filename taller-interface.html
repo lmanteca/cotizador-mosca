@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mosca Taller · v1.5 · 2026-06-02</title>
+  <title>Mosca Taller · v1.6 · 2026-06-02</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -447,7 +447,7 @@
   <div class="header-top">
     <h1>Mosca Taller</h1>
     <div class="header-right">
-      <span class="version">v1.5 · 2026-06-02</span>
+      <span class="version">v1.6 · 2026-06-02</span>
       <button class="btn-icon" onclick="loadData()">↻</button>
     </div>
   </div>
@@ -505,6 +505,14 @@
 <script>
   'use strict';
 
+  // Captura errores globales no manejados
+  window.addEventListener('unhandledrejection', e => {
+    showErr('Promise no capturada:\n' + (e.reason?.stack || e.reason));
+  });
+  window.onerror = (msg, src, line, col, err) => {
+    showErr('Error global:\n' + (err?.stack || msg));
+  };
+
   const BASE     = 'appBThGsxqCSljqH1';
   const T_ITEMS  = 'tblQ4Kq61LlZHFPNN';
   const T_PEDIDO = 'tblok3VLqWA3oQaPe';
@@ -540,7 +548,11 @@
       `<div class="token-screen"><h2>Mosca Taller</h2><p>Pedile el link a Lisandro para acceder.</p></div>`;
   } else {
     buildChips();
-    loadData();
+    loadData().catch(err => {
+      console.error('loadData() sin capturar:', err);
+      setMain(`<div class="error-box"><strong>Error inesperado</strong></div>`);
+      showErr(err?.stack || err?.message || String(err));
+    });
   }
 
   // ── Chips ────────────────────────────────────────────────
@@ -578,7 +590,9 @@
   }
 
   // ── API ──────────────────────────────────────────────────
-  const TIMEOUT_MS = 15000;
+  const VERSION    = 'v1.6';
+  const TIMEOUT_MS = 10000;
+  console.log('[Mosca Taller]', VERSION, new Date().toISOString());
 
   async function fetchWithTimeout(input, init) {
     const ctrl = new AbortController();
@@ -662,17 +676,4 @@
         rawCat.forEach(r => { catalogoMap[r.id] = r.fields.producto || ''; });
       }
 
-      const pidSet = new Set(rawItems.flatMap(r => r.fields.pedido || []));
-      const pidArr = [...pidSet];
-
-      if (!pidArr.length) { setMain(`<div class="empty">No hay items activos</div>`); return; }
-
-      setLoading('3/4 · Pedidos…');
-      const pedFilter = pidArr.length === 1
-        ? `RECORD_ID()='${pidArr[0]}'`
-        : `OR(${pidArr.map(id => `RECORD_ID()='${id}'`).join(',')})`;
-
-      const rawPedidos = await fetchAll(T_PEDIDO, {
-        filterByFormula: pedFilter,
-        'fields[]': ['id_pedido','fecha_seña','dias_adicionales','estado_comercial','cliente',
-                     'precio_pact
+      const pidSet 
