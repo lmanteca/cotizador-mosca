@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mosca Taller · v1.8 · 2026-06-03</title>
+  <title>Mosca Taller · v1.8 · 2026-06-04 21:12</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -50,51 +50,29 @@
       top: 0;
       z-index: 100;
     }
-
     .header-top {
       display: flex;
       align-items: center;
       justify-content: space-between;
       margin-bottom: 10px;
     }
-
-    header h1 {
-      font-size: 17px;
-      font-weight: 700;
-      color: var(--accent);
-    }
-
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
+    header h1 { font-size: 17px; font-weight: 700; color: var(--accent); }
+    .header-right { display: flex; align-items: center; gap: 8px; }
     .version { font-size: 11px; color: var(--muted); }
-
     .btn-icon {
-      background: none;
-      border: 1px solid var(--border);
-      color: var(--muted);
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-size: 14px;
-      cursor: pointer;
+      background: none; border: 1px solid var(--border);
+      color: var(--muted); padding: 4px 10px;
+      border-radius: 6px; font-size: 14px; cursor: pointer;
     }
     .btn-icon:active { opacity: 0.5; }
 
     /* ── Search ── */
     .search-wrap { padding: 0 0 10px; }
-
     .search-input {
-      width: 100%;
-      background: var(--input-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      color: var(--text);
-      font-size: 15px;
-      padding: 9px 12px 9px 34px;
-      outline: none;
+      width: 100%; background: var(--input-bg);
+      border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text); font-size: 15px;
+      padding: 9px 12px 9px 34px; outline: none;
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23999' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zm-5.242 1.656a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z'/%3E%3C/svg%3E");
       background-repeat: no-repeat;
       background-position: 10px center;
@@ -103,19 +81,13 @@
     .search-input:focus { border-color: var(--accent); }
 
     /* ── Chips ── */
-    .chips-wrap {
-      display: flex; gap: 6px;
-      overflow-x: auto; padding: 0 0 12px;
-      scrollbar-width: none;
-    }
+    .chips-wrap { display: flex; gap: 6px; overflow-x: auto; padding: 0 0 12px; scrollbar-width: none; }
     .chips-wrap::-webkit-scrollbar { display: none; }
-
     .chip {
-      flex-shrink: 0; padding: 5px 12px;
-      border-radius: 20px; font-size: 13px; font-weight: 600;
-      cursor: pointer; border: 1.5px solid var(--border);
-      background: var(--bg); color: var(--muted);
-      -webkit-tap-highlight-color: transparent;
+      flex-shrink: 0; padding: 5px 12px; border-radius: 20px;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      border: 1.5px solid var(--border); background: var(--bg);
+      color: var(--muted); -webkit-tap-highlight-color: transparent;
       transition: all 0.12s; white-space: nowrap;
     }
     .chip.active { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
@@ -132,11 +104,9 @@
       margin: 0 auto 14px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-
     .error-box {
       background: #2a0f0f; border: 1px solid #7a2020;
-      border-radius: 10px; padding: 16px;
-      font-size: 14px; color: #ff8080;
+      border-radius: 10px; padding: 16px; font-size: 14px; color: #ff8080;
     }
 
     /* ── Token screen ── */
@@ -146,29 +116,19 @@
 
     /* ── Pedido cards ── */
     .pedido-group { margin-bottom: 14px; }
-
     .pedido-header {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px 10px 0 0;
-      padding: 11px 13px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px 10px 0 0; padding: 11px 13px;
       display: flex; align-items: center; gap: 8px;
     }
-
     .pid {
       background: var(--accent); color: #fff;
       font-weight: 800; font-size: 12px;
       padding: 2px 7px; border-radius: 4px;
       white-space: nowrap; flex-shrink: 0;
     }
-
     .pedido-meta { flex: 1; min-width: 0; }
-
-    .pedido-cliente {
-      font-weight: 600; font-size: 15px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-
+    .pedido-cliente { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .pedido-fecha { font-size: 13px; color: var(--muted); margin-top: 1px; }
     .pedido-fecha.atrasado { color: #c93030; font-weight: 600; }
     .pedido-fecha.hoy      { color: #c07020; font-weight: 600; }
@@ -176,23 +136,15 @@
     body.dark .pedido-fecha.atrasado { color: #ff6060; }
     body.dark .pedido-fecha.hoy      { color: #ff9030; }
     body.dark .pedido-fecha.pronto   { color: #f0b040; }
-
-    .items-list {
-      border: 1px solid var(--border); border-top: none;
-      border-radius: 0 0 10px 10px; overflow: hidden;
-    }
-
+    .items-list { border: 1px solid var(--border); border-top: none; border-radius: 0 0 10px 10px; overflow: hidden; }
     .item {
-      background: var(--surface);
-      padding: 12px 13px;
+      background: var(--surface); padding: 12px 13px;
       border-top: 1px solid var(--border);
       display: flex; align-items: center; gap: 10px;
       cursor: pointer; -webkit-tap-highlight-color: transparent;
     }
     .item:active { opacity: 0.65; }
-
     .item-nr { font-size: 12px; color: var(--muted); width: 18px; flex-shrink: 0; text-align: right; }
-
     .item-body { flex: 1; min-width: 0; }
     .item-desc { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .item-dims { font-size: 13px; color: var(--muted); }
@@ -202,13 +154,7 @@
     body.dark .item-nota-pedido { color: #5a7ec7; }
 
     /* ── Estado badges ── */
-    .ebadge {
-      flex-shrink: 0; font-size: 11px; font-weight: 600;
-      padding: 3px 8px; border-radius: 5px;
-      max-width: 110px; text-align: center;
-    }
-
-    /* Light */
+    .ebadge { flex-shrink: 0; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 5px; max-width: 110px; text-align: center; }
     .eb-Nuevo          { background: #efefef; color: #777; }
     .eb-En_herreria    { background: #fff0e0; color: #b05800; }
     .eb-En_carpinteria { background: #e8f0ff; color: #1a48b0; }
@@ -219,8 +165,6 @@
     .eb-Vendido        { background: #f5f5e0; color: #605820; }
     .eb-Rehacer        { background: #ffe8e8; color: #b02828; }
     .eb-Cancelado      { background: #f0f0f0; color: #aaa; }
-
-    /* Dark */
     body.dark .eb-Nuevo          { background: #242424; color: #999; }
     body.dark .eb-En_herreria    { background: #2e1800; color: #f0a050; }
     body.dark .eb-En_carpinteria { background: #00102e; color: #5080d0; }
@@ -233,156 +177,99 @@
     body.dark .eb-Cancelado      { background: #181818; color: #444; }
 
     .empty { text-align: center; padding: 50px 20px; color: var(--muted); font-size: 15px; }
-
-    /* ── Search highlight ── */
     mark { background: #ffe066; color: #5a3a00; border-radius: 2px; padding: 0 1px; }
     body.dark mark { background: #5a3a00; color: #f0c060; }
 
     /* ── Modal ── */
     .overlay {
-      position: fixed; inset: 0;
-      background: var(--overlay-bg);
-      z-index: 200; display: flex;
-      align-items: flex-end; justify-content: center;
+      position: fixed; inset: 0; background: var(--overlay-bg);
+      z-index: 200; display: flex; align-items: flex-end; justify-content: center;
     }
     .overlay.hidden { display: none; }
-
     .modal {
-      background: var(--surface);
-      border-radius: 16px 16px 0 0;
+      background: var(--surface); border-radius: 16px 16px 0 0;
       width: 100%; max-width: 480px;
       padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 24px);
     }
-
-    .drag-handle {
-      width: 36px; height: 4px;
-      background: var(--border); border-radius: 2px;
-      margin: 0 auto 14px;
-    }
-
+    .drag-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 14px; }
     .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 3px; }
     .modal-sub   { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
-
-    .estado-grid {
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: 7px; margin-bottom: 10px;
-    }
-
+    .estado-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 10px; }
     .ebtn {
       padding: 13px 8px; border: 2px solid var(--border);
       border-radius: 9px; background: var(--input-bg);
       color: var(--text); font-size: 13px; font-weight: 600;
-      cursor: pointer; text-align: center;
-      -webkit-tap-highlight-color: transparent;
+      cursor: pointer; text-align: center; -webkit-tap-highlight-color: transparent;
     }
     .ebtn:active { opacity: 0.6; }
     .ebtn.current { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
     .ebtn.saving  { opacity: 0.4; pointer-events: none; }
-
     .nota-section { margin-bottom: 10px; }
-
-    .nota-label {
-      font-size: 11px; color: var(--muted);
-      text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 6px;
-    }
-
+    .nota-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 6px; }
     .nota-textarea {
-      width: 100%; background: var(--input-bg);
-      border: 1px solid var(--border); border-radius: 8px;
-      color: var(--text); font-size: 15px;
+      width: 100%; background: var(--input-bg); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 15px;
       padding: 10px 12px; resize: none; outline: none;
       font-family: inherit; line-height: 1.4; min-height: 72px;
     }
     .nota-textarea:focus { border-color: var(--accent); }
     .nota-textarea::placeholder { color: var(--muted); }
-
     .btn-guardar {
       display: block; width: 100%; padding: 14px;
-      background: var(--accent); border: none;
-      border-radius: 9px; color: #fff;
-      font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 8px;
+      background: var(--accent); border: none; border-radius: 9px;
+      color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 8px;
     }
     .btn-guardar:active { opacity: 0.7; }
     .btn-guardar.saving { opacity: 0.5; pointer-events: none; }
-
     .btn-cancel {
       display: block; width: 100%; padding: 14px;
       background: none; border: 1px solid var(--border);
-      border-radius: 9px; color: var(--muted);
-      font-size: 15px; cursor: pointer;
+      border-radius: 9px; color: var(--muted); font-size: 15px; cursor: pointer;
     }
     .btn-cancel:active { opacity: 0.6; }
 
     /* ── Ficha modal ── */
     .ficha-overlay {
-      position: fixed; inset: 0;
-      background: var(--overlay-bg);
-      z-index: 300; display: flex;
-      align-items: flex-end; justify-content: center;
+      position: fixed; inset: 0; background: var(--overlay-bg);
+      z-index: 300; display: flex; align-items: flex-end; justify-content: center;
     }
     .ficha-overlay.hidden { display: none; }
-
     .ficha-sheet {
-      background: var(--surface);
-      border-radius: 16px 16px 0 0;
+      background: var(--surface); border-radius: 16px 16px 0 0;
       width: 100%; max-width: 480px; max-height: 85vh;
       display: flex; flex-direction: column;
       padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
     }
-
-    .ficha-header {
-      padding: 16px 16px 12px; flex-shrink: 0;
-      border-bottom: 1px solid var(--border);
-    }
-
+    .ficha-header { padding: 16px 16px 12px; flex-shrink: 0; border-bottom: 1px solid var(--border); }
     .ficha-title { font-size: 17px; font-weight: 700; color: var(--accent); }
     .ficha-sub   { font-size: 13px; color: var(--muted); margin-top: 2px; }
-
-    .ficha-body { overflow-y: auto; padding: 14px 16px; flex: 1; }
-
-    .ficha-row {
-      display: flex; gap: 8px; padding: 8px 0;
-      border-bottom: 1px solid var(--border);
-    }
+    .ficha-body  { overflow-y: auto; padding: 14px 16px; flex: 1; }
+    .ficha-row { display: flex; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }
     .ficha-row:last-child { border-bottom: none; }
-
-    .ficha-label {
-      font-size: 11px; color: var(--muted);
-      width: 110px; flex-shrink: 0; padding-top: 1px;
-      text-transform: uppercase; letter-spacing: 0.3px;
-    }
-
+    .ficha-label { font-size: 11px; color: var(--muted); width: 110px; flex-shrink: 0; padding-top: 1px; text-transform: uppercase; letter-spacing: 0.3px; }
     .ficha-val { font-size: 15px; flex: 1; word-break: break-word; }
     .ficha-val.empty { color: var(--muted); font-style: italic; }
-
     .ficha-close {
-      display: block; width: calc(100% - 32px);
-      margin: 0 16px; padding: 14px;
-      background: none; border: 1px solid var(--border);
-      border-radius: 9px; color: var(--muted);
-      font-size: 15px; cursor: pointer; flex-shrink: 0;
+      display: block; width: calc(100% - 32px); margin: 0 16px;
+      padding: 14px; background: none; border: 1px solid var(--border);
+      border-radius: 9px; color: var(--muted); font-size: 15px; cursor: pointer; flex-shrink: 0;
     }
     .ficha-close:active { opacity: 0.6; }
 
-    /* ── Urgencia badge en header ── */
-    .urg-badge {
-      font-size: 10px; font-weight: 700;
-      padding: 2px 7px; border-radius: 4px;
-      flex-shrink: 0; text-transform: uppercase; letter-spacing: 0.3px;
-    }
+    /* ── Urgencia badge ── */
+    .urg-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; flex-shrink: 0; text-transform: uppercase; letter-spacing: 0.3px; }
     .urg-Urgente { background: #fff0e0; color: #b05800; border: 1px solid #d08040; }
     .urg-Critico { background: #ffe8e8; color: #b02828; border: 1px solid #d05050; }
     body.dark .urg-Urgente { background: #2e1400; color: #f09030; border-color: #6a3000; }
     body.dark .urg-Critico { background: #2e0000; color: #f05050; border-color: #7a1010; }
 
-    /* ── Btn urgencia en header del pedido ── */
+    /* ── Btn urgencia en pedido header ── */
     .btn-urg {
       background: none; border: 1px solid var(--border);
       border-radius: 6px; color: var(--muted);
       font-size: 13px; padding: 3px 7px;
       cursor: pointer; flex-shrink: 0;
-      -webkit-tap-highlight-color: transparent;
-      line-height: 1;
+      -webkit-tap-highlight-color: transparent; line-height: 1;
     }
     .btn-urg:active { opacity: 0.5; }
 
@@ -395,14 +282,13 @@
       white-space: pre-wrap; word-break: break-word; margin-bottom: 6px;
     }
 
-    /* ── Urgencia btns (ficha + quick modal) ── */
+    /* ── Urgencia btns ── */
     .urgencia-btns { display: flex; gap: 6px; margin-bottom: 4px; }
     .ubtn {
-      flex: 1; padding: 10px 4px;
-      border: 1.5px solid var(--border); border-radius: 7px;
-      background: var(--input-bg); font-size: 13px; font-weight: 600;
-      cursor: pointer; text-align: center; color: var(--muted);
-      -webkit-tap-highlight-color: transparent;
+      flex: 1; padding: 10px 4px; border: 1.5px solid var(--border);
+      border-radius: 7px; background: var(--input-bg);
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      text-align: center; color: var(--muted); -webkit-tap-highlight-color: transparent;
     }
     .ubtn:active { opacity: 0.6; }
     .ubtn.u-Normal.sel  { border-color: #888; color: var(--text); background: var(--bg); }
@@ -413,47 +299,41 @@
     body.dark .ubtn.u-Critico.sel { border-color: #f05050; color: #f05050; background: #2e0000; }
 
     .btn-guardar-ficha {
-      display: block; width: calc(100% - 32px);
-      margin: 0 16px 8px; padding: 14px;
-      background: var(--accent); border: none;
-      border-radius: 9px; color: #fff;
-      font-size: 15px; font-weight: 700; cursor: pointer; flex-shrink: 0;
+      display: block; width: calc(100% - 32px); margin: 0 16px 8px; padding: 14px;
+      background: var(--accent); border: none; border-radius: 9px;
+      color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; flex-shrink: 0;
     }
     .btn-guardar-ficha:active { opacity: 0.7; }
     .btn-guardar-ficha.saving { opacity: 0.5; pointer-events: none; }
 
     /* ── Tamaño de letra ── */
     body.fz-lg { font-size: 19px; }
-    body.fz-lg .pedido-cliente { font-size: 18px; }
-    body.fz-lg .pedido-fecha   { font-size: 15px; }
-    body.fz-lg .item-desc      { font-size: 18px; }
-    body.fz-lg .item-dims      { font-size: 15px; }
-    body.fz-lg .item-nota      { font-size: 14px; }
-    body.fz-lg .ebadge         { font-size: 13px; padding: 4px 10px; }
-    body.fz-lg .chip           { font-size: 15px; }
-    body.fz-lg .ebtn           { font-size: 15px; }
-    body.fz-lg .ubtn           { font-size: 15px; padding: 12px 4px; }
-    body.fz-lg .nota-textarea  { font-size: 17px; }
+    body.fz-lg .pedido-cliente, body.fz-lg .item-desc { font-size: 18px; }
+    body.fz-lg .pedido-fecha, body.fz-lg .item-dims   { font-size: 15px; }
+    body.fz-lg .item-nota  { font-size: 14px; }
+    body.fz-lg .ebadge     { font-size: 13px; padding: 4px 10px; }
+    body.fz-lg .chip       { font-size: 15px; }
+    body.fz-lg .ebtn       { font-size: 15px; }
+    body.fz-lg .ubtn       { font-size: 15px; padding: 12px 4px; }
+    body.fz-lg .nota-textarea { font-size: 17px; }
     body.fz-lg .btn-guardar, body.fz-lg .btn-cancel,
     body.fz-lg .btn-guardar-ficha, body.fz-lg .ficha-close { font-size: 17px; }
-    body.fz-lg .modal-title    { font-size: 18px; }
-    body.fz-lg .ficha-val      { font-size: 17px; }
+    body.fz-lg .modal-title { font-size: 18px; }
+    body.fz-lg .ficha-val   { font-size: 17px; }
 
     body.fz-xl { font-size: 22px; }
-    body.fz-xl .pedido-cliente { font-size: 21px; }
-    body.fz-xl .pedido-fecha   { font-size: 18px; }
-    body.fz-xl .item-desc      { font-size: 21px; }
-    body.fz-xl .item-dims      { font-size: 18px; }
-    body.fz-xl .item-nota      { font-size: 16px; }
-    body.fz-xl .ebadge         { font-size: 15px; padding: 5px 11px; }
-    body.fz-xl .chip           { font-size: 17px; }
-    body.fz-xl .ebtn           { font-size: 17px; padding: 15px 8px; }
-    body.fz-xl .ubtn           { font-size: 17px; padding: 14px 4px; }
-    body.fz-xl .nota-textarea  { font-size: 20px; }
+    body.fz-xl .pedido-cliente, body.fz-xl .item-desc { font-size: 21px; }
+    body.fz-xl .pedido-fecha, body.fz-xl .item-dims   { font-size: 18px; }
+    body.fz-xl .item-nota  { font-size: 16px; }
+    body.fz-xl .ebadge     { font-size: 15px; padding: 5px 11px; }
+    body.fz-xl .chip       { font-size: 17px; }
+    body.fz-xl .ebtn       { font-size: 17px; padding: 15px 8px; }
+    body.fz-xl .ubtn       { font-size: 17px; padding: 14px 4px; }
+    body.fz-xl .nota-textarea { font-size: 20px; }
     body.fz-xl .btn-guardar, body.fz-xl .btn-cancel,
     body.fz-xl .btn-guardar-ficha, body.fz-xl .ficha-close { font-size: 20px; padding: 16px; }
-    body.fz-xl .modal-title    { font-size: 22px; }
-    body.fz-xl .ficha-val      { font-size: 20px; }
+    body.fz-xl .modal-title { font-size: 22px; }
+    body.fz-xl .ficha-val   { font-size: 20px; }
   </style>
 </head>
 <body>
@@ -462,7 +342,7 @@
   <div class="header-top">
     <h1>Mosca Taller</h1>
     <div class="header-right">
-      <span class="version">v1.8 · 2026-06-03</span>
+      <span class="version">v1.8 · 2026-06-04 21:12</span>
       <button class="btn-icon" id="btn-font"  onclick="cycleFont()">A</button>
       <button class="btn-icon" id="btn-theme" onclick="toggleTheme()">🌙</button>
       <button class="btn-icon" onclick="loadData()">↻</button>
@@ -481,13 +361,13 @@
 <!-- Modal de error -->
 <div class="overlay hidden" id="err-overlay" onclick="closeErrModal()">
   <div class="modal" onclick="event.stopPropagation()" style="max-height:80vh;overflow-y:auto">
-    <div class="modal-title" style="color:#c0392b">⚠ Error</div>
-    <div id="err-msg" style="font-size:13px;color:#333;white-space:pre-wrap;margin:12px 0;line-height:1.5;font-family:monospace;background:#fff0f0;padding:10px;border-radius:6px;overflow-x:auto"></div>
+    <div class="modal-title" style="color:#c0392b">Error</div>
+    <div id="err-msg" style="font-size:13px;white-space:pre-wrap;margin:12px 0;line-height:1.5;font-family:monospace;background:var(--input-bg);padding:10px;border-radius:6px;overflow-x:auto"></div>
     <button class="btn-cancel" style="margin-top:0" onclick="closeErrModal()">Cerrar</button>
   </div>
 </div>
 
-<!-- Ficha de pedido (consulta) -->
+<!-- Ficha de pedido -->
 <div class="ficha-overlay hidden" id="ficha-overlay" onclick="onFichaOverlayClick(event)">
   <div class="ficha-sheet">
     <div class="ficha-header">
@@ -506,16 +386,17 @@
   <div class="modal">
     <div class="drag-handle"></div>
     <div class="modal-title" id="urg-modal-title">Urgencia</div>
-    <div class="modal-sub" id="urg-modal-sub"></div>
+    <div class="modal-sub"   id="urg-modal-sub"></div>
     <div class="urgencia-btns" style="margin-top:6px">
-      <button class="ubtn u-Normal"  id="uq-Normal"   onclick="setUrgenciaQuick('Normal')">Normal</button>
-      <button class="ubtn u-Urgente" id="uq-Urgente"  onclick="setUrgenciaQuick('Urgente')">Urgente</button>
-      <button class="ubtn u-Critico" id="uq-Critico"  onclick="setUrgenciaQuick('Crítico')">Crítico</button>
+      <button class="ubtn u-Normal"  id="uq-Normal"  onclick="setUrgenciaQuick('Normal')">Normal</button>
+      <button class="ubtn u-Urgente" id="uq-Urgente" onclick="setUrgenciaQuick('Urgente')">Urgente</button>
+      <button class="ubtn u-Critico" id="uq-Critico" onclick="setUrgenciaQuick('Crítico')">Crítico</button>
     </div>
     <button class="btn-cancel" style="margin-top:10px" onclick="closeUrgModal()">Cancelar</button>
   </div>
 </div>
 
+<!-- Modal de item -->
 <div class="overlay hidden" id="overlay" onclick="onOverlayClick(event)">
   <div class="modal">
     <div class="drag-handle"></div>
@@ -538,7 +419,6 @@
 <script>
   'use strict';
 
-  // Captura errores globales no manejados
   window.addEventListener('unhandledrejection', e => {
     const stack = e.reason?.stack || String(e.reason);
     if (stack.includes('chrome-extension://') || stack.includes('moz-extension://')) return;
@@ -557,25 +437,13 @@
   const VERSION    = 'v1.8';
   const TIMEOUT_MS = 10000;
 
-  // Todos los estados, en orden idéntico a Airtable
-  const ESTADOS = [
-    'Nuevo',
-    'En herrería',
-    'En carpintería',
-    'En pintura',
-    'Para entregar',
-    'Entregado',
-    'En Stock',
-    'Vendido',
-    'Rehacer',
-    'Cancelado',
-  ];
+  const ESTADOS = ['Nuevo','En herrería','En carpintería','En pintura','Para entregar','Entregado','En Stock','Vendido','Rehacer','Cancelado'];
 
   let TOKEN      = null;
   let items      = [];
   let pedidosMap = {};
   let activeItem = null;
-  let activeChip = 'Nuevo';   // default
+  let activeChip = 'Nuevo';
   let searchQ    = '';
 
   // ── Tamaño de letra ──────────────────────────────────────
@@ -616,24 +484,23 @@
 
   // ── Init ────────────────────────────────────────────────
   TOKEN = new URLSearchParams(window.location.search).get('token');
-
   try { initFont();  } catch(e) { console.warn('initFont falló:', e); }
   try { initTheme(); } catch(e) { console.warn('initTheme falló:', e); }
 
   if (!TOKEN) {
     document.getElementById('main').innerHTML =
-      `<div class="token-screen"><h2>Mosca Taller</h2><p>Pedile el link a Lisandro para acceder.</p></div>`;
+      '<div class="token-screen"><h2>Mosca Taller</h2><p>Pedile el link a Lisandro para acceder.</p></div>';
   } else {
     buildChips();
     const loadTimeout = setTimeout(() => {
-      setMain(`<div class="error-box"><strong>Timeout — no respondió Airtable en 15s.</strong><br>Revisá la conexión o el token.</div>`);
+      setMain('<div class="error-box"><strong>Timeout — Airtable no respondió en 15s.</strong><br>Revisá la conexión o el token.</div>');
     }, 15000);
     loadData()
       .then(() => clearTimeout(loadTimeout))
       .catch(err => {
         clearTimeout(loadTimeout);
         console.error('loadData() sin capturar:', err);
-        setMain(`<div class="error-box"><strong>Error inesperado</strong></div>`);
+        setMain('<div class="error-box"><strong>Error inesperado al cargar.</strong></div>');
         showErr(err?.stack || err?.message || String(err));
       });
   }
@@ -641,12 +508,9 @@
   // ── Chips ────────────────────────────────────────────────
   function buildChips() {
     const wrap = document.getElementById('chips');
-    // "Todos" chip first
-    const allChip = makeChip('Todos', activeChip === 'Todos');
-    wrap.appendChild(allChip);
+    wrap.appendChild(makeChip('Todos', activeChip === 'Todos'));
     ESTADOS.forEach(e => wrap.appendChild(makeChip(e, e === activeChip)));
   }
-
   function makeChip(label, active) {
     const btn = document.createElement('button');
     btn.className = 'chip' + (active ? ' active' : '');
@@ -654,14 +518,11 @@
     btn.onclick = () => selectChip(label, btn);
     return btn;
   }
-
   function selectChip(label, btn) {
     document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
     activeChip = label;
-    // clear search when switching chip
-    const s = document.getElementById('search');
-    s.value = '';
+    document.getElementById('search').value = '';
     searchQ = '';
     render();
   }
@@ -684,34 +545,34 @@
       return r;
     } catch (e) {
       clearTimeout(tid);
-      if (e.name === 'AbortError') throw new Error(`Timeout (${TIMEOUT_MS/1000}s) — Airtable no respondió`);
+      if (e.name === 'AbortError') throw new Error('Timeout (' + TIMEOUT_MS/1000 + 's) — Airtable no respondió');
       throw e;
     }
   }
 
   async function apiFetch(tableId, params) {
-    const url = new URL(`${API}/${BASE}/${tableId}`);
+    const url = new URL(API + '/' + BASE + '/' + tableId);
     for (const [k, v] of Object.entries(params)) {
       if (Array.isArray(v)) v.forEach(x => url.searchParams.append(k, x));
       else if (v !== undefined) url.searchParams.set(k, v);
     }
-    const r = await fetchWithTimeout(url.toString(), { headers: { Authorization: `Bearer ${TOKEN}` } });
+    const r = await fetchWithTimeout(url.toString(), { headers: { Authorization: 'Bearer ' + TOKEN } });
     if (!r.ok) {
       const body = await r.text();
-      throw new Error(`HTTP ${r.status} en ${tableId}\n${body}`);
+      throw new Error('HTTP ' + r.status + ' en ' + tableId + '\n' + body);
     }
     return r.json();
   }
 
   async function apiPatch(tableId, recId, fields) {
-    const r = await fetchWithTimeout(`${API}/${BASE}/${tableId}/${recId}`, {
+    const r = await fetchWithTimeout(API + '/' + BASE + '/' + tableId + '/' + recId, {
       method: 'PATCH',
-      headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
       body: JSON.stringify({ fields }),
     });
     if (!r.ok) {
       const body = await r.text();
-      throw new Error(`HTTP ${r.status} al guardar\n${body}`);
+      throw new Error('HTTP ' + r.status + ' al guardar\n' + body);
     }
     return r.json();
   }
@@ -730,16 +591,15 @@
 
   // ── Load ─────────────────────────────────────────────────
   function setLoading(step) {
-    setMain(`<div class="loading"><div class="spinner"></div><div>${step}</div></div>`);
+    setMain('<div class="loading"><div class="spinner"></div><div>' + step + '</div></div>');
   }
 
   async function loadData() {
     setLoading('Cargando items…');
-
     try {
       setLoading('1/4 · Items…');
       const rawItems = await fetchAll(T_ITEMS, {
-        filterByFormula: `AND(NOT({estado}='Cancelado'),NOT({estado}='Vendido'))`,
+        filterByFormula: "AND(NOT({estado}='Cancelado'),NOT({estado}='Vendido'))",
         'fields[]': ['nro_linea','dimensiones','estado','historial','notas','pedido','catalogo'],
       });
 
@@ -748,8 +608,8 @@
       const catalogoMap = {};
       if (catIds.length) {
         const catFilter = catIds.length === 1
-          ? `RECORD_ID()='${catIds[0]}'`
-          : `OR(${catIds.map(id => `RECORD_ID()='${id}'`).join(',')})`;
+          ? "RECORD_ID()='" + catIds[0] + "'"
+          : 'OR(' + catIds.map(id => "RECORD_ID()='" + id + "'").join(',') + ')';
         const rawCat = await fetchAll('tbl8iau1GmyJ3faxl', {
           filterByFormula: catFilter,
           'fields[]': ['producto'],
@@ -759,13 +619,12 @@
 
       const pidSet = new Set(rawItems.flatMap(r => r.fields.pedido || []));
       const pidArr = [...pidSet];
-
-      if (!pidArr.length) { setMain(`<div class="empty">No hay items activos</div>`); return; }
+      if (!pidArr.length) { setMain('<div class="empty">No hay items activos</div>'); return; }
 
       setLoading('3/4 · Pedidos…');
       const pedFilter = pidArr.length === 1
-        ? `RECORD_ID()='${pidArr[0]}'`
-        : `OR(${pidArr.map(id => `RECORD_ID()='${id}'`).join(',')})`;
+        ? "RECORD_ID()='" + pidArr[0] + "'"
+        : 'OR(' + pidArr.map(id => "RECORD_ID()='" + id + "'").join(',') + ')';
 
       const rawPedidos = await fetchAll(T_PEDIDO, {
         filterByFormula: pedFilter,
@@ -777,12 +636,11 @@
       setLoading('4/4 · Clientes…');
       const cidSet = new Set(rawPedidos.flatMap(r => r.fields.cliente || []));
       const cidArr = [...cidSet];
-
       let rawClientes = [];
       if (cidArr.length) {
         const cFilter = cidArr.length === 1
-          ? `RECORD_ID()='${cidArr[0]}'`
-          : `OR(${cidArr.map(id => `RECORD_ID()='${id}'`).join(',')})`;
+          ? "RECORD_ID()='" + cidArr[0] + "'"
+          : 'OR(' + cidArr.map(id => "RECORD_ID()='" + id + "'").join(',') + ')';
         rawClientes = await fetchAll(T_CLIENT, {
           filterByFormula: cFilter,
           'fields[]': ['nombre','telefono'],
@@ -796,8 +654,8 @@
       rawPedidos.forEach(r => {
         const cid = (r.fields.cliente || [])[0];
         const cli = cid ? clienteMap[cid] : null;
-        const fechaSena  = r.fields['fecha_seña'];
-        const diasExtra  = r.fields.dias_adicionales || 0;
+        const fechaSena = r.fields['fecha_seña'];
+        const diasExtra = r.fields.dias_adicionales || 0;
         let fechaEntrega = null;
         if (fechaSena) {
           const d = new Date(fechaSena + 'T00:00:00');
@@ -830,8 +688,8 @@
         descripcion: catalogoMap[(r.fields.catalogo || [])[0]] || 'Sin descripción',
         dimensiones: r.fields.dimensiones || '',
         estado:      r.fields.estado || 'Nuevo',
-        historial:    r.fields.historial || '',
-        notas:        r.fields.notas || '',
+        historial:   r.fields.historial || '',
+        notas:       r.fields.notas || '',
         pedidoId:    (r.fields.pedido || [])[0] || null,
       }));
 
@@ -839,7 +697,7 @@
 
     } catch (err) {
       console.error(err);
-      setMain(`<div class="error-box"><strong>Error al cargar datos</strong><br>Ver detalle abajo.</div>`);
+      setMain('<div class="error-box"><strong>Error al cargar datos</strong><br>Ver detalle abajo.</div>');
       showErr(err.stack || err.message || String(err));
     }
   }
@@ -862,29 +720,17 @@
     const q = searchQ;
     const isSearch = q.length > 0;
 
-    // Filter items
-    let filtered = items.filter(item => {
+    const filtered = items.filter(item => {
       const p = pedidosMap[item.pedidoId] || {};
-
-      // Estado filter (skip when searching)
       if (!isSearch && activeChip !== 'Todos' && item.estado !== activeChip) return false;
-
-      // Search filter
       if (isSearch) {
-        const haystack = [
-          item.descripcion,
-          item.dimensiones,
-          item.historial,
-          p.clienteNombre,
-          String(p.id_pedido || ''),
-        ].join(' ').toLowerCase();
+        const haystack = [item.descripcion, item.dimensiones, item.historial,
+          p.clienteNombre, String(p.id_pedido || '')].join(' ').toLowerCase();
         return haystack.includes(q);
       }
-
       return true;
     });
 
-    // Group by pedido
     const groups = {};
     filtered.forEach(item => {
       if (!item.pedidoId || !pedidosMap[item.pedidoId]) return;
@@ -905,9 +751,9 @@
 
     if (!pedidosSorted.length) {
       const msg = isSearch
-        ? `No hay resultados para "<strong>${esc(q)}</strong>"`
-        : `No hay items en estado <strong>${esc(activeChip)}</strong>`;
-      setMain(`<div class="empty">${msg}</div>`);
+        ? 'No hay resultados para "' + esc(q) + '"'
+        : 'No hay items en estado ' + esc(activeChip);
+      setMain('<div class="empty">' + msg + '</div>');
       return;
     }
 
@@ -921,11 +767,11 @@
 
     if (p.fechaEntrega) {
       const label = p.fechaEntrega.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
-      if      (dias < 0)  { fechaClass = 'atrasado'; fechaLabel = `Atrasado · ${label} (${Math.abs(dias)}d)`; }
-      else if (dias === 0){ fechaClass = 'hoy';      fechaLabel = `Hoy · ${label}`; }
-      else if (dias === 1){ fechaClass = 'hoy';      fechaLabel = `Mañana · ${label}`; }
-      else if (dias <= 4) { fechaClass = 'pronto';   fechaLabel = `${label} · ${dias}d`; }
-      else                {                           fechaLabel = `${label} · ${dias}d`; }
+      if      (dias < 0)   { fechaClass = 'atrasado'; fechaLabel = 'Atrasado · ' + label + ' (' + Math.abs(dias) + 'd)'; }
+      else if (dias === 0) { fechaClass = 'hoy';      fechaLabel = 'Hoy · ' + label; }
+      else if (dias === 1) { fechaClass = 'hoy';      fechaLabel = 'Mañana · ' + label; }
+      else if (dias <= 4)  { fechaClass = 'pronto';   fechaLabel = label + ' · ' + dias + 'd'; }
+      else                 {                           fechaLabel = label + ' · ' + dias + 'd'; }
     } else {
       fechaLabel = 'Sin fecha';
     }
@@ -933,38 +779,36 @@
     const sorted = [...grpItems].sort((a, b) => a.nro_linea - b.nro_linea);
 
     const urgBadge = (p.urgencia === 'Urgente' || p.urgencia === 'Crítico')
-      ? `<span class="urg-badge urg-${p.urgencia === 'Crítico' ? 'Critico' : 'Urgente'}">${p.urgencia}</span>`
+      ? '<span class="urg-badge urg-' + (p.urgencia === 'Crítico' ? 'Critico' : 'Urgente') + '">' + p.urgencia + '</span>'
       : '';
 
-    return `
-      <div class="pedido-group">
-        <div class="pedido-header" onclick="openFicha('${pid}')" style="cursor:pointer">
-          <div class="pid">#${p.id_pedido ?? '?'}</div>
-          <div class="pedido-meta">
-            <div class="pedido-cliente">${highlight(p.clienteNombre, q)}</div>
-            <div class="pedido-fecha ${fechaClass}">${fechaLabel}</div>
-          </div>
-          ${urgBadge}
-          <button class="btn-urg" onclick="event.stopPropagation(); openUrgModal('${pid}')">⚡</button>
-        </div>
-        <div class="items-list">
-          ${sorted.map(item => renderItem(item, q)).join('')}
-        </div>
-      </div>`;
+    return '<div class="pedido-group">'
+      + '<div class="pedido-header" onclick="openFicha(\'' + pid + '\')" style="cursor:pointer">'
+      + '<div class="pid">#' + (p.id_pedido ?? '?') + '</div>'
+      + '<div class="pedido-meta">'
+      + '<div class="pedido-cliente">' + highlight(p.clienteNombre, q) + '</div>'
+      + '<div class="pedido-fecha ' + fechaClass + '">' + fechaLabel + '</div>'
+      + '</div>'
+      + urgBadge
+      + '<button class="btn-urg" onclick="event.stopPropagation(); openUrgModal(\'' + pid + '\')">⚡</button>'
+      + '</div>'
+      + '<div class="items-list">'
+      + sorted.map(item => renderItem(item, q)).join('')
+      + '</div></div>';
   }
 
   function renderItem(item, q) {
-    return `
-      <div class="item" onclick="openModal('${item.id}')">
-        <div class="item-nr">${item.nro_linea || '·'}</div>
-        <div class="item-body">
-          <div class="item-desc">${highlight(item.descripcion, q)}</div>
-          ${item.dimensiones  ? `<div class="item-dims">${highlight(item.dimensiones, q)}</div>` : ''}
-          ${item.notas     ? `<div class="item-nota item-nota-pedido">📋 ${esc(item.notas)}</div>` : ''}
-          ${item.historial ? `<div class="item-nota">↩ ${esc(item.historial.split('\n')[0])}</div>` : ''}
-        </div>
-        <div class="ebadge ${estadoClass(item.estado)}">${esc(item.estado)}</div>
-      </div>`;
+    const historPreview = item.historial ? item.historial.split('\n')[0] : '';
+    return '<div class="item" onclick="openModal(\'' + item.id + '\')">'
+      + '<div class="item-nr">' + (item.nro_linea || '·') + '</div>'
+      + '<div class="item-body">'
+      + '<div class="item-desc">' + highlight(item.descripcion, q) + '</div>'
+      + (item.dimensiones ? '<div class="item-dims">' + highlight(item.dimensiones, q) + '</div>' : '')
+      + (item.notas       ? '<div class="item-nota item-nota-pedido">📋 ' + esc(item.notas) + '</div>' : '')
+      + (historPreview    ? '<div class="item-nota">↩ ' + esc(historPreview) + '</div>' : '')
+      + '</div>'
+      + '<div class="ebadge ' + estadoClass(item.estado) + '">' + esc(item.estado) + '</div>'
+      + '</div>';
   }
 
   // ── Urgencia quick modal ─────────────────────────────────
@@ -973,14 +817,13 @@
   function openUrgModal(pedidoId) {
     activeUrgPedido = pedidoId;
     const p = pedidosMap[pedidoId];
-    document.getElementById('urg-modal-title').textContent = `#${p.id_pedido} · ${p.clienteNombre}`;
+    document.getElementById('urg-modal-title').textContent = '#' + p.id_pedido + ' · ' + p.clienteNombre;
     document.getElementById('urg-modal-sub').textContent = '';
     const actual = p.urgencia || 'Normal';
     ['Normal','Urgente','Crítico'].forEach(u => {
-      const id = `uq-${u === 'Crítico' ? 'Critico' : u}`;
-      const btn = document.getElementById(id);
+      const id = 'uq-' + (u === 'Crítico' ? 'Critico' : u);
       const cls = u === 'Urgente' ? 'u-Urgente' : u === 'Crítico' ? 'u-Critico' : 'u-Normal';
-      btn.className = `ubtn ${cls}${actual === u ? ' sel' : ''}`;
+      document.getElementById(id).className = 'ubtn ' + cls + (actual === u ? ' sel' : '');
     });
     document.getElementById('urg-overlay').classList.remove('hidden');
   }
@@ -1012,77 +855,68 @@
   }
 
   // ── Ficha de pedido ──────────────────────────────────────
-  let activeFicha = null; // { pedidoId, urgencia }
+  let activeFicha = null;
 
   function openFicha(pedidoId) {
     const p = pedidosMap[pedidoId];
     if (!p) return;
-
     activeFicha = { pedidoId, urgencia: p.urgencia || '' };
 
-    document.getElementById('ficha-title').textContent = `Pedido #${p.id_pedido ?? '?'} · ${p.clienteNombre}`;
+    document.getElementById('ficha-title').textContent = 'Pedido #' + (p.id_pedido ?? '?') + ' · ' + p.clienteNombre;
 
     const dias = diasHasta(p.fechaEntrega);
     let entregaLabel = 'Sin fecha';
     if (p.fechaEntrega) {
       const label = p.fechaEntrega.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
-      entregaLabel = dias < 0
-        ? `${label} (atrasado ${Math.abs(dias)}d)`
-        : dias === 0 ? `${label} (hoy)`
-        : `${label} (${dias}d)`;
+      entregaLabel = dias < 0 ? label + ' (atrasado ' + Math.abs(dias) + 'd)'
+        : dias === 0 ? label + ' (hoy)'
+        : label + ' (' + dias + 'd)';
     }
 
-    const precio = p.precio_pactado
-      ? '$' + Number(p.precio_pactado).toLocaleString('es-AR')
-      : null;
-
+    const precio = p.precio_pactado ? '$' + Number(p.precio_pactado).toLocaleString('es-AR') : null;
     const urgActual = p.urgencia || '';
-    const urgSection = `
-      <div class="ficha-row" style="flex-direction:column;gap:8px;align-items:flex-start">
-        <div class="ficha-label" style="width:auto">Urgencia</div>
-        <div class="urgencia-btns">
-          ${['Normal','Urgente','Crítico'].map(u => {
-            const cls = u === 'Urgente' ? 'u-Urgente' : u === 'Crítico' ? 'u-Critico' : 'u-Normal';
-            const sel = (urgActual === u || (urgActual === '' && u === 'Normal')) ? 'sel' : '';
-            return `<button class="ubtn ${cls} ${sel}" onclick="selectUrgencia('${u}')">${u}</button>`;
-          }).join('')}
-        </div>
-      </div>`;
+
+    const urgSection = '<div class="ficha-row" style="flex-direction:column;gap:8px;align-items:flex-start">'
+      + '<div class="ficha-label" style="width:auto">Urgencia</div>'
+      + '<div class="urgencia-btns">'
+      + ['Normal','Urgente','Crítico'].map(u => {
+          const cls = u === 'Urgente' ? 'u-Urgente' : u === 'Crítico' ? 'u-Critico' : 'u-Normal';
+          const sel = (urgActual === u || (urgActual === '' && u === 'Normal')) ? ' sel' : '';
+          return '<button class="ubtn ' + cls + sel + '" onclick="selectUrgencia(\'' + u + '\')">' + u + '</button>';
+        }).join('')
+      + '</div></div>';
 
     const rows = [
-      ['Cliente',       p.clienteNombre],
-      ['Teléfono',      p.clienteTel],
-      ['Seña',          p.fecha_sena ? new Date(p.fecha_sena + 'T00:00:00').toLocaleDateString('es-AR', {day:'numeric',month:'long',year:'numeric'}) : null],
-      ['Entrega',       entregaLabel],
-      ['Estado',        p.estado_comercial],
-      ['Precio pactado',precio],
-      ['Tono madera',   p.tono_madera],
-      ['Terminación',   p.terminacion],
-      ['Tono hierro',   p.tono_hierro],
-      ['Tipo madera',   p.tipo_madera],
-      ['Acabado',       p.acabado],
-      ['Logística',     p.notas_logistica],
+      ['Cliente',        p.clienteNombre],
+      ['Teléfono',       p.clienteTel],
+      ['Seña',           p.fecha_sena ? new Date(p.fecha_sena + 'T00:00:00').toLocaleDateString('es-AR', {day:'numeric',month:'long',year:'numeric'}) : null],
+      ['Entrega',        entregaLabel],
+      ['Estado',         p.estado_comercial],
+      ['Precio pactado', precio],
+      ['Tono madera',    p.tono_madera],
+      ['Terminación',    p.terminacion],
+      ['Tono hierro',    p.tono_hierro],
+      ['Tipo madera',    p.tipo_madera],
+      ['Acabado',        p.acabado],
+      ['Logística',      p.notas_logistica],
     ];
 
-    const rowsHtml = rows.map(([label, val]) => `
-      <div class="ficha-row">
-        <div class="ficha-label">${label}</div>
-        <div class="ficha-val ${val ? '' : 'empty'}">${val ? esc(String(val)) : '—'}</div>
-      </div>`).join('');
+    const rowsHtml = rows.map(([label, val]) =>
+      '<div class="ficha-row"><div class="ficha-label">' + label + '</div>'
+      + '<div class="ficha-val ' + (val ? '' : 'empty') + '">' + (val ? esc(String(val)) : '—') + '</div></div>'
+    ).join('');
 
-    const histSection = `
-      <div class="ficha-row" style="flex-direction:column;gap:6px;align-items:flex-start">
-        <div class="ficha-label" style="width:auto">Historial pedido</div>
-        ${p.historial ? `<div class="historial-display" style="width:100%">${esc(p.historial)}</div>` : ''}
-        <textarea class="nota-textarea" id="ficha-nota-input" placeholder="Agregar nota…" rows="2" style="width:100%"></textarea>
-      </div>`;
+    const histSection = '<div class="ficha-row" style="flex-direction:column;gap:6px;align-items:flex-start">'
+      + '<div class="ficha-label" style="width:auto">Historial pedido</div>'
+      + (p.historial ? '<div class="historial-display" style="width:100%">' + esc(p.historial) + '</div>' : '')
+      + '<textarea class="nota-textarea" id="ficha-nota-input" placeholder="Agregar nota…" rows="2" style="width:100%"></textarea>'
+      + '</div>';
 
     document.getElementById('ficha-body').innerHTML = urgSection + rowsHtml + histSection;
 
     const btn = document.getElementById('btn-guardar-ficha');
     btn.classList.remove('saving');
     btn.textContent = 'Guardar';
-
     document.getElementById('ficha-overlay').classList.remove('hidden');
   }
 
@@ -1092,7 +926,7 @@
     document.querySelectorAll('.ubtn').forEach(b => {
       const u = b.textContent.trim();
       const cls = u === 'Urgente' ? 'u-Urgente' : u === 'Crítico' ? 'u-Critico' : 'u-Normal';
-      b.className = `ubtn ${cls}${u === val ? ' sel' : ''}`;
+      b.className = 'ubtn ' + cls + (u === val ? ' sel' : '');
     });
   }
 
@@ -1105,6 +939,7 @@
     const fields = {};
     if (nuevaUrgencia !== (p.urgencia || '')) fields.urgencia = nuevaUrgencia || null;
     if (nuevaNota) {
+      const entrada = fmtEntrada() + ' - ' + nuevaNota;
       fields.historial = p.historial ? entrada + '\n' + p.historial : entrada;
     }
 
@@ -1131,12 +966,11 @@
     document.getElementById('ficha-overlay').classList.add('hidden');
     activeFicha = null;
   }
-
   function onFichaOverlayClick(e) {
     if (e.target === document.getElementById('ficha-overlay')) closeFicha();
   }
 
-  // ── Modal ────────────────────────────────────────────────
+  // ── Modal de item ────────────────────────────────────────
   let pendingEstado = null;
 
   function openModal(itemId) {
@@ -1146,7 +980,7 @@
 
     const p = pedidosMap[activeItem.pedidoId] || {};
     document.getElementById('modal-title').textContent = activeItem.descripcion;
-    document.getElementById('modal-sub').textContent = `#${p.id_pedido ?? '?'} · ${p.clienteNombre ?? ''}`;
+    document.getElementById('modal-sub').textContent = '#' + (p.id_pedido ?? '?') + ' · ' + (p.clienteNombre ?? '');
 
     renderEstadoBtns();
 
@@ -1164,11 +998,11 @@
   }
 
   function renderEstadoBtns() {
-    document.getElementById('estado-grid').innerHTML = ESTADOS.map(e => `
-      <button class="ebtn ${e === pendingEstado ? 'current' : ''}"
-              onclick="selectEstado('${e.replace(/'/g,"\\'")}')">
-        ${esc(e)}
-      </button>`).join('');
+    document.getElementById('estado-grid').innerHTML = ESTADOS.map(e =>
+      '<button class="ebtn ' + (e === pendingEstado ? 'current' : '') + '"'
+      + ' onclick="selectEstado(\'' + e.replace(/'/g, "\\'") + '\')">'
+      + esc(e) + '</button>'
+    ).join('');
   }
 
   function selectEstado(nuevoEstado) {
@@ -1186,4 +1020,85 @@
     let nuevoHistorial = activeItem.historial;
     if (nuevaNota) {
       const entrada = fmtEntrada() + ' - ' + nuevaNota;
-      nuevoHistorial = activeItem.histor
+      nuevoHistorial = activeItem.historial ? entrada + '\n' + activeItem.historial : entrada;
+    }
+    const cambiaHistorial = nuevoHistorial !== activeItem.historial;
+
+    if (!cambioEstado && !cambiaHistorial) { closeModal(); return; }
+
+    const btn = document.getElementById('btn-guardar');
+    btn.classList.add('saving');
+    btn.textContent = 'Guardando…';
+
+    const fields = {};
+    if (cambioEstado)    fields.estado    = nuevoEstado;
+    if (cambiaHistorial) fields.historial = nuevoHistorial;
+
+    const prevEstado    = activeItem.estado;
+    const prevHistorial = activeItem.historial;
+    activeItem.estado    = nuevoEstado;
+    activeItem.historial = nuevoHistorial;
+
+    try {
+      await apiPatch(T_ITEMS, activeItem.id, fields);
+      closeModal();
+      render();
+    } catch (err) {
+      activeItem.estado    = prevEstado;
+      activeItem.historial = prevHistorial;
+      btn.classList.remove('saving');
+tContent = 'Guardar';
+      showErr('Error al guardar:\n' + err.message);
+    }
+  }
+
+  function closeModal() {
+    document.getElementById('overlay').classList.add('hidden');
+    activeItem    = null;
+    pendingEstado = null;
+  }
+  function onOverlayClick(e) {
+    if (e.target === document.getElementById('overlay')) closeModal();
+  }
+
+  // -- Helpers --
+  function setMain(html) { document.getElementById('main').innerHTML = html; }
+
+  function fmtEntrada() {
+    const d = new Date();
+    const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    return String(d.getDate()).padStart(2,'0') + meses[d.getMonth()];
+  }
+
+  function diasHasta(fecha) {
+    if (!fecha) return null;
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
+    const d   = new Date(fecha); d.setHours(0,0,0,0);
+    return Math.round((d - hoy) / 86400000);
+  }
+
+  function estadoClass(e) {
+    const map = {
+      'Nuevo': 'eb-Nuevo', 'En herreria': 'eb-En_herreria',
+      'En carpinteria': 'eb-En_carpinteria', 'En pintura': 'eb-En_pintura',
+      'Para entregar': 'eb-Para_entregar', 'Entregado': 'eb-Entregado',
+      'En Stock': 'eb-En_Stock', 'Vendido': 'eb-Vendido',
+      'Rehacer': 'eb-Rehacer', 'Cancelado': 'eb-Cancelado',
+    };
+    return map[e] || 'eb-Nuevo';
+  }
+
+  function esc(s) {
+    return String(s || '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function highlight(text, q) {
+    const safe = esc(text);
+    if (!q) return safe;
+    const re = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'gi');
+    return safe.replace(re, '<mark>$1</mark>');
+  }
+</script>
+</body>
+</html>
