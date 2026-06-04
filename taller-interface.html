@@ -560,18 +560,24 @@
   // ── Init ────────────────────────────────────────────────
   TOKEN = new URLSearchParams(window.location.search).get('token');
 
-  initTheme();
+  try { initTheme(); } catch(e) { console.warn('initTheme falló:', e); }
 
   if (!TOKEN) {
     document.getElementById('main').innerHTML =
       `<div class="token-screen"><h2>Mosca Taller</h2><p>Pedile el link a Lisandro para acceder.</p></div>`;
   } else {
     buildChips();
-    loadData().catch(err => {
-      console.error('loadData() sin capturar:', err);
-      setMain(`<div class="error-box"><strong>Error inesperado</strong></div>`);
-      showErr(err?.stack || err?.message || String(err));
-    });
+    const loadTimeout = setTimeout(() => {
+      setMain(`<div class="error-box"><strong>Timeout — no respondió Airtable en 15s.</strong><br>Revisá la conexión o el token.</div>`);
+    }, 15000);
+    loadData()
+      .then(() => clearTimeout(loadTimeout))
+      .catch(err => {
+        clearTimeout(loadTimeout);
+        console.error('loadData() sin capturar:', err);
+        setMain(`<div class="error-box"><strong>Error inesperado</strong></div>`);
+        showErr(err?.stack || err?.message || String(err));
+      });
   }
 
   // ── Chips ────────────────────────────────────────────────
@@ -781,8 +787,13 @@
   }
 
   function showErr(msg) {
-    document.getElementById('err-msg').textContent = msg;
-    document.getElementById('err-overlay').classList.remove('hidden');
+    try {
+      document.getElementById('err-msg').textContent = msg;
+      document.getElementById('err-overlay').classList.remove('hidden');
+    } catch(e) {
+      alert('Error:\n' + msg);
+    }
+    console.error('[Mosca]', msg);
   }
   function closeErrModal() {
     document.getElementById('err-overlay').classList.add('hidden');
@@ -1037,16 +1048,4 @@
     if (nuevaUrgencia !== (p.urgencia || '')) fields.urgencia = nuevaUrgencia || null;
     if (nuevaNota) {
       const entrada = fmtEntrada() + ' - ' + nuevaNota;
-      fields.historial = p.historial ? entrada + '\n' + p.historial : entrada;
-    }
-
-    if (!Object.keys(fields).length) { closeFicha(); return; }
-
-    const btn = document.getElementById('btn-guardar-ficha');
-    btn.classList.add('saving');
-    btn.textContent = 'Guardando…';
-
-    try {
-      await apiPatch(T_PEDIDO, activeFicha.pedidoId, fields);
-      if (fields.urgencia !== undefined) p.urgencia = fields.urgencia || '';
-      if (fields.historial) p.historial = fields
+      fields.historial 
