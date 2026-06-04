@@ -560,11 +560,13 @@
     showErr('Error global:\n' + (err?.stack || msg));
   };
 
-  const BASE     = 'appBThGsxqCSljqH1';
-  const T_ITEMS  = 'tblQ4Kq61LlZHFPNN';
-  const T_PEDIDO = 'tblok3VLqWA3oQaPe';
-  const T_CLIENT = 'tbl5tU70DznAaqNd6';
-  const API      = 'https://api.airtable.com/v0';
+  const BASE       = 'appBThGsxqCSljqH1';
+  const T_ITEMS    = 'tblQ4Kq61LlZHFPNN';
+  const T_PEDIDO   = 'tblok3VLqWA3oQaPe';
+  const T_CLIENT   = 'tbl5tU70DznAaqNd6';
+  const API        = 'https://api.airtable.com/v0';
+  const VERSION    = 'v1.7';
+  const TIMEOUT_MS = 10000;
 
   // Todos los estados, en orden idéntico a Airtable
   const ESTADOS = [
@@ -637,8 +639,6 @@
   }
 
   // ── API ──────────────────────────────────────────────────
-  const VERSION    = 'v1.7';
-  const TIMEOUT_MS = 10000;
   console.log('[Mosca Taller]', VERSION, new Date().toISOString());
 
   async function fetchWithTimeout(input, init) {
@@ -1185,5 +1185,4 @@
     return safe.replace(re, '<mark>$1</mark>');
   }
 </script>
-</body>
-</html>
+</body
