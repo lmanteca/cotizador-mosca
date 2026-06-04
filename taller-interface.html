@@ -421,6 +421,39 @@
     }
     .btn-guardar-ficha:active { opacity: 0.7; }
     .btn-guardar-ficha.saving { opacity: 0.5; pointer-events: none; }
+
+    /* ── Tamaño de letra ── */
+    body.fz-lg { font-size: 19px; }
+    body.fz-lg .pedido-cliente { font-size: 18px; }
+    body.fz-lg .pedido-fecha   { font-size: 15px; }
+    body.fz-lg .item-desc      { font-size: 18px; }
+    body.fz-lg .item-dims      { font-size: 15px; }
+    body.fz-lg .item-nota      { font-size: 14px; }
+    body.fz-lg .ebadge         { font-size: 13px; padding: 4px 10px; }
+    body.fz-lg .chip           { font-size: 15px; }
+    body.fz-lg .ebtn           { font-size: 15px; }
+    body.fz-lg .ubtn           { font-size: 15px; padding: 12px 4px; }
+    body.fz-lg .nota-textarea  { font-size: 17px; }
+    body.fz-lg .btn-guardar, body.fz-lg .btn-cancel,
+    body.fz-lg .btn-guardar-ficha, body.fz-lg .ficha-close { font-size: 17px; }
+    body.fz-lg .modal-title    { font-size: 18px; }
+    body.fz-lg .ficha-val      { font-size: 17px; }
+
+    body.fz-xl { font-size: 22px; }
+    body.fz-xl .pedido-cliente { font-size: 21px; }
+    body.fz-xl .pedido-fecha   { font-size: 18px; }
+    body.fz-xl .item-desc      { font-size: 21px; }
+    body.fz-xl .item-dims      { font-size: 18px; }
+    body.fz-xl .item-nota      { font-size: 16px; }
+    body.fz-xl .ebadge         { font-size: 15px; padding: 5px 11px; }
+    body.fz-xl .chip           { font-size: 17px; }
+    body.fz-xl .ebtn           { font-size: 17px; padding: 15px 8px; }
+    body.fz-xl .ubtn           { font-size: 17px; padding: 14px 4px; }
+    body.fz-xl .nota-textarea  { font-size: 20px; }
+    body.fz-xl .btn-guardar, body.fz-xl .btn-cancel,
+    body.fz-xl .btn-guardar-ficha, body.fz-xl .ficha-close { font-size: 20px; padding: 16px; }
+    body.fz-xl .modal-title    { font-size: 22px; }
+    body.fz-xl .ficha-val      { font-size: 20px; }
   </style>
 </head>
 <body>
@@ -430,6 +463,7 @@
     <h1>Mosca Taller</h1>
     <div class="header-right">
       <span class="version">v1.8 · 2026-06-03</span>
+      <button class="btn-icon" id="btn-font"  onclick="cycleFont()">A</button>
       <button class="btn-icon" id="btn-theme" onclick="toggleTheme()">🌙</button>
       <button class="btn-icon" onclick="loadData()">↻</button>
     </div>
@@ -544,6 +578,29 @@
   let activeChip = 'Nuevo';   // default
   let searchQ    = '';
 
+  // ── Tamaño de letra ──────────────────────────────────────
+  const FZ_CLASSES = ['', 'fz-lg', 'fz-xl'];
+  const FZ_LABELS  = ['A', 'A+', 'A++'];
+  let fontIdx = 0;
+
+  function initFont() {
+    try {
+      const saved = parseInt(localStorage.getItem('mosca-font') || '0');
+      fontIdx = [0,1,2].includes(saved) ? saved : 0;
+    } catch(e) {}
+    applyFont();
+  }
+  function cycleFont() {
+    fontIdx = (fontIdx + 1) % 3;
+    applyFont();
+    try { localStorage.setItem('mosca-font', fontIdx); } catch(e) {}
+  }
+  function applyFont() {
+    document.body.classList.remove('fz-lg', 'fz-xl');
+    if (FZ_CLASSES[fontIdx]) document.body.classList.add(FZ_CLASSES[fontIdx]);
+    document.getElementById('btn-font').textContent = FZ_LABELS[fontIdx];
+  }
+
   // ── Tema ─────────────────────────────────────────────────
   function initTheme() {
     const saved = localStorage.getItem('mosca-theme');
@@ -560,6 +617,7 @@
   // ── Init ────────────────────────────────────────────────
   TOKEN = new URLSearchParams(window.location.search).get('token');
 
+  try { initFont();  } catch(e) { console.warn('initFont falló:', e); }
   try { initTheme(); } catch(e) { console.warn('initTheme falló:', e); }
 
   if (!TOKEN) {
@@ -1128,86 +1186,4 @@
     let nuevoHistorial = activeItem.historial;
     if (nuevaNota) {
       const entrada = fmtEntrada() + ' - ' + nuevaNota;
-      nuevoHistorial = activeItem.historial ? entrada + '\n' + activeItem.historial : entrada;
-    }
-    const cambiaHistorial = nuevoHistorial !== activeItem.historial;
-
-    if (!cambioEstado && !cambiaHistorial) { closeModal(); return; }
-
-    const btn = document.getElementById('btn-guardar');
-    btn.classList.add('saving');
-    btn.textContent = 'Guardando…';
-
-    const fields = {};
-    if (cambioEstado)    fields.estado    = nuevoEstado;
-    if (cambiaHistorial) fields.historial = nuevoHistorial;
-
-    const prevEstado    = activeItem.estado;
-    const prevHistorial = activeItem.historial;
-    activeItem.estado    = nuevoEstado;
-    activeItem.historial = nuevoHistorial;
-
-    try {
-      await apiPatch(T_ITEMS, activeItem.id, fields);
-      closeModal();
-      render();
-    } catch (err) {
-      activeItem.estado    = prevEstado;
-      activeItem.historial = prevHistorial;
-      btn.classList.remove('saving');
-      btn.textContent = 'Guardar';
-      showErr('Error al guardar:\n' + err.message);
-    }
-  }
-
-  function closeModal() {
-    document.getElementById('overlay').classList.add('hidden');
-    activeItem    = null;
-    pendingEstado = null;
-  }
-
-  function onOverlayClick(e) {
-    if (e.target === document.getElementById('overlay')) closeModal();
-  }
-
-  // ── Helpers ──────────────────────────────────────────────
-  function setMain(html) { document.getElementById('main').innerHTML = html; }
-
-  function fmtEntrada() {
-    const d = new Date();
-    const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-    return String(d.getDate()).padStart(2,'0') + meses[d.getMonth()];
-  }
-
-  function diasHasta(fecha) {
-    if (!fecha) return null;
-    const hoy = new Date(); hoy.setHours(0,0,0,0);
-    const d   = new Date(fecha); d.setHours(0,0,0,0);
-    return Math.round((d - hoy) / 86400000);
-  }
-
-  function estadoClass(e) {
-    const map = {
-      'Nuevo': 'eb-Nuevo', 'En herrería': 'eb-En_herreria',
-      'En carpintería': 'eb-En_carpinteria', 'En pintura': 'eb-En_pintura',
-      'Para entregar': 'eb-Para_entregar', 'Entregado': 'eb-Entregado',
-      'En Stock': 'eb-En_Stock', 'Vendido': 'eb-Vendido',
-      'Rehacer': 'eb-Rehacer', 'Cancelado': 'eb-Cancelado',
-    };
-    return map[e] || 'eb-Nuevo';
-  }
-
-  function esc(s) {
-    return String(s || '')
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
-
-  function highlight(text, q) {
-    const safe = esc(text);
-    if (!q) return safe;
-    const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
-    return safe.replace(re, '<mark>$1</mark>');
-  }
-</script>
-</body>
-</html>
+      nuevoHistorial = activeItem.histor
