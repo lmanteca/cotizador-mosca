@@ -1047,5 +1047,167 @@
     const fields = {};
     if (nuevaUrgencia !== (p.urgencia || '')) fields.urgencia = nuevaUrgencia || null;
     if (nuevaNota) {
+      fields.historial = p.historial ? entrada + '\n' + p.historial : entrada;
+    }
+
+    if (!Object.keys(fields).length) { closeFicha(); return; }
+
+    const btn = document.getElementById('btn-guardar-ficha');
+    btn.classList.add('saving');
+    btn.textContent = 'Guardando…';
+
+    try {
+      await apiPatch(T_PEDIDO, activeFicha.pedidoId, fields);
+      if (fields.urgencia !== undefined) p.urgencia = fields.urgencia || '';
+      if (fields.historial) p.historial = fields.historial;
+      closeFicha();
+      render();
+    } catch (err) {
+      btn.classList.remove('saving');
+      btn.textContent = 'Guardar';
+      showErr('Error al guardar:\n' + err.message);
+    }
+  }
+
+  function closeFicha() {
+    document.getElementById('ficha-overlay').classList.add('hidden');
+    activeFicha = null;
+  }
+
+  function onFichaOverlayClick(e) {
+    if (e.target === document.getElementById('ficha-overlay')) closeFicha();
+  }
+
+  // ── Modal ────────────────────────────────────────────────
+  let pendingEstado = null;
+
+  function openModal(itemId) {
+    activeItem = items.find(i => i.id === itemId);
+    if (!activeItem) return;
+    pendingEstado = activeItem.estado;
+
+    const p = pedidosMap[activeItem.pedidoId] || {};
+    document.getElementById('modal-title').textContent = activeItem.descripcion;
+    document.getElementById('modal-sub').textContent = `#${p.id_pedido ?? '?'} · ${p.clienteNombre ?? ''}`;
+
+    renderEstadoBtns();
+
+    document.getElementById('nota-input').value = '';
+    const histSection = document.getElementById('historial-item-section');
+    const histDisplay = document.getElementById('historial-item-display');
+    if (activeItem.historial) {
+      histDisplay.textContent = activeItem.historial;
+      histSection.style.display = '';
+    } else {
+      histSection.style.display = 'none';
+    }
+    document.getElementById('btn-guardar').classList.remove('saving');
+    document.getElementById('overlay').classList.remove('hidden');
+  }
+
+  function renderEstadoBtns() {
+    document.getElementById('estado-grid').innerHTML = ESTADOS.map(e => `
+      <button class="ebtn ${e === pendingEstado ? 'current' : ''}"
+              onclick="selectEstado('${e.replace(/'/g,"\\'")}')">
+        ${esc(e)}
+      </button>`).join('');
+  }
+
+  function selectEstado(nuevoEstado) {
+    pendingEstado = nuevoEstado;
+    renderEstadoBtns();
+  }
+
+  async function guardarCambios() {
+    if (!activeItem) return;
+
+    const nuevoEstado  = pendingEstado;
+    const nuevaNota    = document.getElementById('nota-input').value.trim();
+    const cambioEstado = nuevoEstado !== activeItem.estado;
+
+    let nuevoHistorial = activeItem.historial;
+    if (nuevaNota) {
       const entrada = fmtEntrada() + ' - ' + nuevaNota;
-      fields.historial 
+      nuevoHistorial = activeItem.historial ? entrada + '\n' + activeItem.historial : entrada;
+    }
+    const cambiaHistorial = nuevoHistorial !== activeItem.historial;
+
+    if (!cambioEstado && !cambiaHistorial) { closeModal(); return; }
+
+    const btn = document.getElementById('btn-guardar');
+    btn.classList.add('saving');
+    btn.textContent = 'Guardando…';
+
+    const fields = {};
+    if (cambioEstado)    fields.estado    = nuevoEstado;
+    if (cambiaHistorial) fields.historial = nuevoHistorial;
+
+    const prevEstado    = activeItem.estado;
+    const prevHistorial = activeItem.historial;
+    activeItem.estado    = nuevoEstado;
+    activeItem.historial = nuevoHistorial;
+
+    try {
+      await apiPatch(T_ITEMS, activeItem.id, fields);
+      closeModal();
+      render();
+    } catch (err) {
+      activeItem.estado    = prevEstado;
+      activeItem.historial = prevHistorial;
+      btn.classList.remove('saving');
+      btn.textContent = 'Guardar';
+      showErr('Error al guardar:\n' + err.message);
+    }
+  }
+
+  function closeModal() {
+    document.getElementById('overlay').classList.add('hidden');
+    activeItem    = null;
+    pendingEstado = null;
+  }
+
+  function onOverlayClick(e) {
+    if (e.target === document.getElementById('overlay')) closeModal();
+  }
+
+  // ── Helpers ──────────────────────────────────────────────
+  function setMain(html) { document.getElementById('main').innerHTML = html; }
+
+  function fmtEntrada() {
+    const d = new Date();
+    const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    return String(d.getDate()).padStart(2,'0') + meses[d.getMonth()];
+  }
+
+  function diasHasta(fecha) {
+    if (!fecha) return null;
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
+    const d   = new Date(fecha); d.setHours(0,0,0,0);
+    return Math.round((d - hoy) / 86400000);
+  }
+
+  function estadoClass(e) {
+    const map = {
+      'Nuevo': 'eb-Nuevo', 'En herrería': 'eb-En_herreria',
+      'En carpintería': 'eb-En_carpinteria', 'En pintura': 'eb-En_pintura',
+      'Para entregar': 'eb-Para_entregar', 'Entregado': 'eb-Entregado',
+      'En Stock': 'eb-En_Stock', 'Vendido': 'eb-Vendido',
+      'Rehacer': 'eb-Rehacer', 'Cancelado': 'eb-Cancelado',
+    };
+    return map[e] || 'eb-Nuevo';
+  }
+
+  function esc(s) {
+    return String(s || '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function highlight(text, q) {
+    const safe = esc(text);
+    if (!q) return safe;
+    const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+    return safe.replace(re, '<mark>$1</mark>');
+  }
+</script>
+</body>
+</html>
