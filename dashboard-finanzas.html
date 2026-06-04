@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mosca · Finanzas v1.0 · 2026-06-03</title>
+  <title>Mosca · Finanzas v1.1 · 2026-06-03</title>
   <style>
     :root {
       --bg: #f5f2ef;
@@ -450,7 +450,7 @@
 <div id="app">
   <div class="nav">
     <span class="nav-brand">MOSCA</span>
-    <span class="nav-version">v1.0 · 2026-06-03</span>
+    <span class="nav-version">v1.1 · 2026-06-03</span>
     <div class="nav-spacer"></div>
     <button class="nav-refresh" onclick="reloadData()" title="Actualizar">↻</button>
   </div>
@@ -1054,9 +1054,9 @@ function renderSocios() {
     const recups = movs.filter(r => (r.fields.concepto || '').includes('Recupero'));
     const totalCaps  = caps.reduce((s, r) => s + (r.fields.monto || 0), 0);
     const totalRecup = recups.reduce((s, r) => s + (r.fields.monto || 0), 0);
-    // posicion neta desde perspectiva del negocio: caps = deuda con socio, recup = cancela deuda
-    const neta = totalRecup - totalCaps; // negativo = negocio le debe al socio
-    const netaColor = neta <= 0 ? 'var(--negative)' : 'var(--positive)';
+    // Recupero capital tiene monto NEGATIVO en Airtable (outflow del negocio al socio).
+    // neta: negar todos los montos → caps (+) se vuelven negativo (deuda), recups (-) se vuelven positivo (cancela deuda)
+    const neta = movs.reduce((s, r) => s - (r.fields.monto || 0), 0); // negativo = negocio le debe al socio
 
     return '<div class="socio-card">' +
       '<div class="socio-card-header">' +
@@ -1065,7 +1065,7 @@ function renderSocios() {
       '</div>' +
       '<div class="socio-body">' +
         '<div class="socio-row"><span class="socio-row-label">Capitalizaciones</span><span class="negative mono">' + fmtMoney(-totalCaps) + '</span></div>' +
-        '<div class="socio-row"><span class="socio-row-label">Recuperos</span><span class="positive mono">' + fmtMoney(totalRecup) + '</span></div>' +
+        '<div class="socio-row"><span class="socio-row-label">Recuperos</span><span class="positive mono">' + fmtMoney(-totalRecup) + '</span></div>' +
         '<div class="socio-divider"></div>' +
         '<div class="socio-row bold"><span>Posición neta</span><span class="' + signClass(neta) + ' mono">' + fmtFull(neta) + '</span></div>' +
         '<div class="socio-hint">Negativo = negocio le debe al socio</div>' +
@@ -1080,8 +1080,8 @@ function renderSocios() {
       const c = r.fields.concepto || '';
       const isCap  = c.includes('Capitaliz');
       const nombre = c.includes('Lisandro') ? 'Lisandro' : 'Javier';
-      // Capitalización: socio pone plata → negocio adquiere deuda → mostrar como negativo
-      const disp = isCap ? -(r.fields.monto || 0) : (r.fields.monto || 0);
+      // Negar todos: caps (+monto) → negativo (deuda), recuperos (-monto) → positivo (cancela deuda)
+      const disp = -(r.fields.monto || 0);
       const tagCls = nombre === 'Lisandro' ? 'tag-blue' : 'tag-teal';
       return '<div class="mov-item">' +
         '<div class="mov-row1">' +
