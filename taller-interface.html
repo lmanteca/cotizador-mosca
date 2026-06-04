@@ -830,14 +830,15 @@
 
   async function setUrgenciaQuick(val) {
     if (!activeUrgPedido) return;
-    const p = pedidosMap[activeUrgPedido];
+    const pedidoId = activeUrgPedido;  // capturar antes de closeUrgModal que lo nullea
+    const p = pedidosMap[pedidoId];
     const prev = p.urgencia;
     if ((val === 'Normal' ? '' : val) === prev) { closeUrgModal(); return; }
     p.urgencia = val === 'Normal' ? '' : val;
     closeUrgModal();
     render();
     try {
-      await apiPatch(T_PEDIDO, activeUrgPedido, { urgencia: val === 'Normal' ? null : val });
+      await apiPatch(T_PEDIDO, pedidoId, { urgencia: val === 'Normal' ? null : val });
     } catch (err) {
       p.urgencia = prev;
       render();
