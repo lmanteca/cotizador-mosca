@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mosca Taller · v1.9 · 2026-06-06 14:46</title>
+  <title>Mosca Taller · v2.0 · 2026-06-06 15:01</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -178,6 +178,7 @@
     body.dark .eb-Cancelado      { background: #181818; color: #444; }
     body.dark .eb-Planificado    { background: #001428; color: #5090e0; }
 
+    .modal-img { width: 100%; max-height: 220px; object-fit: cover; border-radius: 10px; margin-bottom: 12px; display: block; }
     .empty { text-align: center; padding: 50px 20px; color: var(--muted); font-size: 15px; }
     mark { background: #ffe066; color: #5a3a00; border-radius: 2px; padding: 0 1px; }
     body.dark mark { background: #5a3a00; color: #f0c060; }
@@ -344,7 +345,7 @@
   <div class="header-top">
     <h1>Mosca Taller</h1>
     <div class="header-right">
-      <span class="version">v1.9 · 2026-06-06 14:46</span>
+      <span class="version">v2.0 · 2026-06-06 15:01</span>
       <button class="btn-icon" id="btn-font"  onclick="cycleFont()">A</button>
       <button class="btn-icon" id="btn-theme" onclick="toggleTheme()">🌙</button>
       <button class="btn-icon" onclick="loadData()">↻</button>
@@ -404,6 +405,7 @@
     <div class="drag-handle"></div>
     <div class="modal-title" id="modal-title"></div>
     <div class="modal-sub"   id="modal-sub"></div>
+    <img id="modal-img" class="modal-img" style="display:none" alt="">
     <div class="estado-grid" id="estado-grid"></div>
     <div class="nota-section" id="historial-item-section" style="display:none">
       <div class="nota-label">Historial</div>
@@ -602,7 +604,7 @@
       setLoading('1/4 · Items…');
       const rawItems = await fetchAll(T_ITEMS, {
         filterByFormula: "AND(NOT({estado}='Cancelado'),NOT({estado}='Vendido'))",
-        'fields[]': ['nro_linea','dimensiones','estado','historial','notas','pedido','catalogo'],
+        'fields[]': ['nro_linea','dimensiones','estado','historial','notas','pedido','catalogo','imagen'],
       });
 
       setLoading('2/4 · Catálogo…');
@@ -614,9 +616,14 @@
           : 'OR(' + catIds.map(id => "RECORD_ID()='" + id + "'").join(',') + ')';
         const rawCat = await fetchAll('tbl8iau1GmyJ3faxl', {
           filterByFormula: catFilter,
-          'fields[]': ['producto'],
+          'fields[]': ['producto','imagen'],
         });
-        rawCat.forEach(r => { catalogoMap[r.id] = r.fields.producto || ''; });
+        rawCat.forEach(r => {
+          catalogoMap[r.id] = {
+            nombre: r.fields.producto || '',
+            imagen: (r.fields.imagen || [])[0]?.thumbnails?.large?.url || (r.fields.imagen || [])[0]?.url || null,
+          };
+        });
       }
 
       const pidSet = new Set(rawItems.flatMap(r => r.fields.pedido || []));
@@ -687,7 +694,9 @@
       items = rawItems.map(r => ({
         id:          r.id,
         nro_linea:   r.fields.nro_linea || 0,
-        descripcion: catalogoMap[(r.fields.catalogo || [])[0]] || 'Sin descripción',
+        descripcion: (catalogoMap[(r.fields.catalogo || [])[0]] || {}).nombre || 'Sin descripción',
+        imagenUrl:   (r.fields.imagen || [])[0]?.thumbnails?.large?.url || (r.fields.imagen || [])[0]?.url
+                     || (catalogoMap[(r.fields.catalogo || [])[0]] || {}).imagen || null,
         dimensiones: r.fields.dimensiones || '',
         estado:      r.fields.estado || 'Nuevo',
         historial:   r.fields.historial || '',
@@ -986,6 +995,15 @@
     document.getElementById('modal-sub').textContent = '#' + (p.id_pedido ?? '?') + ' · ' + (p.clienteNombre ?? '');
 
     renderEstadoBtns();
+
+    const imgEl = document.getElementById('modal-img');
+    if (activeItem.imagenUrl) {
+      imgEl.src = activeItem.imagenUrl;
+      imgEl.style.display = 'block';
+    } else {
+      imgEl.src = '';
+      imgEl.style.display = 'none';
+    }
 
     document.getElementById('nota-input').value = '';
     const histSection = document.getElementById('historial-item-section');
