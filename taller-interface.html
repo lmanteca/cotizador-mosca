@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mosca Taller · v2.0 · 2026-06-06 15:01</title>
+  <title>Mosca Taller · v2.1 · 2026-06-06 15:09</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -156,27 +156,33 @@
     /* ── Estado badges ── */
     .ebadge { flex-shrink: 0; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 5px; max-width: 110px; text-align: center; }
     .eb-Nuevo          { background: #efefef; color: #777; }
+    .eb-Revisado       { background: #e0eeff; color: #1050a0; }
+    .eb-A_comprar      { background: #fff5e0; color: #a06000; }
+    .eb-Pendiente      { background: #fefbe0; color: #806010; }
     .eb-En_herreria    { background: #fff0e0; color: #b05800; }
     .eb-En_carpinteria { background: #e8f0ff; color: #1a48b0; }
     .eb-En_pintura     { background: #f5e8ff; color: #6020a8; }
+    .eb-Control        { background: #e8ffe8; color: #106830; }
     .eb-Para_entregar  { background: #e0f5e8; color: #166038; }
     .eb-Entregado      { background: #eaf4ea; color: #2e6030; }
+    .eb-PosEntrega     { background: #d0f0d8; color: #0a4a20; }
     .eb-En_Stock       { background: #e0f5f5; color: #125858; }
     .eb-Vendido        { background: #f5f5e0; color: #605820; }
-    .eb-Rehacer        { background: #ffe8e8; color: #b02828; }
     .eb-Cancelado      { background: #f0f0f0; color: #aaa; }
-    .eb-Planificado    { background: #e8f0ff; color: #1040a0; }
     body.dark .eb-Nuevo          { background: #242424; color: #999; }
+    body.dark .eb-Revisado       { background: #001428; color: #5090e0; }
+    body.dark .eb-A_comprar      { background: #2a1800; color: #f0a040; }
+    body.dark .eb-Pendiente      { background: #221800; color: #c0a040; }
     body.dark .eb-En_herreria    { background: #2e1800; color: #f0a050; }
     body.dark .eb-En_carpinteria { background: #00102e; color: #5080d0; }
     body.dark .eb-En_pintura     { background: #1e0030; color: #b070e0; }
+    body.dark .eb-Control        { background: #001800; color: #40c060; }
     body.dark .eb-Para_entregar  { background: #002a10; color: #40b060; }
     body.dark .eb-Entregado      { background: #0f1f0f; color: #509050; }
+    body.dark .eb-PosEntrega     { background: #071a0e; color: #30a050; }
     body.dark .eb-En_Stock       { background: #002828; color: #30b0b0; }
     body.dark .eb-Vendido        { background: #1e1e00; color: #b0b030; }
-    body.dark .eb-Rehacer        { background: #2e0000; color: #f05050; }
     body.dark .eb-Cancelado      { background: #181818; color: #444; }
-    body.dark .eb-Planificado    { background: #001428; color: #5090e0; }
 
     .modal-img { width: 100%; max-height: 220px; object-fit: cover; border-radius: 10px; margin-bottom: 12px; display: block; }
     .empty { text-align: center; padding: 50px 20px; color: var(--muted); font-size: 15px; }
@@ -345,7 +351,7 @@
   <div class="header-top">
     <h1>Mosca Taller</h1>
     <div class="header-right">
-      <span class="version">v2.0 · 2026-06-06 15:01</span>
+      <span class="version">v2.1 · 2026-06-06 15:09</span>
       <button class="btn-icon" id="btn-font"  onclick="cycleFont()">A</button>
       <button class="btn-icon" id="btn-theme" onclick="toggleTheme()">🌙</button>
       <button class="btn-icon" onclick="loadData()">↻</button>
@@ -441,7 +447,7 @@
   const VERSION    = 'v1.8';
   const TIMEOUT_MS = 10000;
 
-  const ESTADOS = ['Nuevo','Planificado','En herrería','En carpintería','En pintura','Para entregar','Entregado','En Stock','Vendido','Rehacer','Cancelado'];
+  const ESTADOS = ['Nuevo','Revisado','A comprar','Pendiente','En herrería','En carpintería','En pintura','Control','Para entregar','Entregado','En Stock','Vendido','Cancelado','PosEntrega'];
 
   let TOKEN      = null;
   let items      = [];
@@ -1100,11 +1106,13 @@ tContent = 'Guardar';
 
   function estadoClass(e) {
     const map = {
-      'Nuevo': 'eb-Nuevo', 'Planificado': 'eb-Planificado',
+      'Nuevo': 'eb-Nuevo', 'Revisado': 'eb-Revisado',
+      'A comprar': 'eb-A_comprar', 'Pendiente': 'eb-Pendiente',
       'En herrería': 'eb-En_herreria', 'En carpintería': 'eb-En_carpinteria',
-      'En pintura': 'eb-En_pintura', 'Para entregar': 'eb-Para_entregar',
-      'Entregado': 'eb-Entregado', 'En Stock': 'eb-En_Stock',
-      'Vendido': 'eb-Vendido', 'Rehacer': 'eb-Rehacer', 'Cancelado': 'eb-Cancelado',
+      'En pintura': 'eb-En_pintura', 'Control': 'eb-Control',
+      'Para entregar': 'eb-Para_entregar', 'Entregado': 'eb-Entregado',
+      'En Stock': 'eb-En_Stock', 'Vendido': 'eb-Vendido',
+      'Cancelado': 'eb-Cancelado', 'PosEntrega': 'eb-PosEntrega',
     };
     return map[e] || 'eb-Nuevo';
   }
