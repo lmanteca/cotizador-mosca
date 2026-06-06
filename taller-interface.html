@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mosca Taller · v2.2 · 2026-06-06 15:11</title>
+  <title>Mosca Taller · v2.3 · 2026-06-06 15:13</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -157,6 +157,36 @@
     .item-nota-pedido { color: #4060b0; }
     body.dark .item-nota { color: #c09040; }
     body.dark .item-nota-pedido { color: #5a7ec7; }
+
+
+    /* ── Dashboard ── */
+    .dash { padding: 0; }
+    .dash-section { margin-bottom: 16px; }
+    .dash-title { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 8px; }
+    .dash-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+    .dash-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+    .dash-card-num { font-size: 28px; font-weight: 800; color: var(--accent); line-height: 1; }
+    .dash-card-lbl { font-size: 12px; color: var(--muted); margin-top: 3px; }
+    .dash-card.red   .dash-card-num { color: #c93030; }
+    .dash-card.orange .dash-card-num { color: #c07020; }
+    .dash-card.green  .dash-card-num { color: #166038; }
+    body.dark .dash-card.red   .dash-card-num { color: #ff6060; }
+    body.dark .dash-card.orange .dash-card-num { color: #ff9030; }
+    body.dark .dash-card.green  .dash-card-num { color: #40b060; }
+    .dash-row { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; }
+    .dash-row-label { font-size: 13px; font-weight: 500; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dash-row-count { font-size: 13px; font-weight: 700; color: var(--muted); flex-shrink: 0; min-width: 24px; text-align: right; }
+    .dash-bar-wrap { flex: 2; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .dash-bar { height: 100%; border-radius: 3px; background: var(--accent); transition: width .3s; }
+    .dash-urg-row { display: flex; gap: 8px; }
+    .dash-urg-card { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; text-align: center; }
+    .dash-urg-num { font-size: 22px; font-weight: 800; }
+    .dash-urg-lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .dash-urg-card.urg-normal  .dash-urg-num { color: var(--muted); }
+    .dash-urg-card.urg-urgente .dash-urg-num { color: #c07020; }
+    .dash-urg-card.urg-critico .dash-urg-num { color: #c93030; }
+    body.dark .dash-urg-card.urg-urgente .dash-urg-num { color: #ff9030; }
+    body.dark .dash-urg-card.urg-critico .dash-urg-num { color: #ff6060; }
 
     /* ── Estado badges ── */
     .ebadge { flex-shrink: 0; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 5px; max-width: 110px; text-align: center; }
@@ -356,7 +386,8 @@
   <div class="header-top">
     <h1>Mosca Taller</h1>
     <div class="header-right">
-      <span class="version">v2.2 · 2026-06-06 15:11</span>
+      <span class="version">v2.3 · 2026-06-06 15:13</span>
+      <button class="btn-icon" id="btn-dash"  onclick="toggleDash()">📊</button>
       <button class="btn-icon" id="btn-font"  onclick="cycleFont()">A</button>
       <button class="btn-icon" id="btn-theme" onclick="toggleTheme()">🌙</button>
       <button class="btn-icon" onclick="loadData()">↻</button>
@@ -461,6 +492,7 @@
   let activeItem = null;
   let activeChip = 'Nuevo';
   let activeUrgencia = 'Todos';
+  let showDash = false;
   let searchQ    = '';
 
   // ── Tamaño de letra ──────────────────────────────────────
@@ -1143,6 +1175,82 @@ tContent = 'Guardar';
       'Cancelado': 'eb-Cancelado', 'PosEntrega': 'eb-PosEntrega',
     };
     return map[e] || 'eb-Nuevo';
+  }
+
+  // ── Dashboard ──────────────────────────────────────────────────
+  function toggleDash() {
+    showDash = !showDash;
+    document.getElementById('btn-dash').style.background = showDash ? 'var(--accent-dim)' : '';
+    document.getElementById('btn-dash').style.color      = showDash ? 'var(--accent)' : '';
+    if (showDash) renderDash(); else render();
+  }
+
+  function renderDash() {
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
+    const en7  = new Date(hoy); en7.setDate(en7.getDate() + 7);
+
+    // Totales
+    const totalItems   = items.length;
+    const totalPedidos = Object.keys(pedidosMap).length;
+
+    // Items por vencimiento (usa fechaEntrega del pedido)
+    let atrasados = 0, hoyCount = 0, proximos = 0;
+    items.forEach(it => {
+      const p = pedidosMap[it.pedidoId];
+      if (!p || !p.fechaEntrega) return;
+      const d = new Date(p.fechaEntrega); d.setHours(0,0,0,0);
+      const diff = Math.round((d - hoy) / 86400000);
+      if (diff < 0)  atrasados++;
+      else if (diff === 0) hoyCount++;
+      else if (diff <= 7)  proximos++;
+    });
+
+    // Items por estado
+    const byEstado = {};
+    items.forEach(it => { byEstado[it.estado] = (byEstado[it.estado] || 0) + 1; });
+    const maxE = Math.max(1, ...Object.values(byEstado));
+    const estadoRows = Object.entries(byEstado)
+      .sort((a, b) => b[1] - a[1])
+      .map(([e, n]) => {
+        const pct = Math.round(n / maxE * 100);
+        const cls = estadoClass(e).replace('eb-','');
+        return '<div class="dash-row">'
+          + '<span class="ebadge ' + estadoClass(e) + '">' + esc(e) + '</span>'
+          + '<div class="dash-bar-wrap"><div class="dash-bar" style="width:' + pct + '%"></div></div>'
+          + '<span class="dash-row-count">' + n + '</span>'
+          + '</div>';
+      }).join('');
+
+    // Pedidos por urgencia
+    const urgCounts = { 'Normal': 0, 'Urgente': 0, 'Crítico': 0 };
+    Object.values(pedidosMap).forEach(p => {
+      const u = p.urgencia || 'Normal';
+      if (u in urgCounts) urgCounts[u]++;
+    });
+
+    const html = '<div class="dash">'
+      // Tarjetas resumen
+      + '<div class="dash-cards">'
+      + '<div class="dash-card"><div class="dash-card-num">' + totalPedidos + '</div><div class="dash-card-lbl">Pedidos activos</div></div>'
+      + '<div class="dash-card"><div class="dash-card-num">' + totalItems + '</div><div class="dash-card-lbl">Items totales</div></div>'
+      + '<div class="dash-card ' + (atrasados > 0 ? 'red' : '') + '"><div class="dash-card-num">' + atrasados + '</div><div class="dash-card-lbl">Atrasados</div></div>'
+      + '<div class="dash-card ' + (hoyCount > 0 ? 'orange' : '') + '"><div class="dash-card-num">' + hoyCount + '</div><div class="dash-card-lbl">Entregan hoy</div></div>'
+      + '<div class="dash-card green"><div class="dash-card-num">' + proximos + '</div><div class="dash-card-lbl">En 7 días</div></div>'
+      + '<div class="dash-card ' + (urgCounts['Crítico'] > 0 ? 'red' : urgCounts['Urgente'] > 0 ? 'orange' : '') + '"><div class="dash-card-num">' + (urgCounts['Crítico'] + urgCounts['Urgente']) + '</div><div class="dash-card-lbl">Urgentes</div></div>'
+      + '</div>'
+      // Urgencia
+      + '<div class="dash-title">Por urgencia</div>'
+      + '<div class="dash-urg-row">'
+      + '<div class="dash-urg-card urg-normal"><div class="dash-urg-num">' + urgCounts['Normal'] + '</div><div class="dash-urg-lbl">Normal</div></div>'
+      + '<div class="dash-urg-card urg-urgente"><div class="dash-urg-num">' + urgCounts['Urgente'] + '</div><div class="dash-urg-lbl">Urgente</div></div>'
+      + '<div class="dash-urg-card urg-critico"><div class="dash-urg-num">' + urgCounts['Crítico'] + '</div><div class="dash-urg-lbl">Crítico</div></div>'
+      + '</div>'
+      // Por estado
+      + '<div class="dash-title" style="margin-top:16px">Por estado</div>'
+      + estadoRows
+      + '</div>';
+
+    setMain(html);
   }
 
   function esc(s) {
