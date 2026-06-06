@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mosca Taller · v2.3 · 2026-06-06 15:13</title>
+  <title>Mosca Taller · v2.4 · 2026-06-06 15:16</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -386,7 +386,7 @@
   <div class="header-top">
     <h1>Mosca Taller</h1>
     <div class="header-right">
-      <span class="version">v2.3 · 2026-06-06 15:13</span>
+      <span class="version">v2.4 · 2026-06-06 15:16</span>
       <button class="btn-icon" id="btn-dash"  onclick="toggleDash()">📊</button>
       <button class="btn-icon" id="btn-font"  onclick="cycleFont()">A</button>
       <button class="btn-icon" id="btn-theme" onclick="toggleTheme()">🌙</button>
@@ -971,18 +971,23 @@
       ['Entrega',        entregaLabel],
       ['Estado',         p.estado_comercial],
       ['Precio pactado', precio],
+      ['Notas del pedido', p.notas_logistica],
       ['Tono madera',    p.tono_madera],
       ['Terminación',    p.terminacion],
       ['Tono hierro',    p.tono_hierro],
       ['Tipo madera',    p.tipo_madera],
       ['Acabado',        p.acabado],
-      ['Logística',      p.notas_logistica],
     ];
 
-    const rowsHtml = rows.map(([label, val]) =>
-      '<div class="ficha-row"><div class="ficha-label">' + label + '</div>'
-      + '<div class="ficha-val ' + (val ? '' : 'empty') + '">' + (val ? esc(String(val)) : '—') + '</div></div>'
-    ).join('');
+    const rowsHtml = rows.map(([label, val]) => {
+      const display = val
+        ? (label === 'Notas del pedido'
+            ? esc(String(val)).replace(/\n/g, '<br>')
+            : esc(String(val)))
+        : '—';
+      return '<div class="ficha-row"><div class="ficha-label">' + label + '</div>'
+        + '<div class="ficha-val ' + (val ? '' : 'empty') + '">' + display + '</div></div>';
+    }).join('');
 
     const histSection = '<div class="ficha-row" style="flex-direction:column;gap:6px;align-items:flex-start">'
       + '<div class="ficha-label" style="width:auto">Historial pedido</div>'
