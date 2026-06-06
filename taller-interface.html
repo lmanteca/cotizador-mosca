@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mosca Taller · v2.1 · 2026-06-06 15:09</title>
+  <title>Mosca Taller · v2.2 · 2026-06-06 15:11</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -91,6 +91,11 @@
       transition: all 0.12s; white-space: nowrap;
     }
     .chip.active { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+    .chip.urg-Urgente.active { border-color: #c07020; background: #fff5e0; color: #c07020; }
+    .chip.urg-Critico.active { border-color: #b02020; background: #ffe8e8; color: #b02020; }
+    body.dark .chip.urg-Urgente.active { border-color: #e09030; background: #2a1800; color: #e09030; }
+    body.dark .chip.urg-Critico.active { border-color: #f05050; background: #2e0000; color: #f05050; }
+    .urg-chips-wrap { padding: 0 0 10px; }
 
     /* ── Main ── */
     #main { padding: 12px; max-width: 480px; margin: 0 auto; }
@@ -351,7 +356,7 @@
   <div class="header-top">
     <h1>Mosca Taller</h1>
     <div class="header-right">
-      <span class="version">v2.1 · 2026-06-06 15:09</span>
+      <span class="version">v2.2 · 2026-06-06 15:11</span>
       <button class="btn-icon" id="btn-font"  onclick="cycleFont()">A</button>
       <button class="btn-icon" id="btn-theme" onclick="toggleTheme()">🌙</button>
       <button class="btn-icon" onclick="loadData()">↻</button>
@@ -361,6 +366,7 @@
     <input class="search-input" id="search" type="search" placeholder="Buscar pedido, cliente, producto…" oninput="onSearch(this.value)" autocomplete="off" autocorrect="off" spellcheck="false">
   </div>
   <div class="chips-wrap" id="chips"></div>
+  <div class="chips-wrap urg-chips-wrap" id="urg-chips"></div>
 </header>
 
 <div id="main">
@@ -454,6 +460,7 @@
   let pedidosMap = {};
   let activeItem = null;
   let activeChip = 'Nuevo';
+  let activeUrgencia = 'Todos';
   let searchQ    = '';
 
   // ── Tamaño de letra ──────────────────────────────────────
@@ -502,6 +509,7 @@
       '<div class="token-screen"><h2>Mosca Taller</h2><p>Pedile el link a Lisandro para acceder.</p></div>';
   } else {
     buildChips();
+    buildUrgChips();
     const loadTimeout = setTimeout(() => {
       setMain('<div class="error-box"><strong>Timeout — Airtable no respondió en 15s.</strong><br>Revisá la conexión o el token.</div>');
     }, 15000);
@@ -529,11 +537,30 @@
     return btn;
   }
   function selectChip(label, btn) {
-    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('#chips .chip').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
     activeChip = label;
     document.getElementById('search').value = '';
     searchQ = '';
+    render();
+  }
+
+  function buildUrgChips() {
+    const wrap = document.getElementById('urg-chips');
+    const opts = ['Todos', 'Urgente', 'Crítico'];
+    opts.forEach(u => {
+      const btn = document.createElement('button');
+      const cls = u === 'Todos' ? '' : ' urg-' + u.replace('í','i');
+      btn.className = 'chip' + cls + (u === activeUrgencia ? ' active' : '');
+      btn.textContent = u === 'Todos' ? 'Toda urgencia' : u;
+      btn.onclick = () => selectUrgChip(u, btn);
+      wrap.appendChild(btn);
+    });
+  }
+  function selectUrgChip(label, btn) {
+    document.querySelectorAll('#urg-chips .chip').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    activeUrgencia = label;
     render();
   }
 
@@ -740,6 +767,7 @@
     const filtered = items.filter(item => {
       const p = pedidosMap[item.pedidoId] || {};
       if (!isSearch && activeChip !== 'Todos' && item.estado !== activeChip) return false;
+      if (!isSearch && activeUrgencia !== 'Todos' && (p.urgencia || 'Normal') !== activeUrgencia) return false;
       if (isSearch) {
         const haystack = [item.descripcion, item.dimensiones, item.historial,
           p.clienteNombre, String(p.id_pedido || '')].join(' ').toLowerCase();
