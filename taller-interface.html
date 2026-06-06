@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mosca Taller · v1.8 · 2026-06-04 21:12</title>
+  <title>Mosca Taller · v1.9 · 2026-06-06 14:46</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -165,6 +165,7 @@
     .eb-Vendido        { background: #f5f5e0; color: #605820; }
     .eb-Rehacer        { background: #ffe8e8; color: #b02828; }
     .eb-Cancelado      { background: #f0f0f0; color: #aaa; }
+    .eb-Planificado    { background: #e8f0ff; color: #1040a0; }
     body.dark .eb-Nuevo          { background: #242424; color: #999; }
     body.dark .eb-En_herreria    { background: #2e1800; color: #f0a050; }
     body.dark .eb-En_carpinteria { background: #00102e; color: #5080d0; }
@@ -175,6 +176,7 @@
     body.dark .eb-Vendido        { background: #1e1e00; color: #b0b030; }
     body.dark .eb-Rehacer        { background: #2e0000; color: #f05050; }
     body.dark .eb-Cancelado      { background: #181818; color: #444; }
+    body.dark .eb-Planificado    { background: #001428; color: #5090e0; }
 
     .empty { text-align: center; padding: 50px 20px; color: var(--muted); font-size: 15px; }
     mark { background: #ffe066; color: #5a3a00; border-radius: 2px; padding: 0 1px; }
@@ -342,7 +344,7 @@
   <div class="header-top">
     <h1>Mosca Taller</h1>
     <div class="header-right">
-      <span class="version">v1.8 · 2026-06-04 21:12</span>
+      <span class="version">v1.9 · 2026-06-06 14:46</span>
       <button class="btn-icon" id="btn-font"  onclick="cycleFont()">A</button>
       <button class="btn-icon" id="btn-theme" onclick="toggleTheme()">🌙</button>
       <button class="btn-icon" onclick="loadData()">↻</button>
@@ -437,7 +439,7 @@
   const VERSION    = 'v1.8';
   const TIMEOUT_MS = 10000;
 
-  const ESTADOS = ['Nuevo','En herrería','En carpintería','En pintura','Para entregar','Entregado','En Stock','Vendido','Rehacer','Cancelado'];
+  const ESTADOS = ['Nuevo','Planificado','En herrería','En carpintería','En pintura','Para entregar','Entregado','En Stock','Vendido','Rehacer','Cancelado'];
 
   let TOKEN      = null;
   let items      = [];
@@ -1080,11 +1082,11 @@ tContent = 'Guardar';
 
   function estadoClass(e) {
     const map = {
-      'Nuevo': 'eb-Nuevo', 'En herreria': 'eb-En_herreria',
-      'En carpinteria': 'eb-En_carpinteria', 'En pintura': 'eb-En_pintura',
-      'Para entregar': 'eb-Para_entregar', 'Entregado': 'eb-Entregado',
-      'En Stock': 'eb-En_Stock', 'Vendido': 'eb-Vendido',
-      'Rehacer': 'eb-Rehacer', 'Cancelado': 'eb-Cancelado',
+      'Nuevo': 'eb-Nuevo', 'Planificado': 'eb-Planificado',
+      'En herrería': 'eb-En_herreria', 'En carpintería': 'eb-En_carpinteria',
+      'En pintura': 'eb-En_pintura', 'Para entregar': 'eb-Para_entregar',
+      'Entregado': 'eb-Entregado', 'En Stock': 'eb-En_Stock',
+      'Vendido': 'eb-Vendido', 'Rehacer': 'eb-Rehacer', 'Cancelado': 'eb-Cancelado',
     };
     return map[e] || 'eb-Nuevo';
   }
@@ -1103,3 +1105,4 @@ tContent = 'Guardar';
 </script>
 </body>
 </html>
+  
