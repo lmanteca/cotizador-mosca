@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mosca Taller · v2.5 · 2026-06-08 15:25</title>
+  <title>Mosca Taller · v2.6 · 2026-06-08 19:10</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -392,7 +392,7 @@
   <div class="header-top">
     <h1>Mosca Taller</h1>
     <div class="header-right">
-      <span class="version">v2.5 · 2026-06-08 15:25</span>
+      <span class="version">v2.6 · 2026-06-08 19:10</span>
       <button class="btn-icon" id="btn-dash"  onclick="toggleDash()">📊</button>
       <button class="btn-icon" id="btn-font"  onclick="cycleFont()">A</button>
       <button class="btn-icon" id="btn-theme" onclick="toggleTheme()">🌙</button>
@@ -488,7 +488,7 @@
   const T_CLIENT   = 'tbl5tU70DznAaqNd6';
   const API        = 'https://api.airtable.com/v0';
   const VERSION    = 'v1.8';
-  const T_INGRESOS = 'tblS8mrLsVnt5yvSC';
+  const T_PEDIDO_OLD = 'tblOMnHMOtmQdDS8W'; // old Pedidos — tiene 'pagado' formula + Ingresos linkeados
   const TIMEOUT_MS = 10000;
 
   const ESTADOS = ['Nuevo','Revisado','A comprar','Pendiente','En herrería','En carpintería','En pintura','Control','Para entregar','Entregado','En Stock','Vendido','Cancelado','PosEntrega'];
@@ -711,7 +711,7 @@
         filterByFormula: pedFilter,
         'fields[]': ['id_pedido','fecha_seña','dias_adicionales','estado_comercial','cliente',
                      'precio_pactado','tono_madera','terminacion','tono_hierro','tipo_madera','acabado',
-                     'notas_logistica','urgencia','historial','ingresos'],
+                     'notas_logistica','urgencia','historial'],
       });
 
       setLoading('4/4 · Clientes…');
@@ -729,18 +729,20 @@
       }
 
 
-      // Ingresos por pedido (para saldo pendiente)
-      const ingIds = [...new Set(rawPedidos.flatMap(r => r.fields.ingresos || []))];
-      const ingresosMap = {};
-      if (ingIds.length) {
-        const ingFilter = ingIds.length === 1
-          ? "RECORD_ID()='" + ingIds[0] + "'"
-          : 'OR(' + ingIds.map(id => "RECORD_ID()='" + id + "'").join(',') + ')';
-        const rawIngs = await fetchAll(T_INGRESOS, {
-          filterByFormula: ingFilter,
-          'fields[]': ['monto'],
+      // Cobrado por pedido — cruzar id_pedido con old Pedidos (tiene 'pagado' formula)
+      const cobradoMap = {};
+      const idPedidoArr = rawPedidos.map(r => r.fields.id_pedido).filter(Boolean);
+      if (idPedidoArr.length) {
+        const cobFilter = idPedidoArr.length === 1
+          ? '{id_pedido}=' + idPedidoArr[0]
+          : 'OR(' + idPedidoArr.map(id => '{id_pedido}=' + id).join(',') + ')';
+        const rawOldPed = await fetchAll(T_PEDIDO_OLD, {
+          filterByFormula: cobFilter,
+          'fields[]': ['id_pedido', 'pagado'],
         });
-        rawIngs.forEach(r => { ingresosMap[r.id] = r.fields.monto || 0; });
+        rawOldPed.forEach(r => {
+          if (r.fields.id_pedido != null) cobradoMap[r.fields.id_pedido] = r.fields.pagado || 0;
+        });
       }
 
       const clienteMap = {};
@@ -775,7 +777,7 @@
           notas_logistica:  r.fields.notas_logistica || '',
           urgencia:         r.fields.urgencia || '',
           historial:        r.fields.historial || '',
-          cobrado:          (r.fields.ingresos || []).reduce((s, id) => s + (ingresosMap[id] || 0), 0),
+          cobrado:          cobradoMap[r.fields.id_pedido] || 0,
         };
       });
 
@@ -902,6 +904,10 @@
     return '<div class="pedido-saldo">Debe ' + fmtMonto(saldo) + '</div>';
   }
 
+  function fmtFull(n) {
+    return '$' + Math.round(Math.abs(n)).toLocaleString('es-AR');
+  }
+
   function fmtMonto(n) {
     if (n >= 1000000) return '$' + (n / 1000000).toFixed(1).replace('.0', '') + 'M';
     if (n >= 1000)    return '$' + Math.round(n / 1000) + 'k';
@@ -1013,16 +1019,16 @@
     if (p.precio_pactado) {
       const saldo = p.precio_pactado - p.cobrado;
       const saldoColor = saldo <= 0 ? 'color:#166038' : 'color:#c93030';
-      const saldoLabel = saldo <= 0 ? '✓ Pagado' : '− ' + fmtMonto(saldo);
+      const saldoLabel = saldo <= 0 ? '✓ Pagado' : '− ' + fmtFull(saldo);
       pagosHtml = '<div class="ficha-row" style="flex-direction:column;gap:4px;align-items:flex-start">'
         + '<div class="ficha-label" style="width:auto">Pagos</div>'
         + '<div style="display:flex;gap:0;width:100%;font-size:13px">'
         + '<span style="flex:1;color:var(--muted)">Pactado</span>'
-        + '<span>' + fmtMonto(p.precio_pactado) + '</span>'
+        + '<span>' + fmtFull(p.precio_pactado) + '</span>'
         + '</div>'
         + '<div style="display:flex;gap:0;width:100%;font-size:13px">'
         + '<span style="flex:1;color:var(--muted)">Cobrado</span>'
-        + '<span>' + fmtMonto(p.cobrado) + '</span>'
+        + '<span>' + fmtFull(p.cobrado) + '</span>'
         + '</div>'
         + '<div style="display:flex;gap:0;width:100%;font-size:14px;font-weight:700;border-top:1px solid var(--border);padding-top:6px;margin-top:2px">'
         + '<span style="flex:1">Saldo</span>'
