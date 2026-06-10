@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mosca Taller · v2.7 · 2026-06-10 13:45</title>
+  <title>Mosca Taller · v2.8 · 2026-06-10 13:45</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -219,7 +219,38 @@
     body.dark .eb-Vendido        { background: #1e1e00; color: #b0b030; }
     body.dark .eb-Cancelado      { background: #181818; color: #444; }
 
-    .modal-img { width: 100%; max-height: 220px; object-fit: cover; border-radius: 10px; margin-bottom: 12px; display: block; }
+    .modal-img { display: none !important; }  /* imagen movida a lightbox */
+
+    /* ── Lightbox ── */
+    .lightbox {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.93);
+      z-index: 500; display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .lightbox.hidden { display: none; }
+    .lightbox-img {
+      max-width: 94vw; max-height: 90vh;
+      object-fit: contain; border-radius: 6px;
+      display: block;
+    }
+    .lightbox-close {
+      position: absolute; top: 14px; right: 14px;
+      color: #fff; font-size: 20px; cursor: pointer;
+      background: rgba(255,255,255,0.15); border: none;
+      border-radius: 50%; width: 38px; height: 38px;
+      display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .lightbox-close:active { opacity: 0.6; }
+    /* ── Icono imagen en item card ── */
+    .btn-img {
+      background: none; border: 1px solid var(--border);
+      border-radius: 5px; color: var(--muted);
+      font-size: 13px; padding: 3px 6px; line-height: 1;
+      cursor: pointer; flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-img:active { opacity: 0.5; }
     .empty { text-align: center; padding: 50px 20px; color: var(--muted); font-size: 15px; }
     mark { background: #ffe066; color: #5a3a00; border-radius: 2px; padding: 0 1px; }
     body.dark mark { background: #5a3a00; color: #f0c060; }
@@ -392,7 +423,7 @@
   <div class="header-top">
     <h1>Mosca Taller</h1>
     <div class="header-right">
-      <span class="version">v2.7 · 2026-06-10 13:45</span>
+      <span class="version">v2.8 · 2026-06-10 13:45</span>
       <button class="btn-icon" id="btn-dash"  onclick="toggleDash()">📊</button>
       <button class="btn-icon" id="btn-font"  onclick="cycleFont()">A</button>
       <button class="btn-icon" id="btn-theme" onclick="toggleTheme()">🌙</button>
@@ -467,6 +498,13 @@
     <button class="btn-guardar" id="btn-guardar" onclick="guardarCambios()">Guardar</button>
     <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
   </div>
+</div>
+
+
+<!-- Lightbox imagen -->
+<div class="lightbox hidden" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()" aria-label="Cerrar">✕</button>
+  <img class="lightbox-img" id="lightbox-img" alt="Imagen del producto" onclick="event.stopPropagation()">
 </div>
 
 <script>
@@ -927,6 +965,9 @@
 
   function renderItem(item, q) {
     const historPreview = item.historial ? item.historial.split('\n')[0] : '';
+    const imgBtn = item.imagenUrl
+      ? '<button class="btn-img" title="Ver imagen" onclick="event.stopPropagation(); openLightbox(\'' + encodeURIComponent(item.imagenUrl) + '\')">🖼</button>'
+      : '';
     return '<div class="item" onclick="openModal(\'' + item.id + '\')">'
       + '<div class="item-nr">' + (item.nro_linea || '·') + '</div>'
       + '<div class="item-body">'
@@ -935,6 +976,7 @@
       + (item.notas       ? '<div class="item-nota item-nota-pedido">📋 ' + esc(item.notas) + '</div>' : '')
       + (historPreview    ? '<div class="item-nota">↩ ' + esc(historPreview) + '</div>' : '')
       + '</div>'
+      + imgBtn
       + '<div class="ebadge ' + estadoClass(item.estado) + '">' + esc(item.estado) + '</div>'
       + '</div>';
   }
@@ -1480,6 +1522,24 @@ tContent = 'Guardar';
     w.document.write('<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>' + title + ' — MOSCA TALLER</title><style>' + fichaWindowCSS() + '</style></head><body><div class="controls"><button class="btn btn-print" onclick="window.print()">&#x2399; Imprimir / Guardar PDF</button><button class="btn btn-close" onclick="window.close()">&#x2715; Cerrar</button></div>' + fichaHTML + '</body></html>');
     w.document.close();
   }
+
+  // ── Lightbox ─────────────────────────────────────────────
+  function openLightbox(encodedUrl) {
+    const url = decodeURIComponent(encodedUrl);
+    const img = document.getElementById('lightbox-img');
+    img.src = url;
+    document.getElementById('lightbox').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeLightbox() {
+    document.getElementById('lightbox').classList.add('hidden');
+    document.getElementById('lightbox-img').src = '';
+    document.body.style.overflow = '';
+  }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeLightbox();
+  });
+
 
 </script>
 </body>
