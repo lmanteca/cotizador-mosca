@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mosca Taller · v3.0 · 2026-06-10 13:45</title>
+  <title>Mosca Taller · v3.1 · 2026-06-10 13:45</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -423,7 +423,7 @@
   <div class="header-top">
     <h1>Mosca Taller</h1>
     <div class="header-right">
-      <span class="version">v3.0 · 2026-06-10 13:45</span>
+      <span class="version">v3.1 · 2026-06-10 13:45</span>
       <button class="btn-icon" id="btn-dash"  onclick="toggleDash()">📊</button>
       <button class="btn-icon" id="btn-font"  onclick="cycleFont()">A</button>
       <button class="btn-icon" id="btn-theme" onclick="toggleTheme()">🌙</button>
@@ -841,17 +841,6 @@
         pedidoId:    (r.fields.pedido || [])[0] || null,
       }));
 
-      // Propagar imagen dentro del pedido: si cualquier item tiene imagen,
-      // todos los items del mismo pedido la heredan (foto de referencia del pedido)
-      const pedidoImgMap = {};
-      items.forEach(it => {
-        if (it.imagenUrl && it.pedidoId)
-          pedidoImgMap[it.pedidoId] = pedidoImgMap[it.pedidoId] || it.imagenUrl;
-      });
-      items.forEach(it => {
-        if (!it.imagenUrl && it.pedidoId && pedidoImgMap[it.pedidoId])
-          it.imagenUrl = pedidoImgMap[it.pedidoId];
-      });
 
       render();
 
