@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mosca Taller · v2.6 · 2026-06-08 19:10</title>
+  <title>Mosca Taller · v2.7 · 2026-06-10 13:45</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -392,7 +392,7 @@
   <div class="header-top">
     <h1>Mosca Taller</h1>
     <div class="header-right">
-      <span class="version">v2.6 · 2026-06-08 19:10</span>
+      <span class="version">v2.7 · 2026-06-10 13:45</span>
       <button class="btn-icon" id="btn-dash"  onclick="toggleDash()">📊</button>
       <button class="btn-icon" id="btn-font"  onclick="cycleFont()">A</button>
       <button class="btn-icon" id="btn-theme" onclick="toggleTheme()">🌙</button>
@@ -606,6 +606,12 @@
   // ── Search ───────────────────────────────────────────────
   function onSearch(val) {
     searchQ = val.trim().toLowerCase();
+    if (searchQ.length > 0 && activeChip !== 'Todos') {
+      activeChip = 'Todos';
+      document.querySelectorAll('#chips .chip').forEach(c => {
+        c.classList.toggle('active', c.textContent === 'Todos');
+      });
+    }
     render();
   }
 
@@ -765,7 +771,7 @@
           id_pedido:        r.fields.id_pedido,
           estado_comercial: r.fields.estado_comercial || '',
           clienteNombre:    cli ? (cli.nombre || cli.telefono || 'Sin nombre') : 'Sin cliente',
-          clienteTel:       cli ? (cli.telefono || '') : '',
+          clienteTel:       cli ? (Array.isArray(cli.telefono) ? (cli.telefono[0] || '') : (cli.telefono || '')) : '',
           fechaEntrega,
           fecha_sena:       r.fields['fecha_seña'] || '',
           precio_pactado:   r.fields.precio_pactado || null,
@@ -821,10 +827,11 @@
     const q = searchQ;
     const isSearch = q.length > 0;
 
-    const filtered = items.filter(item => {
+    // Paso 1: items que coinciden con el filtro activo
+    const matchedItems = items.filter(item => {
       const p = pedidosMap[item.pedidoId] || {};
-      if (!isSearch && activeChip !== 'Todos' && item.estado !== activeChip) return false;
       if (!isSearch && activeUrgencia !== 'Todos' && (p.urgencia || 'Normal') !== activeUrgencia) return false;
+      if (!isSearch && activeChip !== 'Todos' && item.estado !== activeChip) return false;
       if (isSearch) {
         const haystack = [item.descripcion, item.dimensiones, item.historial,
           p.clienteNombre, String(p.id_pedido || '')].join(' ').toLowerCase();
@@ -833,11 +840,14 @@
       return true;
     });
 
+    // Paso 2: pedidos que tienen al menos un item coincidente
+    const matchedPedidoIds = new Set(matchedItems.map(i => i.pedidoId).filter(Boolean));
+
+    // Paso 3: agrupar con TODOS los items de cada pedido coincidente
     const groups = {};
-    filtered.forEach(item => {
-      if (!item.pedidoId || !pedidosMap[item.pedidoId]) return;
-      if (!groups[item.pedidoId]) groups[item.pedidoId] = [];
-      groups[item.pedidoId].push(item);
+    matchedPedidoIds.forEach(pid => {
+      if (!pedidosMap[pid]) return;
+      groups[pid] = items.filter(i => i.pedidoId === pid);
     });
 
     const urgPrio = {'Crítico': 0, 'Urgente': 1, 'Normal': 2, '': 3};
@@ -889,6 +899,7 @@
       + '<div class="pid">#' + (p.id_pedido ?? '?') + '</div>'
       + '<div class="pedido-meta">'      + '<div class="pedido-cliente">' + highlight(p.clienteNombre, q) + '</div>'      + '<div class="pedido-fecha ' + fechaClass + '">' + fechaLabel + '</div>'      + renderSaldoBadge(p)      + '</div>'
       + urgBadge
+      + '<button class="btn-urg" title="Ficha imprimible A4" onclick="event.stopPropagation(); openPedidoFichaWindow(\'' + pid + '\')">⎙</button>'
       + '<button class="btn-urg" onclick="event.stopPropagation(); openUrgModal(\'' + pid + '\')">⚡</button>'
       + '</div>'
       + '<div class="items-list">'
@@ -1336,6 +1347,140 @@ tContent = 'Guardar';
     const re = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'gi');
     return safe.replace(re, '<mark>$1</mark>');
   }
+
+  // ── Ficha imprimible A4 ──────────────────────────────────────────────────
+  function fichaWindowCSS() {
+    return [
+      '* { box-sizing: border-box; margin: 0; padding: 0; }',
+      'body { background: #888; font-family: Segoe UI, Arial, sans-serif; }',
+      '.controls { background: #333; color: #fff; padding: 10px 16px; display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 10; }',
+      '.btn { padding: 6px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 600; }',
+      '.btn-print { background: #0a465a; color: white; }',
+      '.btn-close  { background: #555; color: white; }',
+      '.ficha-page { background: white; width: 210mm; min-height: 297mm; margin: 16px auto; padding: 14mm 14mm 10mm; box-sizing: border-box; font-size: 12pt; display: flex; flex-direction: column; }',
+      '.ficha-topbar { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }',
+      '.ficha-num { font-size: 28pt; font-weight: 900; color: #111; line-height: 1; }',
+      '.ficha-brand { text-align: right; font-size: 22pt; font-weight: 900; letter-spacing: -1px; line-height: 1.05; color: #111; }',
+      '.ficha-entrega { text-align: center; }',
+      '.ficha-entrega-label { font-size: 10pt; color: #555; }',
+      '.ficha-entrega-date { font-size: 20pt; font-weight: 700; color: #111; }',
+      '.ficha-clientbar { display: flex; gap: 20px; background: #f4f4f4; border-radius: 3px; padding: 6px 12px; font-size: 11pt; margin-bottom: 10px; color: #333; flex-wrap: wrap; align-items: center; }',
+      '.ficha-clientbar span { display: flex; align-items: center; gap: 5px; }',
+      '.urg-urgente { background: #fff0e0; border: 1.5px solid #c07020; color: #b05800; padding: 3px 10px; border-radius: 4px; font-size: 10pt; font-weight: 700; display: inline-block; margin-bottom: 8px; }',
+      '.urg-critico { background: #ffe8e8; border: 1.5px solid #c03030; color: #b02828; padding: 3px 10px; border-radius: 4px; font-size: 10pt; font-weight: 700; display: inline-block; margin-bottom: 8px; }',
+      '.section-title { font-size: 9pt; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #555; margin: 12px 0 6px; border-bottom: 1.5px solid #ccc; padding-bottom: 3px; }',
+      '.items-table { width: 100%; border-collapse: collapse; font-size: 11pt; margin-bottom: 8px; }',
+      '.items-table th { background: #eee; border: 1px solid #ccc; padding: 5px 8px; text-align: left; font-weight: 700; font-size: 9pt; text-transform: uppercase; letter-spacing: .5px; }',
+      '.items-table td { border: 1px solid #ccc; padding: 5px 8px; vertical-align: top; }',
+      '.items-table tr:nth-child(even) td { background: #fafafa; }',
+      '.estado-badge { font-size: 9pt; font-weight: 600; padding: 2px 7px; border-radius: 4px; background: #eee; color: #555; white-space: nowrap; display: inline-block; }',
+      '.specs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid #ccc; border-radius: 3px; overflow: hidden; margin-bottom: 8px; }',
+      '.spec-row { display: flex; justify-content: space-between; padding: 5px 10px; border-bottom: 1px solid #eee; font-size: 11pt; }',
+      '.spec-row:last-child { border-bottom: none; }',
+      '.spec-label { color: #555; }',
+      '.spec-val { font-weight: 600; color: #111; }',
+      '.notas-box { border: 2px solid #111; border-radius: 4px; padding: 10px 14px; margin-bottom: 8px; }',
+      '.notas-label { font-size: 9pt; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #555; margin-bottom: 4px; }',
+      '.notas-content { font-size: 13pt; font-weight: 600; color: #000; line-height: 1.5; white-space: pre-line; }',
+      '.footer-bar { margin-top: auto; padding-top: 8px; border-top: 2px solid #111; font-size: 9pt; color: #888; display: flex; justify-content: space-between; }',
+      '@media print { .controls { display: none !important; } .ficha-page { margin: 0 auto; } body { background: white; } }'
+    ].join('\n');
+  }
+
+  function escFicha(s) {
+    return String(s || '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function buildPedidoFichaHTML(pedidoId, fechaImp) {
+    const p = pedidosMap[pedidoId];
+    if (!p) return '';
+    const pedidoItems = items
+      .filter(i => i.pedidoId === pedidoId)
+      .sort((a, b) => a.nro_linea - b.nro_linea);
+
+    const fechaDisplay = p.fechaEntrega
+      ? p.fechaEntrega.toLocaleDateString('es-AR', { day: 'numeric', month: 'numeric', year: 'numeric' })
+      : '—';
+
+    const tel = p.clienteTel;
+    const telDisplay = tel
+      ? (Array.isArray(tel) ? (tel[0] || '—') : String(tel))
+      : '—';
+
+    const urgBadge = (p.urgencia === 'Urgente' || p.urgencia === 'Crítico')
+      ? '<div class="' + (p.urgencia === 'Crítico' ? 'urg-critico' : 'urg-urgente') + '">⚠ ' + p.urgencia + '</div>'
+      : '';
+
+    const itemRows = pedidoItems.map(function(item) {
+      return '<tr>'
+        + '<td style="width:28px;text-align:center;color:#888;font-size:10pt">' + (item.nro_linea || '·') + '</td>'
+        + '<td style="font-weight:500">' + escFicha(item.descripcion) + '</td>'
+        + '<td style="color:#555;white-space:nowrap">' + escFicha(item.dimensiones) + '</td>'
+        + '<td style="font-size:9pt;color:#a07830">' + (item.notas ? '📋 ' + escFicha(item.notas) : '') + '</td>'
+        + '<td style="text-align:center"><span class="estado-badge">' + escFicha(item.estado) + '</span></td>'
+        + '</tr>';
+    }).join('');
+
+    const specs = [
+      ['Tono madera', p.tono_madera],
+      ['Terminación', p.terminacion],
+      ['Tono hierro', p.tono_hierro],
+      ['Tipo madera', p.tipo_madera],
+      ['Acabado', p.acabado],
+    ].filter(function(s) { return s[1]; });
+
+    const specsHtml = specs.length > 0
+      ? '<div class="section-title">Especificaciones</div>'
+        + '<div class="specs-grid">'
+        + specs.map(function(s) {
+            return '<div class="spec-row"><span class="spec-label">' + s[0] + '</span><span class="spec-val">' + escFicha(s[1]) + '</span></div>';
+          }).join('')
+        + '</div>'
+      : '';
+
+    const notasHtml = p.notas_logistica
+      ? '<div class="notas-box"><div class="notas-label">Notas / Logística</div><div class="notas-content">' + escFicha(p.notas_logistica) + '</div></div>'
+      : '';
+
+    return '<div class="ficha-page">'
+      + '<div class="ficha-topbar">'
+      +   '<div class="ficha-num">#' + (p.id_pedido != null ? p.id_pedido : '?') + '</div>'
+      +   '<div class="ficha-entrega"><div class="ficha-entrega-label">Entrega</div><div class="ficha-entrega-date">' + fechaDisplay + '</div></div>'
+      +   '<div class="ficha-brand">MOSCA<br>TALLER</div>'
+      + '</div>'
+      + '<div class="ficha-clientbar">'
+      +   '<span><strong>Cliente:</strong> ' + escFicha(p.clienteNombre) + '</span>'
+      +   '<span>📞 ' + escFicha(telDisplay) + '</span>'
+      +   (p.estado_comercial ? '<span style="margin-left:auto;color:#888;font-size:10pt">' + escFicha(p.estado_comercial) + '</span>' : '')
+      + '</div>'
+      + urgBadge
+      + '<div class="section-title">Items del pedido (' + pedidoItems.length + ')</div>'
+      + '<table class="items-table">'
+      +   '<thead><tr><th>#</th><th>Producto</th><th>Dimensiones</th><th>Notas</th><th>Estado</th></tr></thead>'
+      +   '<tbody>' + itemRows + '</tbody>'
+      + '</table>'
+      + specsHtml
+      + notasHtml
+      + '<div class="footer-bar">'
+      +   '<span>Mosca Taller — Ficha de Pedido</span>'
+      +   '<span>Impreso: ' + fechaImp + '</span>'
+      + '</div>'
+      + '</div>';
+  }
+
+  function openPedidoFichaWindow(pedidoId) {
+    const p = pedidosMap[pedidoId];
+    if (!p) return;
+    const fechaImp = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const fichaHTML = buildPedidoFichaHTML(pedidoId, fechaImp);
+    const title = 'Ficha #' + (p.id_pedido != null ? p.id_pedido : '?') + ' · ' + p.clienteNombre;
+    const w = window.open('', '_blank', 'width=900,height=800,scrollbars=yes,resizable=yes');
+    if (!w) { alert('El navegador bloqueó la ventana emergente. Permitíla para este sitio.'); return; }
+    w.document.write('<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>' + title + ' — MOSCA TALLER</title><style>' + fichaWindowCSS() + '</style></head><body><div class="controls"><button class="btn btn-print" onclick="window.print()">&#x2399; Imprimir / Guardar PDF</button><button class="btn btn-close" onclick="window.close()">&#x2715; Cerrar</button></div>' + fichaHTML + '</body></html>');
+    w.document.close();
+  }
+
 </script>
 </body>
 </html>
