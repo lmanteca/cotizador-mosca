@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mosca Taller · v3.1 · 2026-06-10 13:45</title>
+  <title>Mosca Taller · v3.2 · 2026-06-10 17:06</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -173,13 +173,15 @@
     body.dark .dash-card.red   .dash-card-num { color: #ff6060; }
     body.dark .dash-card.orange .dash-card-num { color: #ff9030; }
     body.dark .dash-card.green  .dash-card-num { color: #40b060; }
-    .dash-row { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; }
+    .dash-row { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: border-color .12s; }
+    .dash-row:hover { border-color: var(--accent); }
     .dash-row-label { font-size: 13px; font-weight: 500; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .dash-row-count { font-size: 13px; font-weight: 700; color: var(--muted); flex-shrink: 0; min-width: 24px; text-align: right; }
     .dash-bar-wrap { flex: 2; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
     .dash-bar { height: 100%; border-radius: 3px; background: var(--accent); transition: width .3s; }
     .dash-urg-row { display: flex; gap: 8px; }
-    .dash-urg-card { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; text-align: center; }
+    .dash-urg-card { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; text-align: center; cursor: pointer; transition: border-color .12s; }
+    .dash-urg-card:hover { border-color: var(--accent); }
     .dash-urg-num { font-size: 22px; font-weight: 800; }
     .dash-urg-lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
     .dash-urg-card.urg-normal  .dash-urg-num { color: var(--muted); }
@@ -415,6 +417,24 @@
     body.fz-xl .btn-guardar-ficha, body.fz-xl .ficha-close { font-size: 20px; padding: 16px; }
     body.fz-xl .modal-title { font-size: 22px; }
     body.fz-xl .ficha-val   { font-size: 20px; }
+
+    /* ── Kanban (solo desktop) ── */
+    .btn-kanban { display: none; }
+    @media (min-width: 800px) {
+      .btn-kanban { display: inline-flex; align-items: center; }
+      #main.kanban-mode { max-width: none; padding: 0; }
+      .kanban-board { display: flex; gap: 8px; padding: 12px 16px; overflow-x: auto; height: calc(100vh - 130px); align-items: flex-start; scrollbar-width: thin; }
+      .kanban-col { flex-shrink: 0; width: 210px; display: flex; flex-direction: column; max-height: 100%; }
+      .kanban-col-header { padding: 7px 8px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+      .kanban-col-count { font-size: 12px; font-weight: 700; color: var(--muted); }
+      .kanban-col-body { overflow-y: auto; flex: 1; scrollbar-width: thin; display: flex; flex-direction: column; gap: 5px; padding-bottom: 8px; }
+      .kanban-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; cursor: pointer; transition: border-color .12s; }
+      .kanban-card:hover { border-color: var(--accent); }
+      .kanban-card-top { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-bottom: 4px; }
+      .kanban-card-pid { font-size: 11px; font-weight: 800; color: var(--accent); }
+      .kanban-card-desc { font-size: 13px; font-weight: 600; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .kanban-card-meta { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+    }
   </style>
 </head>
 <body>
@@ -423,8 +443,9 @@
   <div class="header-top">
     <h1>Mosca Taller</h1>
     <div class="header-right">
-      <span class="version">v3.1 · 2026-06-10 13:45</span>
+      <span class="version">v3.2 · 2026-06-10 17:06</span>
       <button class="btn-icon" id="btn-dash"  onclick="toggleDash()">📊</button>
+      <button class="btn-icon btn-kanban" id="btn-kanban" onclick="toggleKanban()">⊞</button>
       <button class="btn-icon" id="btn-font"  onclick="cycleFont()">A</button>
       <button class="btn-icon" id="btn-theme" onclick="toggleTheme()">🌙</button>
       <button class="btn-icon" onclick="loadData()">↻</button>
@@ -541,6 +562,7 @@
   let activeChip = 'Nuevo';
   let activeUrgencia = 'Todos';
   let showDash = false;
+  let showKanban = false;
   let searchQ    = '';
 
   // ── Tamaño de letra ──────────────────────────────────────
@@ -1140,7 +1162,7 @@
 
     const btn = document.getElementById('btn-guardar-ficha');
     btn.classList.remove('saving');
-    btn.textContent = 'Guardar';
+    btn.texbtn.textContent = 'Guardar';
     document.getElementById('ficha-overlay').classList.remove('hidden');
   }
 
@@ -1181,7 +1203,7 @@
       render();
     } catch (err) {
       btn.classList.remove('saving');
-      btn.textContent = 'Guardar';
+      btn.texbtn.textContent = 'Guardar';
       showErr('Error al guardar:\n' + err.message);
     }
   }
@@ -1280,7 +1302,7 @@
       activeItem.estado    = prevEstado;
       activeItem.historial = prevHistorial;
       btn.classList.remove('saving');
-tContent = 'Guardar';
+btn.textContent = 'Guardar';
       showErr('Error al guardar:\n' + err.message);
     }
   }
@@ -1326,6 +1348,7 @@ tContent = 'Guardar';
   // ── Dashboard ──────────────────────────────────────────────────
   function toggleDash() {
     showDash = !showDash;
+    if (showDash) { showKanban = false; setKanbanBtn(false); }
     document.getElementById('btn-dash').style.background = showDash ? 'var(--accent-dim)' : '';
     document.getElementById('btn-dash').style.color      = showDash ? 'var(--accent)' : '';
     if (showDash) renderDash(); else render();
@@ -1356,11 +1379,10 @@ tContent = 'Guardar';
     items.forEach(it => { byEstado[it.estado] = (byEstado[it.estado] || 0) + 1; });
     const maxE = Math.max(1, ...Object.values(byEstado));
     const estadoRows = Object.entries(byEstado)
-      .sort((a, b) => b[1] - a[1])
+      .sort((a, b) => ESTADOS.indexOf(a[0]) - ESTADOS.indexOf(b[0]))
       .map(([e, n]) => {
         const pct = Math.round(n / maxE * 100);
-        const cls = estadoClass(e).replace('eb-','');
-        return '<div class="dash-row">'
+        return '<div class="dash-row" onclick="selectChipFromDash(' + JSON.stringify(e) + ')">'
           + '<span class="ebadge ' + estadoClass(e) + '">' + esc(e) + '</span>'
           + '<div class="dash-bar-wrap"><div class="dash-bar" style="width:' + pct + '%"></div></div>'
           + '<span class="dash-row-count">' + n + '</span>'
@@ -1387,9 +1409,9 @@ tContent = 'Guardar';
       // Urgencia
       + '<div class="dash-title">Por urgencia</div>'
       + '<div class="dash-urg-row">'
-      + '<div class="dash-urg-card urg-normal"><div class="dash-urg-num">' + urgCounts['Normal'] + '</div><div class="dash-urg-lbl">Normal</div></div>'
-      + '<div class="dash-urg-card urg-urgente"><div class="dash-urg-num">' + urgCounts['Urgente'] + '</div><div class="dash-urg-lbl">Urgente</div></div>'
-      + '<div class="dash-urg-card urg-critico"><div class="dash-urg-num">' + urgCounts['Crítico'] + '</div><div class="dash-urg-lbl">Crítico</div></div>'
+      + '<div class="dash-urg-card urg-normal" onclick="selectUrgChipFromDash(\'Todos\')"><div class="dash-urg-num">' + urgCounts['Normal'] + '</div><div class="dash-urg-lbl">Normal</div></div>'
+      + '<div class="dash-urg-card urg-urgente" onclick="selectUrgChipFromDash(\'Urgente\')"><div class="dash-urg-num">' + urgCounts['Urgente'] + '</div><div class="dash-urg-lbl">Urgente</div></div>'
+      + '<div class="dash-urg-card urg-critico" onclick="selectUrgChipFromDash(\'Crítico\')"><div class="dash-urg-num">' + urgCounts['Crítico'] + '</div><div class="dash-urg-lbl">Crítico</div></div>'
       + '</div>'
       // Por estado
       + '<div class="dash-title" style="margin-top:16px">Por estado</div>'
@@ -1560,6 +1582,116 @@ tContent = 'Guardar';
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') closeLightbox();
   });
+
+
+  // ── Dashboard → filtro directo ─────────────────────────
+  function selectChipFromDash(estado) {
+    showDash = false;
+    document.getElementById('btn-dash').style.background = '';
+    document.getElementById('btn-dash').style.color = '';
+    activeChip = estado;
+    activeUrgencia = 'Todos';
+    document.querySelectorAll('#chips .chip').forEach(c => {
+      c.classList.toggle('active', c.textContent === estado);
+    });
+    document.querySelectorAll('#urg-chips .chip').forEach(c => {
+      c.classList.toggle('active', c.textContent === 'Toda urgencia');
+    });
+    document.getElementById('search').value = '';
+    searchQ = '';
+    render();
+  }
+
+  function selectUrgChipFromDash(urg) {
+    showDash = false;
+    document.getElementById('btn-dash').style.background = '';
+    document.getElementById('btn-dash').style.color = '';
+    activeChip = 'Todos';
+    activeUrgencia = urg;
+    document.querySelectorAll('#chips .chip').forEach(c => {
+      c.classList.toggle('active', c.textContent === 'Todos');
+    });
+    document.querySelectorAll('#urg-chips .chip').forEach(c => {
+      const lbl = c.textContent;
+      const match = urg === 'Todos' ? lbl === 'Toda urgencia' : lbl === urg;
+      c.classList.toggle('active', match);
+    });
+    document.getElementById('search').value = '';
+    searchQ = '';
+    render();
+  }
+
+  // ── Kanban ──────────────────────────────────────────────
+  function setKanbanBtn(on) {
+    const btn = document.getElementById('btn-kanban');
+    if (!btn) return;
+    btn.style.background = on ? 'var(--accent-dim)' : '';
+    btn.style.color      = on ? 'var(--accent)' : '';
+  }
+
+  function toggleKanban() {
+    showKanban = !showKanban;
+    if (showKanban) {
+      showDash = false;
+      document.getElementById('btn-dash').style.background = '';
+      document.getElementById('btn-dash').style.color = '';
+      setKanbanBtn(true);
+      renderKanban();
+    } else {
+      setKanbanBtn(false);
+      document.getElementById('main').className = '';
+      render();
+    }
+  }
+
+  function renderKanban() {
+    const main = document.getElementById('main');
+    main.className = 'kanban-mode';
+    const urgPrio = {'Crítico': 0, 'Urgente': 1, 'Normal': 2, '': 3};
+
+    // Agrupar por estado en orden cronológico
+    const byEstado = {};
+    ESTADOS.forEach(e => { byEstado[e] = []; });
+    items.forEach(it => { if (byEstado[it.estado]) byEstado[it.estado].push(it); });
+
+    // Solo columnas con items
+    const colsHtml = ESTADOS
+      .filter(e => byEstado[e].length > 0)
+      .map(estado => {
+        const colItems = byEstado[estado].slice().sort((a, b) => {
+          const pa = pedidosMap[a.pedidoId] || {}, pb = pedidosMap[b.pedidoId] || {};
+          const ua = urgPrio[pa.urgencia] ?? 3, ub = urgPrio[pb.urgencia] ?? 3;
+          if (ua !== ub) return ua - ub;
+          const fa = pa.fechaEntrega, fb = pb.fechaEntrega;
+          if (fa && fb) return fa - fb;
+          return fa ? -1 : fb ? 1 : 0;
+        });
+        const cardsHtml = colItems.map(it => {
+          const p = pedidosMap[it.pedidoId] || {};
+          const urgBadge = (p.urgencia === 'Urgente' || p.urgencia === 'Crítico')
+            ? '<span class="urg-badge urg-' + (p.urgencia === 'Crítico' ? 'Critico' : 'Urgente') + '" style="font-size:9px;padding:1px 5px">' + p.urgencia + '</span>'
+            : '';
+          return '<div class="kanban-card" onclick=\'openModal(&quot;' + it.id + '&quot;)\'>'
+            + '<div class="kanban-card-top">'
+            + '<span class="kanban-card-pid">#' + (p.id_pedido ?? '?') + '</span>'
+            + urgBadge
+            + '</div>'
+            + '<div class="kanban-card-desc">' + esc(it.descripcion) + '</div>'
+            + (it.dimensiones ? '<div class="kanban-card-meta">' + esc(it.dimensiones) + '</div>' : '')
+            + '<div class="kanban-card-meta">' + esc(p.clienteNombre || '') + '</div>'
+            + '</div>';
+        }).join('');
+        return '<div class="kanban-col">'
+          + '<div class="kanban-col-header">'
+          + '<span class="ebadge ' + estadoClass(estado) + '" style="font-size:11px">' + esc(estado) + '</span>'
+          + '<span class="kanban-col-count">' + colItems.length + '</span>'
+          + '</div>'
+          + '<div class="kanban-col-body">' + cardsHtml + '</div>'
+          + '</div>';
+      }).join('');
+
+    main.innerHTML = '<div class="kanban-board">' + colsHtml + '</div>';
+  }
 
 
 </script>
