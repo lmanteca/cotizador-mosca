@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mosca Taller · v2.8 · 2026-06-10 13:45</title>
+  <title>Mosca Taller · v3.0 · 2026-06-10 13:45</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -423,7 +423,7 @@
   <div class="header-top">
     <h1>Mosca Taller</h1>
     <div class="header-right">
-      <span class="version">v2.8 · 2026-06-10 13:45</span>
+      <span class="version">v3.0 · 2026-06-10 13:45</span>
       <button class="btn-icon" id="btn-dash"  onclick="toggleDash()">📊</button>
       <button class="btn-icon" id="btn-font"  onclick="cycleFont()">A</button>
       <button class="btn-icon" id="btn-theme" onclick="toggleTheme()">🌙</button>
@@ -444,8 +444,11 @@
 <!-- Modal de error -->
 <div class="overlay hidden" id="err-overlay" onclick="closeErrModal()">
   <div class="modal" onclick="event.stopPropagation()" style="max-height:80vh;overflow-y:auto">
-    <div class="modal-title" style="color:#c0392b">Error</div>
-    <div id="err-msg" style="font-size:13px;white-space:pre-wrap;margin:12px 0;line-height:1.5;font-family:monospace;background:var(--input-bg);padding:10px;border-radius:6px;overflow-x:auto"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div class="modal-title" style="color:#c0392b">Error</div>
+      <button id="btn-copy-err" onclick="copyErrMsg()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:13px;cursor:pointer;color:var(--muted)">⎘ Copiar</button>
+    </div>
+    <div id="err-msg" style="font-size:13px;white-space:pre-wrap;margin:8px 0 12px;line-height:1.5;font-family:monospace;background:var(--input-bg);padding:10px;border-radius:6px;overflow-x:auto"></div>
     <button class="btn-cancel" style="margin-top:0" onclick="closeErrModal()">Cerrar</button>
   </div>
 </div>
@@ -525,7 +528,7 @@
   const T_PEDIDO   = 'tblok3VLqWA3oQaPe';
   const T_CLIENT   = 'tbl5tU70DznAaqNd6';
   const API        = 'https://api.airtable.com/v0';
-  const VERSION    = 'v1.8';
+  const VERSION    = 'v1.9';
   const T_PEDIDO_OLD = 'tblOMnHMOtmQdDS8W'; // old Pedidos — tiene 'pagado' formula + Ingresos linkeados
   const TIMEOUT_MS = 10000;
 
@@ -720,7 +723,7 @@
       setLoading('1/4 · Items…');
       const rawItems = await fetchAll(T_ITEMS, {
         filterByFormula: "AND(NOT({estado}='Cancelado'),NOT({estado}='Vendido'))",
-        'fields[]': ['nro_linea','dimensiones','estado','historial','notas','pedido','catalogo','imagen'],
+        'fields[]': ['id_item','dimensiones','estado','historial','notas','pedido','catalogo','imagen'],
       });
 
       setLoading('2/4 · Catálogo…');
@@ -827,7 +830,7 @@
 
       items = rawItems.map(r => ({
         id:          r.id,
-        nro_linea:   r.fields.nro_linea || 0,
+        id_item:   r.fields.id_item || 0,
         descripcion: (catalogoMap[(r.fields.catalogo || [])[0]] || {}).nombre || 'Sin descripción',
         imagenUrl:   (r.fields.imagen || [])[0]?.thumbnails?.large?.url || (r.fields.imagen || [])[0]?.url
                      || (catalogoMap[(r.fields.catalogo || [])[0]] || {}).imagen || null,
@@ -837,6 +840,18 @@
         notas:       r.fields.notas || '',
         pedidoId:    (r.fields.pedido || [])[0] || null,
       }));
+
+      // Propagar imagen dentro del pedido: si cualquier item tiene imagen,
+      // todos los items del mismo pedido la heredan (foto de referencia del pedido)
+      const pedidoImgMap = {};
+      items.forEach(it => {
+        if (it.imagenUrl && it.pedidoId)
+          pedidoImgMap[it.pedidoId] = pedidoImgMap[it.pedidoId] || it.imagenUrl;
+      });
+      items.forEach(it => {
+        if (!it.imagenUrl && it.pedidoId && pedidoImgMap[it.pedidoId])
+          it.imagenUrl = pedidoImgMap[it.pedidoId];
+      });
 
       render();
 
@@ -858,6 +873,23 @@
   }
   function closeErrModal() {
     document.getElementById('err-overlay').classList.add('hidden');
+  }
+  function copyErrMsg() {
+    const txt = document.getElementById('err-msg').textContent;
+    navigator.clipboard.writeText(txt).then(() => {
+      const btn = document.getElementById('btn-copy-err');
+      btn.textContent = '✓ Copiado';
+      setTimeout(() => { btn.textContent = '⎘ Copiar'; }, 2000);
+    }).catch(() => {
+      // fallback
+      const ta = document.createElement('textarea');
+      ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta);
+      const btn = document.getElementById('btn-copy-err');
+      btn.textContent = '✓ Copiado';
+      setTimeout(() => { btn.textContent = '⎘ Copiar'; }, 2000);
+    });
   }
 
   // ── Render ───────────────────────────────────────────────
@@ -926,7 +958,7 @@
       fechaLabel = 'Sin fecha';
     }
 
-    const sorted = [...grpItems].sort((a, b) => a.nro_linea - b.nro_linea);
+    const sorted = [...grpItems].sort((a, b) => a.id_item - b.id_item);
 
     const urgBadge = (p.urgencia === 'Urgente' || p.urgencia === 'Crítico')
       ? '<span class="urg-badge urg-' + (p.urgencia === 'Crítico' ? 'Critico' : 'Urgente') + '">' + p.urgencia + '</span>'
@@ -969,7 +1001,7 @@
       ? '<button class="btn-img" title="Ver imagen" onclick="event.stopPropagation(); openLightbox(\'' + encodeURIComponent(item.imagenUrl) + '\')">🖼</button>'
       : '';
     return '<div class="item" onclick="openModal(\'' + item.id + '\')">'
-      + '<div class="item-nr">' + (item.nro_linea || '·') + '</div>'
+      + '<div class="item-nr">' + (item.id_item || '·') + '</div>'
       + '<div class="item-body">'
       + '<div class="item-desc">' + highlight(item.descripcion, q) + '</div>'
       + (item.dimensiones ? '<div class="item-dims">' + highlight(item.dimensiones, q) + '</div>' : '')
@@ -1439,7 +1471,7 @@ tContent = 'Guardar';
     if (!p) return '';
     const pedidoItems = items
       .filter(i => i.pedidoId === pedidoId)
-      .sort((a, b) => a.nro_linea - b.nro_linea);
+      .sort((a, b) => a.id_item - b.id_item);
 
     const fechaDisplay = p.fechaEntrega
       ? p.fechaEntrega.toLocaleDateString('es-AR', { day: 'numeric', month: 'numeric', year: 'numeric' })
@@ -1456,7 +1488,7 @@ tContent = 'Guardar';
 
     const itemRows = pedidoItems.map(function(item) {
       return '<tr>'
-        + '<td style="width:28px;text-align:center;color:#888;font-size:10pt">' + (item.nro_linea || '·') + '</td>'
+        + '<td style="width:28px;text-align:center;color:#888;font-size:10pt">' + (item.id_item || '·') + '</td>'
         + '<td style="font-weight:500">' + escFicha(item.descripcion) + '</td>'
         + '<td style="color:#555;white-space:nowrap">' + escFicha(item.dimensiones) + '</td>'
         + '<td style="font-size:9pt;color:#a07830">' + (item.notas ? '📋 ' + escFicha(item.notas) : '') + '</td>'
