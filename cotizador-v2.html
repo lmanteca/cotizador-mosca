@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Cotizador Mosca v1.0.0 · 2026-06-11 12:25</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#fff;--bg2:#f7f6f2;--bg3:#efede8;--bg4:#e8e5df;
+  --text:#1a1918;--text2:#6b6762;--text3:#9e9a95;
+  --border:rgba(0,0,0,.10);--border2:rgba(0,0,0,.20);
+  --accent:#2d2a26;--accent2:#7a5c3a;
+  --gbg:#e8f5e9;--gtxt:#2e7d32;
+  --r:10px;--rl:14px
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#1c1b19;--bg2:#252420;--bg3:#2e2c28;--bg4:#383530;
+  --text:#f0ede8;--text2:#9e9a95;--text3:#6b6762;
+  --border:rgba(255,255,255,.09);--border2:rgba(255,255,255,.18);
+  --accent:#e8e4de;--accent2:#c4a882;
+  --gbg:#1b3320;--gtxt:#81c784
+}}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg2);color:var(--text);min-height:100vh;display:flex;justify-content:center;padding:2rem 1rem 4rem}
+#app{width:100%;max-width:680px}
+.hdr{margin-bottom:1.5rem}
+.hdr-top{display:flex;align-items:center;gap:8px;margin-bottom:3px}
+.hdr h1{font-size:21px;font-weight:600;letter-spacing:-.3px}
+.ver{font-size:10px;color:var(--text3);background:var(--bg3);padding:2px 7px;border-radius:20px;border:.5px solid var(--border)}
+.hdr p{font-size:13px;color:var(--text2)}
+.tabs{display:flex;gap:4px;background:var(--bg3);border-radius:var(--r);padding:4px;margin-bottom:1.25rem}
+.tb{flex:1;padding:8px 4px;font-size:11.5px;font-weight:500;font-family:inherit;background:transparent;color:var(--text2);border:none;border-radius:7px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.tb.on{background:var(--bg);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.10)}
+.toolbar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.toolbar input,.toolbar select{font-family:inherit;font-size:13px;color:var(--text);background:var(--bg);border:.5px solid var(--border2);border-radius:var(--r);padding:8px 12px;outline:none}
+.toolbar input:focus,.toolbar select:focus{border-color:var(--text2)}
+.toolbar input{flex:1;min-width:150px}
+.toolbar select{min-width:130px;cursor:pointer}
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.cat-card{background:var(--bg);border:.5px solid var(--border);border-radius:var(--rl);overflow:hidden;cursor:pointer;transition:box-shadow .15s;display:flex;flex-direction:column}
+.cat-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.10)}
+.cat-img{width:100%;height:120px;object-fit:cover;display:block}
+.cat-ph{width:100%;height:120px;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:30px}
+.cat-body{padding:10px 12px;flex:1;display:flex;flex-direction:column;gap:3px}
+.cat-name{font-size:14px;font-weight:600;line-height:1.2}
+.cat-dims{font-size:11px;color:var(--text3)}
+.cat-tag{font-size:10px;padding:2px 6px;border-radius:20px;background:var(--bg3);color:var(--text2);border:.5px solid var(--border);align-self:flex-start;margin-top:2px}
+.cat-price{font-size:13px;font-weight:600;margin-top:6px;color:var(--accent2)}
+.cat-price span{font-size:11px;color:var(--text2);font-weight:400}
+.stock-hdr{font-size:13px;color:var(--gtxt);margin-bottom:12px;padding:10px 14px;background:var(--gbg);border-radius:var(--r);border:.5px solid rgba(46,125,50,.2);font-weight:500}
+.stock-item{background:var(--bg);border:.5px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:box-shadow .15s;display:flex;gap:12px;align-items:center}
+.stock-item:hover{box-shadow:0 2px 12px rgba(0,0,0,.10)}
+.stock-info{flex:1;min-width:0}
+.stock-name{font-size:14px;font-weight:600;line-height:1.3}
+.stock-dims{font-size:12px;color:var(--text3);margin-top:2px}
+.stock-nota{font-size:12px;color:var(--text2);margin-top:4px}
+.stock-badge{font-size:10px;font-weight:600;padding:4px 9px;border-radius:20px;background:var(--gbg);color:var(--gtxt);border:.5px solid rgba(46,125,50,.3);white-space:nowrap;flex-shrink:0}
+.card{background:var(--bg);border:.5px solid var(--border);border-radius:var(--rl);padding:1.25rem;margin-bottom:1rem}
+label{display:block;font-size:11px;color:var(--text2);margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+textarea,input[type=number]{font-family:inherit;font-size:14px;color:var(--text);background:var(--bg2);border:.5px solid var(--border2);border-radius:var(--r);padding:9px 12px;width:100%;outline:none;transition:border-color .15s}
+textarea:focus,input[type=number]:focus{border-color:var(--text2)}
+textarea{resize:vertical;line-height:1.5}
+select.full{font-family:inherit;font-size:14px;color:var(--text);background:var(--bg2);border:.5px solid var(--border2);border-radius:var(--r);padding:9px 12px;width:100%;outline:none;cursor:pointer}
+.f{margin-bottom:11px}.f:last-child{margin-bottom:0}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hint{font-size:12px;color:var(--text3);margin-top:6px;line-height:1.5}
+.hint em{color:var(--accent2);font-style:normal;font-weight:500}
+.btn{width:100%;padding:12px;font-size:14px;font-weight:600;font-family:inherit;background:var(--accent);color:var(--bg);border:none;border-radius:var(--r);cursor:pointer;transition:opacity .15s;margin-bottom:1rem}
+.btn:hover{opacity:.85}.btn:active{transform:scale(.98)}.btn:disabled{opacity:.4;cursor:not-allowed}
+.ld{text-align:center;padding:1.5rem;color:var(--text2);font-size:13px;display:none}
+.dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--text3);animation:bk 1.2s infinite;margin:0 2px;vertical-align:middle}
+.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
+@keyframes bk{0%,100%{opacity:.15}50%{opacity:1}}
+.pregunta{background:#fff8e1;border:.5px solid rgba(245,127,23,.4);border-radius:var(--r);padding:14px 16px;margin-bottom:12px;display:none}
+@media(prefers-color-scheme:dark){.pregunta{background:#2a2010}}
+.pregunta p{font-size:13px;color:var(--text);line-height:1.6;margin-bottom:10px;font-weight:500}
+.pregunta textarea{min-height:56px;font-size:13px}
+.err{background:#fff5f5;border:.5px solid #ffcdd2;border-radius:var(--r);padding:12px 14px;margin-bottom:12px;font-size:13px;color:#c62828;line-height:1.5;display:none}
+@media(prefers-color-scheme:dark){.err{background:#2a1515;color:#ef9a9a}}
+.status{text-align:center;padding:3rem 1rem;color:var(--text2);font-size:13px}
+.empty{text-align:center;padding:2rem;color:var(--text3);font-size:13px;grid-column:1/-1}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;display:flex;align-items:center;justify-content:center;padding:1rem}
+.modal{background:var(--bg);border-radius:var(--rl);max-width:460px;width:100%;max-height:90vh;overflow-y:auto;padding:1.5rem;position:relative}
+.mcls{position:absolute;top:12px;right:14px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:6px}
+.mcls:hover{background:var(--bg3)}
+.m-img{width:100%;max-height:200px;object-fit:cover;border-radius:var(--r);margin-bottom:14px;display:block}
+.m-name{font-size:18px;font-weight:600;margin-bottom:2px;padding-right:32px}
+.m-sub{font-size:13px;color:var(--text2);margin-bottom:10px}
+.m-desc{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:10px}
+.m-sec{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin:14px 0 8px}
+.mdr-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.mdr{padding:9px 10px;font-size:12px;font-weight:500;font-family:inherit;background:var(--bg2);color:var(--text2);border:.5px solid var(--border2);border-radius:8px;cursor:pointer;transition:all .15s;text-align:center}
+.mdr:hover{border-color:var(--text2)}.mdr.on{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.price-block{background:var(--bg2);border-radius:var(--r);padding:14px;margin:10px 0}
+.pr-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:.5px solid var(--border)}
+.pr-row:last-of-type{border-bottom:none}
+.pr-lbl{font-size:13px;color:var(--text2)}
+.pr-val{font-size:15px;font-weight:600;display:flex;align-items:center;gap:6px}
+.pr-sub{font-size:11px;color:var(--text3);margin-top:2px;margin-bottom:4px}
+.pbadge{font-size:10px;padding:2px 6px;border-radius:20px;background:var(--gbg);color:var(--gtxt);font-weight:600}
+.sena-box{background:var(--bg3);border-radius:8px;padding:10px 13px;font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:12px}
+.sena-box strong{color:var(--text)}
+.note-green{font-size:12px;color:var(--gtxt);font-weight:500;margin-bottom:8px}
+.note-amber{font-size:12px;color:var(--accent2);margin-bottom:8px}
+.copy-btn{width:100%;padding:10px;font-size:13px;font-weight:600;font-family:inherit;background:transparent;color:var(--text2);border:.5px solid var(--border2);border-radius:var(--r);cursor:pointer;transition:background .15s}
+.copy-btn:hover{background:var(--bg3)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="hdr">
+    <div class="hdr-top">
+      <h1>Cotizador Mosca 🪵</h1>
+      <span class="ver">v1.0.0 · 2026-06-11</span>
+    </div>
+    <p>Madera maciza, hecha a mano.</p>
+  </div>
+
+  <div id="loading" class="status">
+    <span class="dot"></span><span class="dot"></span><span class="dot"></span>&nbsp;Cargando catálogo...
+  </div>
+  <div id="err-init" class="err"></div>
+
+  <div id="main" style="display:none">
+    <div class="tabs">
+      <button class="tb on" onclick="switchTab('cat')">📦 Catálogo</button>
+      <button class="tb" onclick="switchTab('stock')">&#x26a1; Stock</button>
+      <button class="tb" onclick="switchTab('ia')">🤖 Cotizar IA</button>
+      <button class="tb" onclick="switchTab('cus')">&#x270f;&#xfe0f; Custom</button>
+    </div>
+
+    <!-- TAB CATÁLOGO -->
+    <div id="tab-cat">
+      <div class="toolbar">
+        <input type="text" id="cat-q" placeholder="Buscar producto..." oninput="filtrarCat()"/>
+        <select id="cat-linea" onchange="filtrarCat()">
+          <option value="">Todas las líneas</option>
+        </select>
+      </div>
+      <div class="cat-grid" id="cat-grid"></div>
+    </div>
+
+    <!-- TAB STOCK -->
+    <div id="tab-stock" style="display:none">
+      <p class="stock-hdr">&#x26a1; Estos muebles ya están listos — entrega inmediata.</p>
+      <div id="stock-list"></div>
+    </div>
+
+    <!-- TAB IA -->
+    <div id="tab-ia" style="display:none">
+      <div class="card">
+        <div class="f">
+          <label>¿Qué necesítás cotizar?</label>
+          <textarea id="q" rows="3" placeholder="Ej: Roma 160 de largo en guatambú&#10;Mesa X para 8 personas&#10;Bronx 120cm en paraíso"></textarea>
+          <p class="hint">Podés mencionar la <em>madera</em> en el texto. Si no la especificás, se usa álamo.</p>
+        </div>
+      </div>
+      <div id="pregunta-box" class="pregunta">
+        <p id="pregunta-txt"></p>
+        <textarea id="pregunta-resp" rows="2" placeholder="Tu respuesta..."></textarea>
+      </div>
+      <div id="err-ia" class="err"></div>
+      <div id="ld-ia" class="ld"><span class="dot"></span><span class="dot"></span><span class="dot"></span>&nbsp;Analizando...</div>
+      <button class="btn" id="btn-ia" onclick="accionIA()">Generar cotización →</button>
+    </div>
+
+    <!-- TAB CUSTOM -->
+    <div id="tab-cus" style="display:none">
+      <div class="card">
+        <div class="f">
+          <label>Nombre / descripción</label>
+          <textarea id="cx" rows="3" placeholder="Rack industrial 150cm con cajones, acabado wengue..."></textarea>
+        </div>
+        <div class="r2">
+          <div class="f" style="margin-bottom:0">
+            <label>Precio lista ($)</label>
+            <input type="number" id="cpr" placeholder="Ej: 1500000" min="1"/>
+          </div>
+          <div class="f" style="margin-bottom:0">
+            <label>Madera</label>
+            <select id="cma" class="full">
+              <option value="alamo">Álamo (base)</option>
+              <option value="guatambu">Guatambú +20%</option>
+              <option value="paraiso">Paraíso +20%</option>
+              <option value="guayubira">Guayubira +50%</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <button class="btn" onclick="cotizarCustom()">Generar cotización →</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <button class="mcls" onclick="closeModal()">✕</button>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<script>
+const BASE       = 'appBThGsxqCSljqH1';
+const TBL_CAT    = 'tbl8iau1GmyJ3faxl';
+const TBL_ITEM   = 'tblQ4Kq61LlZHFPNN';
+const WEBHOOK_IA = 'https://n8n.groumachine.com.ar/webhook/cotizar-ia';
+const SUR = {alamo:1, guatambu:1.2, paraiso:1.2, guayubira:1.5};
+const WN  = {alamo:'\u00c1lamo Seleccionado', guatambu:'Guatamb\u00fa', paraiso:'Para\u00edso', guayubira:'Guayubira'};
+
+let TOKEN    = '';
+let CATALOGO = [];
+let STOCK    = [];
+let MS       = {};
+let IA_WAIT  = false;
+
+const q   = id => document.getElementById(id);
+const fmt = n  => '$' + Math.round(n).toLocaleString('es-AR');
+
+function imgErr(el) {
+  el.style.display = 'none';
+  var ph = el.nextElementSibling;
+  if (ph) ph.style.display = 'flex';
+}
+
+// ── AIRTABLE ──────────────────────────────────────────────────────
+async function atFetch(tbl, opts) {
+  opts = opts || {};
+  const p = new URLSearchParams();
+  (opts.fields || []).forEach(function(f) { p.append('fields[]', f); });
+  if (opts.filter) p.set('filterByFormula', opts.filter);
+  (opts.sort || []).forEach(function(s, i) {
+    p.set('sort[' + i + '][field]', s.f);
+    if (s.d) p.set('sort[' + i + '][direction]', s.d);
+  });
+  if (opts.offset) p.set('offset', opts.offset);
+  const url = 'https://api.airtable.com/v0/' + BASE + '/' + tbl + '?' + p;
+  const res = await fetch(url, { headers: { Authorization: 'Bearer ' + TOKEN } });
+  if (!res.ok) { const t = await res.text(); throw new Error('Airtable ' + res.status + ': ' + t); }
+  const data = await res.json();
+  const recs = data.records || [];
+  if (data.offset) {
+    const more = await atFetch(tbl, Object.assign({}, opts, { offset: data.offset }));
+    return recs.concat(more);
+  }
+  return recs;
+}
+
+async function loadCatalogo() {
+  const recs = await atFetch(TBL_CAT, {
+    fields: ['producto','descripcion','linea','dimensiones_referencia','precio_lista','precio_promocional','imagen'],
+    sort: [{ f: 'producto', d: 'asc' }]
+  });
+  CATALOGO = recs.map(function(r) {
+    const f   = r.fields;
+    const att = (f.imagen || [])[0] || {};
+    const img = (att.thumbnails && att.thumbnails.large && att.thumbnails.large.url) || att.url || null;
+    return { id: r.id, nombre: f.producto || '', desc: f.descripcion || '', linea: f.linea || '',
+             dims: f.dimensiones_referencia || '', pl: +(f.precio_lista || 0), pp: +(f.precio_promocional || 0), img: img };
+  });
+}
+
+async function loadStock() {
+  const recs = await atFetch(TBL_ITEM, {
+    fields: ['catalogo','dimensiones','estado','notas'],
+    filter: '{estado}="En Stock"'
+  });
+  STOCK = recs.map(function(r) {
+    const f     = r.fields;
+    const catId = (f.catalogo || [])[0] || null;
+    const cat   = catId ? CATALOGO.find(function(c) { return c.id === catId; }) : null;
+    return { id: r.id, catId: catId, cat: cat, dimensiones: f.dimensiones || '', notas: f.notas || '' };
+  }).filter(function(s) { return s.cat; });
+}
+
+// ── INIT ──────────────────────────────────────────────────────────
+async function init() {
+  TOKEN = new URLSearchParams(location.search).get('token') || '';
+  if (!TOKEN) {
+    q('loading').style.display = 'none';
+    showErr('err-init', 'Token requerido. Abrí el cotizador con: ?token=PAT_xxx');
+    return;
+  }
+  try {
+    await loadCatalogo();
+    await loadStock();
+    setupLineas();
+    renderCat(CATALOGO);
+    renderStock();
+    q('loading').style.display = 'none';
+    q('main').style.display    = '';
+  } catch(e) {
+    q('loading').style.display = 'none';
+    showErr('err-init', 'Error cargando datos: ' + e.message);
+  }
+}
+
+// ── TABS ──────────────────────────────────────────────────────────
+function switchTab(t) {
+  ['cat','stock','ia','cus'].forEach(function(x, i) {
+    q('tab-' + x).style.display = x === t ? '' : 'none';
+    document.querySelectorAll('.tb')[i].classList.toggle('on', x === t);
+  });
+}
+
+// ── TAB CAT\u00c1LOGO ──────────────────────────────────────────────────
+function setupLineas() {
+  var ls = [...new Set(CATALOGO.map(function(p) { return p.linea; }).filter(Boolean))].sort();
+  var sel = q('cat-linea');
+  ls.forEach(function(l) {
+    var o = document.createElement('option'); o.value = l; o.textContent = 'L\u00ednea ' + l; sel.appendChild(o);
+  });
+}
+
+function filtrarCat() {
+  var sq = q('cat-q').value.toLowerCase();
+  var sl = q('cat-linea').value;
+  renderCat(CATALOGO.filter(function(p) {
+    return (!sq || p.nombre.toLowerCase().includes(sq) || p.dims.toLowerCase().includes(sq)) &&
+           (!sl || p.linea === sl);
+  }));
+}
+
+function cardHTML(p, idx) {
+  var body = '<div class="cat-body">'
+    + '<div class="cat-name">' + p.nombre + '</div>'
+    + (p.dims  ? '<div class="cat-dims">' + p.dims + '</div>' : '')
+    + (p.linea ? '<span class="cat-tag">L\u00ednea ' + p.linea + '</span>' : '')
+    + (p.pp    ? '<div class="cat-price">' + fmt(p.pp) + ' <span>efectivo</span></div>' : '')
+    + '</div>';
+  var media = p.img
+    ? '<img class="cat-img" src="' + p.img + '" alt="' + p.nombre + '" loading="lazy" onerror="imgErr(this)">'
+      + '<div class="cat-ph" style="display:none">\U0001fab5</div>'
+    : '<div class="cat-ph">\U0001fab5</div>';
+  return '<div class="cat-card" onclick="openCatModal(' + idx + ')">' + media + body + '</div>';
+}
+
+function renderCat(lista) {
+  var g = q('cat-grid');
+  if (!lista.length) { g.innerHTML = '<p class="empty">Sin resultados.</p>'; return; }
+  g.innerHTML = lista.map(function(p) { return cardHTML(p, CATALOGO.indexOf(p)); }).join('');
+}
+
+function openCatModal(idx) {
+  var p = CATALOGO[idx]; if (!p) return;
+  openModal({ nombre: p.nombre, sub: p.linea ? 'L\u00ednea ' + p.linea : '', dims: p.dims,
+              desc: p.desc, img: p.img, pl: p.pl, pp: p.pp, madera: 'alamo', note: '', stock: false });
+}
+
+// ── TAB STOCK ─────────────────────────────────────────────────────
+function renderStock() {
+  var el = q('stock-list');
+  if (!STOCK.length) { el.innerHTML = '<p class="empty">No hay muebles en stock en este momento.</p>'; return; }
+  el.innerHTML = STOCK.map(function(s, i) {
+    return '<div class="stock-item" onclick="openStockModal(' + i + ')">'
+      + '<div class="stock-info">'
+      + '<div class="stock-name">' + s.cat.nombre + '</div>'
+      + (s.dimensiones ? '<div class="stock-dims">' + s.dimensiones + '</div>' : '')
+      + (s.notas       ? '<div class="stock-nota">' + s.notas + '</div>' : '')
+      + '</div><span class="stock-badge">Disponible</span></div>';
+  }).join('');
+}
+
+function openStockModal(idx) {
+  var s = STOCK[idx]; if (!s) return;
+  openModal({ nombre: s.cat.nombre, sub: 'En stock \u00b7 entrega inmediata',
+              dims: s.dimensiones || s.cat.dims, desc: s.notas || s.cat.desc,
+              img: s.cat.img, pl: s.cat.pl, pp: s.cat.pp, madera: 'alamo',
+              note: 'Mueble disponible en stock \u2014 entrega inmediata.', stock: true });
+}
+
+// ── TAB IA ────────────────────────────────────────────────────────
+function accionIA() {
+  if (IA_WAIT) { var r = q('pregunta-resp').value.trim(); cerrarPregunta(); cotizarIA(r); }
+  else cotizarIA();
+}
+
+async function cotizarIA(extra) {
+  var t = q('q').value.trim();
+  if (!t) { q('q').focus(); return; }
+  var btn = q('btn-ia'), ld = q('ld-ia');
+  cerrarPregunta(); hideErr('err-ia');
+  btn.disabled = true; ld.style.display = '';
+
+  var catDesc = CATALOGO.map(function(p) {
+    return p.nombre + (p.linea ? ' [' + p.linea + ']' : '') + ' (' + (p.dims || 'sin medidas') + ', lista $' + Math.round(p.pl) + ')';
+  }).join(' | ');
+  var consulta = extra ? t + '\nAclaración: ' + extra : t;
+
+  try {
+    var res = await fetch(WEBHOOK_IA, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tipo: 'cotizar', consulta: consulta,
+        madera: '\u00c1lamo (default, detectar del texto si especifican otra)', catalogo: catDesc })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var resp = await res.json();
+
+    if (resp.pregunta) { mostrarPregunta(resp.pregunta); btn.disabled = false; ld.style.display = 'none'; return; }
+    if (resp.error || !resp.producto) {
+      showErr('err-ia', resp.error || 'No encontré ese producto. Revisá el nombre o la ortografía.');
+      btn.disabled = false; ld.style.display = 'none'; return;
+    }
+    var nl   = resp.producto.toLowerCase();
+    var prod = CATALOGO.find(function(p) { return p.nombre.toLowerCase() === nl; })
+            || CATALOGO.find(function(p) { return p.nombre.toLowerCase().includes(nl); })
+            || CATALOGO.find(function(p) { return nl.includes(p.nombre.toLowerCase()); });
+    if (!prod) {
+      showErr('err-ia', 'La IA sugirió "' + resp.producto + '" pero no coincide con el catálogo actual.');
+      btn.disabled = false; ld.style.display = 'none'; return;
+    }
+    var madera = SUR[resp.madera] ? resp.madera : 'alamo';
+    var dimP = [
+      resp.largo && 'largo ' + resp.largo + 'cm',
+      resp.ancho && 'ancho ' + resp.ancho + 'cm',
+      resp.alto  && 'alto '  + resp.alto  + 'cm'
+    ].filter(Boolean);
+    var note = dimP.length
+      ? 'Medidas solicitadas: ' + dimP.join(', ') + '. Precio de referencia según medidas estándar.'
+      : (resp.nota || '');
+    openModal({ nombre: prod.nombre, sub: prod.linea ? 'L\u00ednea ' + prod.linea : '', dims: prod.dims,
+                desc: prod.desc, img: prod.img, pl: prod.pl, pp: prod.pp, madera: madera, note: note, stock: false });
+  } catch(e) {
+    showErr('err-ia', 'Error de conexión: ' + e.message);
+  } finally {
+    btn.disabled = false; ld.style.display = 'none';
+  }
+}
+
+function mostrarPregunta(txt) {
+  IA_WAIT = true;
+  q('pregunta-txt').textContent = txt; q('pregunta-resp').value = '';
+  q('pregunta-box').style.display = ''; q('btn-ia').textContent = 'Confirmar y cotizar \u2192';
+  q('pregunta-box').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  setTimeout(function() { q('pregunta-resp').focus(); }, 300);
+}
+function cerrarPregunta() {
+  IA_WAIT = false; q('pregunta-box').style.display = 'none'; q('btn-ia').textContent = 'Generar cotización \u2192';
+}
+
+// ── TAB CUSTOM ────────────────────────────────────────────────────
+function cotizarCustom() {
+  var ctx = q('cx').value.trim(), pr = parseFloat(q('cpr').value) || 0, ma = q('cma').value;
+  if (!pr)  { q('cpr').focus(); return; }
+  if (!ctx) { q('cx').focus();  return; }
+  openModal({ nombre: ctx.split('\n')[0].slice(0, 60) || 'Mueble custom', sub: 'Custom', dims: '',
+              desc: '', img: null, pl: pr, pp: Math.round(pr * 0.8), madera: ma, note: '', stock: false });
+}
+
+// ── MODAL ─────────────────────────────────────────────────────────
+function calcP(pl, pp, madera) {
+  var s = SUR[madera] || 1;
+  var effPP = Math.round(pp * s), effPL = Math.round(pl * s);
+  return { effPP: effPP, effPL: effPL, cuota: Math.round(effPL / 3), sena: Math.round(effPP / 2) };
+}
+
+function buildPriceHTML(pl, pp, madera) {
+  var c = calcP(pl, pp, madera);
+  return '<div class="price-block">'
+    + '<div class="pr-row"><span class="pr-lbl">\U0001f4b8 Efectivo / transferencia</span>'
+    + '<span class="pr-val">' + fmt(c.effPP) + '<span class="pbadge">20% OFF</span></span></div>'
+    + '<div class="pr-row"><span class="pr-lbl">\U0001f4b0 3 cuotas sin interés</span>'
+    + '<span class="pr-val">' + fmt(c.cuota) + '<span style="font-size:11px;font-weight:400;color:var(--text2)">/mes</span></span></div>'
+    + '<div class="pr-sub">Total en cuotas: ' + fmt(c.effPL) + '</div>'
+    + '</div>'
+    + '<div class="sena-box" id="sena-box">\U0001f539 Para reservar tu lugar en producción, la seña es <strong>' + fmt(c.sena) + '</strong>. El saldo se abona contra entrega.</div>';
+}
+
+function openModal(o) {
+  if (!o.pp && !o.pl) { alert('Este producto no tiene precio cargado en el catálogo.'); return; }
+  MS = { nombre: o.nombre, dims: o.dims, pl: o.pl, pp: o.pp, madera: o.madera || 'alamo' };
+  var subLine = [o.sub, o.dims].filter(Boolean).join(' \u00b7 ');
+  var mBtns = [['alamo','\u00c1lamo'],['guatambu','Guatamb\u00fa +20%'],['paraiso','Para\u00edso +20%'],['guayubira','Guayubira +50%']]
+    .map(function(kv) {
+      return '<button class="mdr' + (kv[0] === MS.madera ? ' on' : '') + '" data-m="' + kv[0] + '" onclick="setMadera(this)">' + kv[1] + '</button>';
+    }).join('');
+  var html = ''
+    + (o.img  ? '<img class="m-img" src="' + o.img  + '" alt="' + o.nombre + '" onerror="imgErr(this)">' : '')
+    + '<div class="m-name">'  + o.nombre + '</div>'
+    + (subLine ? '<div class="m-sub">'  + subLine + '</div>' : '')
+    + (o.note  ? '<p class="'  + (o.stock ? 'note-green' : 'note-amber') + '">' + o.note + '</p>' : '')
+    + (o.desc  ? '<p class="m-desc">' + o.desc.split('\n')[0] + '</p>' : '')
+    + '<div class="m-sec">Madera</div>'
+    + '<div class="mdr-grid">' + mBtns + '</div>'
+    + '<div class="m-sec">Precios</div>'
+    + '<div id="price-area">' + buildPriceHTML(o.pl, o.pp, MS.madera) + '</div>'
+    + '<button class="copy-btn" onclick="copiarModal()">Copiar mensaje para WhatsApp</button>';
+  q('modal-content').innerHTML = html;
+  q('modal').style.display = 'flex';
+}
+
+function setMadera(btn) {
+  document.querySelectorAll('.mdr').forEach(function(b) { b.classList.remove('on'); });
+  btn.classList.add('on');
+  MS.madera = btn.dataset.m;
+  q('price-area').innerHTML = buildPriceHTML(MS.pl, MS.pp, MS.madera);
+}
+
+function closeModal() { q('modal').style.display = 'none'; }
+
+// ── COPY ──────────────────────────────────────────────────────────
+function copiarModal() {
+  var c    = calcP(MS.pl, MS.pp, MS.madera);
+  var madL = MS.madera !== 'alamo' ? 'Madera: ' + WN[MS.madera] + '.\n' : '';
+  var dimL = MS.dims ? ' \u2013 ' + MS.dims : '';
+  var txt  = MS.nombre + dimL + '\n\n' + madL
+    + '\U0001f4b8 Efectivo o transferencia: ' + fmt(c.effPP) + ' (20% OFF)\n'
+    + '\U0001f4b0 O en 3 cuotas sin interés de ' + fmt(c.cuota) + ' (total ' + fmt(c.effPL) + ')\n\n'
+    + '\U0001f539 Con una seña de ' + fmt(c.sena) + ' reservás tu lugar en producción. El saldo lo abonás contra entrega.';
+  navigator.clipboard.writeText(txt).then(function() {
+    var btn = document.querySelector('.copy-btn');
+    if (btn) { btn.textContent = '\u2713 Copiado'; setTimeout(function() { btn.textContent = 'Copiar mensaje para WhatsApp'; }, 2000); }
+  }).catch(function() { prompt('Copiá este texto:', txt); });
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────
+function showErr(id, msg) { var e = q(id); if (e) { e.textContent = '\u26a0\ufe0f ' + msg; e.style.display = ''; } }
+function hideErr(id)      { var e = q(id); if (e) e.style.display = 'none'; }
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') { closeModal(); cerrarPregunta(); }
+  if (e.ctrlKey && e.key === 'Enter' && ['q','pregunta-resp'].includes(document.activeElement.id)) accionIA();
+});
+
+init();
+</script>
+</body>
+</html>
