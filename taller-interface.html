@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mosca Taller · v3.2 · 2026-06-10 17:06</title>
+  <title>Mosca Taller · v3.3 · 2026-06-10 17:06</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -443,7 +443,7 @@
   <div class="header-top">
     <h1>Mosca Taller</h1>
     <div class="header-right">
-      <span class="version">v3.2 · 2026-06-10 17:06</span>
+      <span class="version">v3.3 · 2026-06-10 17:06</span>
       <button class="btn-icon" id="btn-dash"  onclick="toggleDash()">📊</button>
       <button class="btn-icon btn-kanban" id="btn-kanban" onclick="toggleKanban()">⊞</button>
       <button class="btn-icon" id="btn-font"  onclick="cycleFont()">A</button>
@@ -517,7 +517,7 @@
     </div>
     <div class="nota-section">
       <div class="nota-label">+ Nueva nota</div>
-      <textarea class="nota-textarea" id="nota-input" placeholder="Ej: rajado en herrería, falta pintura…" rows="2"></textarea>
+      <textarea class="nota-textarea" id="nota-input" placeholder="Agregar nota y presionar Guardar…" rows="2"></textarea>
     </div>
     <button class="btn-guardar" id="btn-guardar" onclick="guardarCambios()">Guardar</button>
     <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
@@ -1162,7 +1162,7 @@
 
     const btn = document.getElementById('btn-guardar-ficha');
     btn.classList.remove('saving');
-    btn.texbtn.textContent = 'Guardar';
+    btn.textContent = 'Guardar';
     document.getElementById('ficha-overlay').classList.remove('hidden');
   }
 
@@ -1203,7 +1203,7 @@
       render();
     } catch (err) {
       btn.classList.remove('saving');
-      btn.texbtn.textContent = 'Guardar';
+      btn.textContent = 'Guardar';
       showErr('Error al guardar:\n' + err.message);
     }
   }
@@ -1260,9 +1260,38 @@
     ).join('');
   }
 
-  function selectEstado(nuevoEstado) {
+  async function selectEstado(nuevoEstado) {
+    if (!activeItem) return;
+    // Si es el mismo estado, nada que guardar por este camino
+    if (nuevoEstado === activeItem.estado) return;
     pendingEstado = nuevoEstado;
     renderEstadoBtns();
+    // Deshabilitar btns mientras guarda
+    document.querySelectorAll('.ebtn').forEach(b => b.classList.add('saving'));
+
+    const nuevaNota = document.getElementById('nota-input').value.trim();
+    const fields = { estado: nuevoEstado };
+    if (nuevaNota) {
+      const entrada = fmtEntrada() + ' - ' + nuevaNota;
+      fields.historial = activeItem.historial ? entrada + '\n' + activeItem.historial : entrada;
+    }
+
+    const prevEstado    = activeItem.estado;
+    const prevHistorial = activeItem.historial;
+    activeItem.estado = nuevoEstado;
+    if (fields.historial) activeItem.historial = fields.historial;
+
+    try {
+      await apiPatch(T_ITEMS, activeItem.id, fields);
+      closeModal();
+      render();
+    } catch (err) {
+      activeItem.estado    = prevEstado;
+      activeItem.historial = prevHistorial;
+      renderEstadoBtns();
+      document.querySelectorAll('.ebtn').forEach(b => b.classList.remove('saving'));
+      showErr('Error al guardar:\n' + err.message);
+    }
   }
 
   async function guardarCambios() {
