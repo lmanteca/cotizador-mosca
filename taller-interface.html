@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mosca Taller · v3.3 · 2026-06-10 17:06</title>
+  <title>Mosca Taller · v3.4.0 · 2026-06-13 21:27</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -389,6 +389,31 @@
     .btn-guardar-ficha:active { opacity: 0.7; }
     .btn-guardar-ficha.saving { opacity: 0.5; pointer-events: none; }
 
+    /* ── Materia badge ── */
+    .materia-badge {
+      display: inline-block; font-size: 10px; font-weight: 600;
+      padding: 1px 7px; border-radius: 10px; letter-spacing: 0.3px;
+      background: #e8f4e8; color: #276327; border: 1px solid #b0d8b0;
+    }
+    body.dark .materia-badge { background: #0d2a0d; color: #6ec96e; border-color: #2a5a2a; }
+
+    /* ── Ficha header close button ── */
+    .ficha-close-x {
+      position: absolute; top: 10px; right: 14px;
+      background: none; border: none; font-size: 22px; line-height: 1;
+      color: var(--muted); cursor: pointer; padding: 4px 6px;
+    }
+    .ficha-close-x:active { opacity: 0.5; }
+
+    /* ── Tel links in ficha ── */
+    .tel-link {
+      text-decoration: none; font-size: 18px; margin-left: 4px;
+      display: inline-block; vertical-align: middle;
+    }
+
+    /* ── Materia chips ── */
+    .materia-chips-wrap { padding: 0 0 10px; }
+
     /* ── Tamaño de letra ── */
     body.fz-lg { font-size: 19px; }
     body.fz-lg .pedido-cliente, body.fz-lg .item-desc { font-size: 18px; }
@@ -456,6 +481,7 @@
   </div>
   <div class="chips-wrap" id="chips"></div>
   <div class="chips-wrap urg-chips-wrap" id="urg-chips"></div>
+  <div class="chips-wrap materia-chips-wrap" id="materia-chips"></div>
 </header>
 
 <div id="main">
@@ -477,8 +503,9 @@
 <!-- Ficha de pedido -->
 <div class="ficha-overlay hidden" id="ficha-overlay" onclick="onFichaOverlayClick(event)">
   <div class="ficha-sheet">
-    <div class="ficha-header">
+    <div class="ficha-header" style="position:relative">
       <div class="drag-handle" style="margin-bottom:10px"></div>
+      <button class="ficha-close-x" onclick="closeFicha()" aria-label="Cerrar">✕</button>
       <div class="ficha-title" id="ficha-title"></div>
       <div class="ficha-sub"   id="ficha-sub"></div>
     </div>
@@ -553,7 +580,7 @@
   const T_PEDIDO_OLD = 'tblOMnHMOtmQdDS8W'; // old Pedidos — tiene 'pagado' formula + Ingresos linkeados
   const TIMEOUT_MS = 10000;
 
-  const ESTADOS = ['Nuevo','Revisado','A comprar','Pendiente','En herrería','En carpintería','En pintura','Control','Para entregar','Entregado','En Stock','Vendido','Cancelado','PosEntrega'];
+  let ESTADOS = ['Nuevo','A comprar','Pendiente','En herrería','En carpintería','En pintura','Control','Para entregar','Entregado','En Stock','Cancelado','PosEntrega']; // fallback; se pisa dinámicamente
 
   let TOKEN      = null;
   let items      = [];
@@ -561,6 +588,7 @@
   let activeItem = null;
   let activeChip = 'Nuevo';
   let activeUrgencia = 'Todos';
+  let activeMateria   = 'Todos';
   let showDash = false;
   let showKanban = false;
   let searchQ    = '';
@@ -610,8 +638,8 @@
     document.getElementById('main').innerHTML =
       '<div class="token-screen"><h2>Mosca Taller</h2><p>Pedile el link a Lisandro para acceder.</p></div>';
   } else {
-    buildChips();
     buildUrgChips();
+    buildMateriaChips();
     const loadTimeout = setTimeout(() => {
       setMain('<div class="error-box"><strong>Timeout — Airtable no respondió en 15s.</strong><br>Revisá la conexión o el token.</div>');
     }, 15000);
@@ -628,6 +656,7 @@
   // ── Chips ────────────────────────────────────────────────
   function buildChips() {
     const wrap = document.getElementById('chips');
+    wrap.innerHTML = '';
     wrap.appendChild(makeChip('Todos', activeChip === 'Todos'));
     ESTADOS.forEach(e => wrap.appendChild(makeChip(e, e === activeChip)));
   }
@@ -644,6 +673,25 @@
     activeChip = label;
     document.getElementById('search').value = '';
     searchQ = '';
+    render();
+  }
+
+  function buildMateriaChips() {
+    const wrap = document.getElementById('materia-chips');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    ['Todos','Bruta','Liviana','Modular'].forEach(m => {
+      const btn = document.createElement('button');
+      btn.className = 'chip' + (m === activeMateria ? ' active' : '');
+      btn.textContent = m === 'Todos' ? 'Toda materia' : m;
+      btn.onclick = () => selectMateriaChip(m, btn);
+      wrap.appendChild(btn);
+    });
+  }
+  function selectMateriaChip(label, btn) {
+    document.querySelectorAll('#materia-chips .chip').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    activeMateria = label;
     render();
   }
 
@@ -742,6 +790,23 @@
   async function loadData() {
     setLoading('Cargando items…');
     try {
+      // Fetch ESTADOS desde metadata Airtable (fallback si falla)
+      try {
+        const metaR = await fetchWithTimeout(
+          'https://api.airtable.com/v0/meta/bases/' + BASE + '/tables',
+          { headers: { Authorization: 'Bearer ' + TOKEN } }
+        );
+        if (metaR.ok) {
+          const metaData = await metaR.json();
+          const tbl = (metaData.tables || []).find(t => t.id === T_ITEMS);
+          const fld = (tbl?.fields || []).find(f => f.name === 'estado');
+          if (fld?.options?.choices?.length) {
+            ESTADOS = fld.options.choices.map(c => c.name);
+          }
+        }
+      } catch(e) { console.warn('[Mosca] ESTADOS fallback:', e.message); }
+      buildChips();
+
       setLoading('1/4 · Items…');
       const rawItems = await fetchAll(T_ITEMS, {
         filterByFormula: "AND(NOT({estado}='Cancelado'),NOT({estado}='Vendido'))",
@@ -780,7 +845,7 @@
         filterByFormula: pedFilter,
         'fields[]': ['id_pedido','fecha_seña','dias_adicionales','estado_comercial','cliente',
                      'precio_pactado','tono_madera','terminacion','tono_hierro','tipo_madera','acabado',
-                     'notas_logistica','urgencia','historial'],
+                     'notas_logistica','urgencia','historial','materia'],
       });
 
       setLoading('4/4 · Clientes…');
@@ -846,6 +911,7 @@
           notas_logistica:  r.fields.notas_logistica || '',
           urgencia:         r.fields.urgencia || '',
           historial:        r.fields.historial || '',
+          materia:          r.fields.materia   || '',
           cobrado:          cobradoMap[r.fields.id_pedido] || 0,
         };
       });
@@ -912,6 +978,7 @@
     const matchedItems = items.filter(item => {
       const p = pedidosMap[item.pedidoId] || {};
       if (!isSearch && activeUrgencia !== 'Todos' && (p.urgencia || 'Normal') !== activeUrgencia) return false;
+      if (!isSearch && activeMateria !== 'Todos' && (p.materia || '') !== activeMateria) return false;
       if (!isSearch && activeChip !== 'Todos' && item.estado !== activeChip) return false;
       if (isSearch) {
         const haystack = [item.descripcion, item.dimensiones, item.historial,
@@ -974,11 +1041,15 @@
     const urgBadge = (p.urgencia === 'Urgente' || p.urgencia === 'Crítico')
       ? '<span class="urg-badge urg-' + (p.urgencia === 'Crítico' ? 'Critico' : 'Urgente') + '">' + p.urgencia + '</span>'
       : '';
+    const materiaBadge = p.materia
+      ? '<span class="materia-badge">' + esc(p.materia) + '</span>'
+      : '';
 
     return '<div class="pedido-group">'
       + '<div class="pedido-header" onclick="openFicha(\'' + pid + '\')" style="cursor:pointer">'
       + '<div class="pid">#' + (p.id_pedido ?? '?') + '</div>'
       + '<div class="pedido-meta">'      + '<div class="pedido-cliente">' + highlight(p.clienteNombre, q) + '</div>'      + '<div class="pedido-fecha ' + fechaClass + '">' + fechaLabel + '</div>'      + renderSaldoBadge(p)      + '</div>'
+      + materiaBadge
       + urgBadge
       + '<button class="btn-urg" title="Ficha imprimible A4" onclick="event.stopPropagation(); openPedidoFichaWindow(\'' + pid + '\')">⎙</button>'
       + '<button class="btn-urg" onclick="event.stopPropagation(); openUrgModal(\'' + pid + '\')">⚡</button>'
@@ -1071,6 +1142,15 @@
   // ── Ficha de pedido ──────────────────────────────────────
   let activeFicha = null;
 
+  function fmtWaLink(tel) {
+    if (!tel) return null;
+    const digits = String(tel).replace(/[\s\-\(\)\.\+]/g, '');
+    let intl = digits;
+    if (digits.startsWith('0')) intl = '54' + digits.slice(1);
+    else if (digits.length <= 10) intl = '54' + digits;
+    return { call: 'tel:+' + intl, wa: 'https://wa.me/' + intl };
+  }
+
   function openFicha(pedidoId) {
     const p = pedidosMap[pedidoId];
     if (!p) return;
@@ -1100,9 +1180,10 @@
         }).join('')
       + '</div></div>';
 
+    const telLinks = fmtWaLink(p.clienteTel);
     const rows1 = [
       ['Cliente',        p.clienteNombre],
-      ['Teléfono',       p.clienteTel],
+      ['__TEL__',        p.clienteTel],
       ['Seña',           p.fecha_sena ? new Date(p.fecha_sena + 'T00:00:00').toLocaleDateString('es-AR', {day:'numeric',month:'long',year:'numeric'}) : null],
       ['Entrega',        entregaLabel],
       ['Estado',         p.estado_comercial],
@@ -1143,12 +1224,25 @@
     const rows = rows1.concat(rows2);
 
     const rowsHtml = rows.map(([label, val]) => {
-      const display = val
-        ? (label === 'Notas del pedido'
-            ? esc(String(val)).replace(/\n/g, '<br>')
-            : esc(String(val)))
-        : '—';
-      return '<div class="ficha-row"><div class="ficha-label">' + label + '</div>'
+      let displayLabel = label;
+      let display;
+      if (label === '__TEL__') {
+        displayLabel = 'Teléfono';
+        if (val && telLinks) {
+          display = esc(String(val))
+            + ' <a class="tel-link" href="' + telLinks.call + '" title="Llamar">📞</a>'
+            + ' <a class="tel-link" href="' + telLinks.wa + '" target="_blank" title="WhatsApp">💬</a>';
+        } else {
+          display = val ? esc(String(val)) : '—';
+        }
+      } else if (val) {
+        display = label === 'Notas del pedido'
+          ? esc(String(val)).replace(/\n/g, '<br>')
+          : esc(String(val));
+      } else {
+        display = '—';
+      }
+      return '<div class="ficha-row"><div class="ficha-label">' + displayLabel + '</div>'
         + '<div class="ficha-val ' + (val ? '' : 'empty') + '">' + display + '</div></div>';
     }).join('');
 
@@ -1283,6 +1377,14 @@
 
     try {
       await apiPatch(T_ITEMS, activeItem.id, fields);
+      // Si pasa a Entregado → resetear urgencia del pedido a Normal
+      if (nuevoEstado === 'Entregado') {
+        const _p = pedidosMap[activeItem.pedidoId];
+        if (_p && _p.urgencia) {
+          _p.urgencia = '';
+          apiPatch(T_PEDIDO, activeItem.pedidoId, { urgencia: null }).catch(() => {});
+        }
+      }
       closeModal();
       render();
     } catch (err) {
@@ -1331,7 +1433,7 @@
       activeItem.estado    = prevEstado;
       activeItem.historial = prevHistorial;
       btn.classList.remove('saving');
-btn.textContent = 'Guardar';
+      btn.textContent = 'Guardar';
       showErr('Error al guardar:\n' + err.message);
     }
   }
